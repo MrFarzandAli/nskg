@@ -1,0 +1,21 @@
+﻿@using Nskg.Models.ViewModels
+@model AssignRoleViewModel
+
+<h2>Assign Role</h2>
+
+<form asp-action="AssignRole" method="post">
+    <input type="hidden" asp-for="UserId" />
+
+    <div>
+        <label>Email</label>
+        <input asp-for="Email" class="form-control" readonly />
+    </div>
+
+    <div>
+        <label>Select Role</label>
+        <select asp-for="SelectedRole" asp-items="Model.Roles" class="form-control"></select>
+    </div>
+
+    <br />
+    <button type="submit" class="btn btn-success">Assign</button>
+</form>
