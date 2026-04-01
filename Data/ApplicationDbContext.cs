@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Nskg.Models.Security;
 
 namespace Nskg.Data
 {
@@ -9,6 +10,10 @@ namespace Nskg.Data
             : base(options)
         {
         }
+
+        DbSet<Form> Forms { get; set; }
+        DbSet<RoleFormPermission> RoleFormPermissions { get; set; }
+
     }
 
 }

@@ -1,0 +1,85 @@
+﻿@using Nskg.Models.ViewModels
+@model SecurityViewModel
+@{
+    ViewData["Title"] = "Role";
+}
+<h2>Security Management</h2>
+
+<!-- ROLE SECTION -->
+<h4>Roles</h4>
+<form asp-action="CreateRole" method="post">
+    <input asp-for="NewRoleName" placeholder="New Role" />
+    <button type="submit">Add Role</button>
+</form>
+
+<ul>
+    @foreach (var role in Model.Roles)
+    {
+        <li>
+            @role.Name
+            <a asp-action="DeleteRole" asp-route-id="@role.Id">Delete</a>
+        </li>
+    }
+</ul>
+
+<hr />
+
+<!-- FORM SECTION -->
+<h4>Forms</h4>
+<form asp-action="CreateForm" method="post">
+    <input asp-for="NewForm.Name" placeholder="Form Name" />
+    <input asp-for="NewForm.Controller" placeholder="Controller" />
+    <input asp-for="NewForm.Action" placeholder="Action" />
+    <button type="submit">Add Form</button>
+</form>
+
+<ul>
+    @foreach (var form in Model.Forms)
+    {
+        <li>
+            @form.Name
+            <a asp-action="DeleteForm" asp-route-id="@form.Id">Delete</a>
+        </li>
+    }
+</ul>
+
+<hr />
+
+<!-- ASSIGN ROLE -->
+<h4>Assign Role to User</h4>
+<form asp-action="AssignRoleToUser" method="post">
+    <select asp-for="SelectedUserId"
+            asp-items="@(new SelectList(Model.Users, "Id", "Email"))"></select>
+
+    <select asp-for="SelectedRoleId" asp-items="Model.RoleList"></select>
+
+    <button type="submit">Assign</button>
+</form>
+
+<hr />
+
+<!-- PERMISSIONS -->
+<h4>Assign Form Permissions</h4>
+<form asp-action="AssignPermission" method="post">
+
+    <select name="roleId" asp-items="Model.RoleList"></select>
+    <select name="formId" asp-items="Model.FormList"></select>
+
+    <label>
+        <input asp-for="CanView" /> View
+    </label>
+
+    <label>
+        <input asp-for="CanCreate" /> Create
+    </label>
+
+    <label>
+        <input asp-for="CanEdit" /> Edit
+    </label>
+
+    <label>
+        <input asp-for="CanDelete" /> Delete
+    </label>
+
+    <button type="submit">Save</button>
+</form>

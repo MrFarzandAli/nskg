@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Nskg.Data;
+using Nskg.Service;
+using Nskg.Service.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,8 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 })
 .AddRoles<IdentityRole>() // IMPORTANT for roles
 .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();

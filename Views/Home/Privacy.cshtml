@@ -1,6 +1,18 @@
-﻿@{
+﻿@inject IPermissionService PermissionService
+@using System.Security.Claims
+@using Nskg.Service.Interfaces
+
+@{
+    var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var canCreate = await PermissionService.HasPermissionAsync(userId, "Builty", "Create", "Create");
+
     ViewData["Title"] = "Privacy Policy";
 }
 <h1>@ViewData["Title"]</h1>
 
 <p>Use this page to detail your site's privacy policy.</p>
+
+@if (canCreate)
+{
+    <a href="/Builty/Create" class="btn btn-success">Create</a>
+}

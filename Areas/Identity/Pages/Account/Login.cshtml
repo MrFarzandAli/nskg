@@ -2,82 +2,111 @@
 @model LoginModel
 
 @{
+    Layout = null;
     ViewData["Title"] = "Log in";
 }
+<!DOCTYPE html>
+<html lang="en" data-layout="vertical" data-topbar="light" data-sidebar="dark" data-sidebar-size="lg" data-sidebar-image="none">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="Smarthr - Bootstrap Admin Template">
+        <meta name="keywords" content="admin, estimates, bootstrap, business, corporate, creative, management, minimal, modern, accounts, invoice, html5, responsive, CRM, Projects">
+        <meta name="author" content="Dreamguys - Bootstrap Admin Template">
+        <title>Login - HRMS admin template</title>
+		
+        <!-- Favicon -->
+        <link rel="shortcut icon" type="image/x-icon" href="~/assets/img/favicon.png">
+		
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="~/assets/css/bootstrap.min.css">
 
-<h1>@ViewData["Title"]</h1>
-<div class="row">
-    <div class="col-md-4">
-        <section>
-            <form id="account" method="post">
-                <h2>Use a local account to log in.</h2>
-                <hr />
-                <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-                <div class="form-floating mb-3">
-                    <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                    <label asp-for="Input.Email" class="form-label">Email</label>
-                    <span asp-validation-for="Input.Email" class="text-danger"></span>
-                </div>
-                <div class="form-floating mb-3">
-                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-                    <label asp-for="Input.Password" class="form-label">Password</label>
-                    <span asp-validation-for="Input.Password" class="text-danger"></span>
-                </div>
-                <div class="checkbox mb-3">
-                    <label asp-for="Input.RememberMe" class="form-label">
-                        <input class="form-check-input" asp-for="Input.RememberMe" />
-                        @Html.DisplayNameFor(m => m.Input.RememberMe)
-                    </label>
-                </div>
-                <div>
-                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
-                </div>
-                <div>
-                    <p>
-                        <a id="forgot-password" asp-page="./ForgotPassword">Forgot your password?</a>
-                    </p>
-                    <p>
-                        <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl">Register as a new user</a>
-                    </p>
-                    <p>
-                        <a id="resend-confirmation" asp-page="./ResendEmailConfirmation">Resend email confirmation</a>
-                    </p>
-                </div>
-            </form>
-        </section>
-    </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Use another service to log in.</h3>
-            <hr />
-            @{
-                if ((Model.ExternalLogins?.Count ?? 0) == 0)
-                {
-                    <div>
-                        <p>
-                            There are no external authentication services configured. See this <a href="https://go.microsoft.com/fwlink/?LinkID=532715">article
-                            about setting up this ASP.NET application to support logging in via external services</a>.
-                        </p>
+        <!-- Fontawesome CSS -->
+        <link rel="stylesheet" href="~/assets/plugins/fontawesome/css/fontawesome.min.css">
+        <link rel="stylesheet" href="~/assets/plugins/fontawesome/css/all.min.css">
+
+        <!-- Lineawesome CSS -->
+        <link rel="stylesheet" href="~/assets/css/line-awesome.min.css">
+        <link rel="stylesheet" href="~/assets/css/material.css">
+			
+        <!-- Lineawesome CSS -->
+        <link rel="stylesheet" href="~/assets/css/line-awesome.min.css">
+		
+        <!-- Main CSS -->
+        <link rel="stylesheet" href="~/assets/css/style.css">
+
+    </head>
+    <body class="account-page">
+	
+        <!-- Main Wrapper -->
+        <div class="main-wrapper">
+            <div class="account-content">
+                <div class="container">
+				
+                    <!-- Account Logo -->
+                    <div class="account-logo">
+                            <a href="admin-dashboard.html"><img src="~/assets/img/logo2.png" alt="Dreamguy's Technologies"></a>
                     </div>
-                }
-                else
-                {
-                    <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
-                        <div>
-                            <p>
-                                @foreach (var provider in Model.ExternalLogins!)
-                                {
-                                    <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">@provider.DisplayName</button>
-                                }
-                            </p>
+                    <!-- /Account Logo -->
+					
+                    <div class="account-box">
+                        <div class="account-wrapper">
+                            <h3 class="account-title">Login</h3>
+                            <p class="account-subtitle">Access to our dashboard</p>
+							
+                            <!-- Account Form -->
+                            <form id="account" method="post">
+                                <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                                <div class="input-block mb-4">
+                                    <label asp-for="Input.Email" class="col-form-label">Email Address</label>
+                                    <input asp-for="Input.Email" class="form-control" type="text" placeholder="admin@dreamguystech.com">
+                                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                                </div>
+                                <div class="input-block mb-4">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <label asp-for="Input.Password" class="col-form-label">Password</label>
+                                        </div>
+                                        <div class="col-auto">                                          
+                                        </div>
+                                    </div>
+                                    <div class="position-relative">
+                                        <input asp-for="Input.Password" class="form-control" type="password" placeholder="123456" id="password">                                        
+                                        <span class="fa-solid fa-eye-slash" id="toggle-password"></span>
+                                    </div>
+                                        <span asp-validation-for="Input.Password" class="text-danger"></span>
+                                </div>
+                                <div class="checkbox mb-3">
+                                    <label asp-for="Input.RememberMe" class="form-label">
+                                        <input class="form-check-input" asp-for="Input.RememberMe" />
+                                        @Html.DisplayNameFor(m => m.Input.RememberMe)
+                                    </label>
+                                </div>
+                                <div class="input-block mb-4 text-center">
+                                    <button id="login-submit" class="btn btn-primary account-btn" type="submit">Login</button>
+                                </div>
+                                <div class="account-footer">                                   
+                                </div>
+                            </form>
+                            <!-- /Account Form -->
+							
                         </div>
-                    </form>
-                }
-            }
-        </section>
-    </div>
-</div>
-
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /Main Wrapper -->
+        <!-- jQuery -->
+            <script src="~/assets/js/jquery-3.7.0.min.js"></script>
+		
+        <!-- Bootstrap Core JS -->
+            <script src="~/assets/js/bootstrap.bundle.min.js"></script>
+		
+        <!-- Custom JS -->
+            <script src="~/assets/js/app.js"></script>
+		
+    </body>
+</html>
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
