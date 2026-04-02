@@ -1,0 +1,12 @@
+﻿@model Company
+
+<h2>Edit Company</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+    <input asp-for="Name" class="form-control" />
+     <input asp-for="Mobile" class="form-control" />
+    <input asp-for="Email" class="form-control" />
+    <br />
+    <button type="submit" class="btn btn-primary">Update</button>
+</form>

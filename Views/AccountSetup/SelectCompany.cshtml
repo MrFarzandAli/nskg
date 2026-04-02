@@ -1,0 +1,41 @@
+﻿@using Nskg.Models.ViewModels
+
+@model CompanySelectionViewModel
+
+<h2>Select Company & Financial Year</h2>
+
+<form asp-action="SelectCompany" method="post">
+
+    <div>
+        <label>Company</label>
+        <select asp-for="SelectedCompanyId" asp-items="Model.Companies" id="companyDropdown"></select>
+    </div>
+
+    <div>
+        <label>Financial Year</label>
+        <select asp-for="SelectedFinancialYearId" id="yearDropdown"></select>
+    </div>
+
+    <br />
+    <button type="submit" class="btn btn-primary">Continue</button>
+</form>
+
+<script>
+    document.getElementById("companyDropdown").addEventListener("change", function () {
+        var companyId = this.value;
+
+        fetch('/AccountSetup/GetFinancialYears?companyId=' + companyId)
+            .then(res => res.json())
+            .then(data => {
+                var yearDropdown = document.getElementById("yearDropdown");
+                yearDropdown.innerHTML = "";
+
+                data.forEach(item => {
+                    var option = document.createElement("option");
+                    option.value = item.value;
+                    option.text = item.text;
+                    yearDropdown.appendChild(option);
+                });
+            });
+    });
+</script>

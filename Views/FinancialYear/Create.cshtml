@@ -1,0 +1,19 @@
+﻿@model FinancialYear
+
+<h2>Create Financial Year</h2>
+
+<form asp-action="Create" method="post">
+
+    <select asp-for="CompanyId" asp-items="ViewBag.Companies" class="form-control"></select>
+
+    <br />
+
+    <label>Start Date</label>
+    <input asp-for="StartDate" type="date" class="form-control" />
+
+    <label>End Date</label>
+    <input asp-for="EndDate" type="date" class="form-control" />
+
+    <br />
+    <button type="submit" class="btn btn-success">Save</button>
+</form>

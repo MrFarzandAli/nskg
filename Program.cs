@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Nskg.Data;
+using Nskg.Repositories;
+using Nskg.Repositories.Interfaces;
 using Nskg.Service;
 using Nskg.Service.Interfaces;
 
@@ -19,6 +21,9 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUserContextService, UserContextService>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();

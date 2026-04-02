@@ -1,0 +1,11 @@
+﻿@model Company
+
+<h2>Create Company</h2>
+
+<form asp-action="Create" method="post">
+    <input asp-for="Name" class="form-control" placeholder="Company Name" />
+    <input asp-for="Mobile" class="form-control" placeholder="Company Mobile" />
+    <input asp-for="Email" class="form-control" placeholder="Company Email" />
+    <br />
+    <button type="submit" class="btn btn-success">Save</button>
+</form>

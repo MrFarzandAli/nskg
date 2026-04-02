@@ -1,0 +1,29 @@
+﻿@model IEnumerable<FinancialYear>
+
+<h2>Financial Years</h2>
+
+<a asp-action="Create" class="btn btn-primary">Add Year</a>
+
+<table class="table">
+    <tr>
+        <th>Company</th>
+        <th>Year</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Action</th>
+    </tr>
+
+@foreach (var item in Model)
+{
+    <tr>
+        <td>@item.Company.Name</td>
+        <td>@item.YearName</td>
+        <td>@item.StartDate.ToShortDateString()</td>
+        <td>@item.EndDate.ToShortDateString()</td>
+        <td>
+            <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+            <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+        </td>
+    </tr>
+}
+</table>
