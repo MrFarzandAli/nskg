@@ -8,12 +8,16 @@
 
     <div>
         <label>Company</label>
-        <select asp-for="SelectedCompanyId" asp-items="Model.Companies" id="companyDropdown"></select>
+        <select asp-for="SelectedCompanyId" asp-items="Model.Companies" id="companyDropdown">
+            <option value="">--select--</option>
+        </select>
     </div>
 
     <div>
         <label>Financial Year</label>
-        <select asp-for="SelectedFinancialYearId" id="yearDropdown"></select>
+        <select asp-for="SelectedFinancialYearId" id="yearDropdown">
+            <option value="">--select--</option>
+        </select>
     </div>
 
     <br />
