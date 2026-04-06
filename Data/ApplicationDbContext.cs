@@ -17,6 +17,10 @@ namespace Nskg.Data
         public DbSet<Company> Companies { get; set; }
         public DbSet<FinancialYear> FinancialYears { get; set; }
         public DbSet<UserCompany> UserCompanies { get; set; }
+        public DbSet<Actype> Actype { get; set; }
+        public DbSet<AccCat> AccCat { get; set; }
+
+
         public DbSet<AuditLog> AuditLogs { get; set; }
 
     }

@@ -1,0 +1,10 @@
+﻿@model AccCat
+
+<h2>Edit Account Category</h2>
+
+<form asp-action="Edit" method="post">
+    <input asp-for="CatCode" class="form-control" />
+    <input asp-for="Category" class="form-control" />
+    <br />
+    <button type="submit" class="btn btn-primary">Update</button>
+</form>

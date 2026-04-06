@@ -1,0 +1,25 @@
+﻿@model IEnumerable<Actype>
+
+<h2>Account Type</h2>
+
+<a asp-action="Create" class="btn btn-primary">Add Account Type</a>
+
+<table class="table">
+    <tr>
+        <th>Acc Type</th>
+        <th>Account Name</th>
+        <th>Action</th>
+    </tr>
+
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.ACTYPE</td>
+            <td>@item.ACNAME</td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.ACTYPE">Edit</a> |
+                <a asp-action="Delete" asp-route-id="@item.ACTYPE">Delete</a>
+            </td>
+        </tr>
+    }
+</table>

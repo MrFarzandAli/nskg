@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260406172944_creataTableACTYPE")]
+    partial class creataTableACTYPE
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -224,42 +227,6 @@ namespace Nskg.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Nskg.Models.AuditLog", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Details")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RecordId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TableName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UserName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AuditLogs");
-                });
-
             modelBuilder.Entity("Nskg.Models.Actype", b =>
                 {
                     b.Property<string>("ACTYPE")
@@ -417,30 +384,6 @@ namespace Nskg.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("UserCompanies");
-                });
-
-            modelBuilder.Entity("Nskg.Models.YourProjectName.Models.AccCat", b =>
-                {
-                    b.Property<string>("CatCode")
-                        .HasMaxLength(2)
-                        .HasColumnType("nvarchar(2)")
-                        .HasColumnName("CATCODE");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasColumnName("CATEGORY");
-
-                    b.Property<string>("CoCode")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("nvarchar(2)")
-                        .HasColumnName("COCODE");
-
-                    b.HasKey("CatCode");
-
-                    b.ToTable("ACCCAT", "NSKG");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

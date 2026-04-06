@@ -1,0 +1,25 @@
+﻿@model IEnumerable<AccCat>
+
+<h2>Account Category</h2>
+
+<a asp-action="Create" class="btn btn-primary">Add Account Category</a>
+
+<table class="table">
+    <tr>
+        <th>S.No</th>
+        <th>Category Name</th>
+        <th>Action</th>
+    </tr>
+
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.CatCode</td>
+            <td>@item.Category</td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.CatCode">Edit</a> |
+                <a asp-action="Delete" asp-route-id="@item.Category">Delete</a>
+            </td>
+        </tr>
+    }
+</table>

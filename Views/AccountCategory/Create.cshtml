@@ -1,0 +1,10 @@
+﻿@model AccCat
+
+<h2>Create Account Category</h2>
+
+<form asp-action="Create" method="post">
+    <input asp-for="CatCode" class="form-control" placeholder="Category No" />
+    <input asp-for="Category" class="form-control" placeholder="Category Name" />
+    <br />
+    <button type="submit" class="btn btn-success">Save</button>
+</form>
