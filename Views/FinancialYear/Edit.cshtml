@@ -1,18 +1,72 @@
 ﻿@model FinancialYear
 
-<h2>Edit Financial Year</h2>
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Edit Financial Year";
+}
 
-<form asp-action="Edit" method="post">
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h3 class="page-title">Edit Financial Year</h3>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Financial Years</a></li>
+                <li class="breadcrumb-item active">Edit Financial Year</li>
+            </ul>
+        </div>
+    </div>
+</div>
 
-    <input type="hidden" asp-for="Id" />
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Edit" method="post">
+                    <input type="hidden" asp-for="Id" />
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="CompanyId" class="form-label">Company</label>
+                            <select asp-for="CompanyId" asp-items="ViewBag.Companies" class="form-select">
+                                <option value="">-- Select Company --</option>
+                            </select>
+                            <span asp-validation-for="CompanyId" class="text-danger"></span>
+                        </div>
 
-    <select asp-for="CompanyId" asp-items="ViewBag.Companies" class="form-control"></select>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="YearName" class="form-label">Year Name</label>
+                            <input asp-for="YearName" class="form-control" placeholder="e.g., FY 2024-2025" />
+                            <span asp-validation-for="YearName" class="text-danger"></span>
+                        </div>
 
-    <br />
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="StartDate" class="form-label">Start Date</label>
+                            <input asp-for="StartDate" type="date" class="form-control" />
+                            <span asp-validation-for="StartDate" class="text-danger"></span>
+                        </div>
 
-    <input asp-for="StartDate" type="date" class="form-control" />
-    <input asp-for="EndDate" type="date" class="form-control" />
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="EndDate" class="form-label">End Date</label>
+                            <input asp-for="EndDate" type="date" class="form-control" />
+                            <span asp-validation-for="EndDate" class="text-danger"></span>
+                        </div>
+                    </div>
 
-    <br />
-    <button type="submit" class="btn btn-primary">Update</button>
-</form>
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-check"></i> Update
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary ms-2">
+                            <i class="fa fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

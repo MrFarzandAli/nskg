@@ -29,3 +29,88 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+.custom-card {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+    .custom-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .custom-card .card-header {
+        font-weight: 600;
+        padding: 14px 18px;
+        font-size: 15px;
+    }
+
+/* Gradient headers */
+.bg-orange {
+    background: linear-gradient(45deg, #ff8a00, #ff5e62);
+    color: #fff;
+}
+
+.bg-yellow {
+    background: linear-gradient(45deg, #f7b733, #fc4a1a);
+    color: #fff;
+}
+
+.bg-blue {
+    background: linear-gradient(45deg, #2196f3, #21cbf3);
+    color: #fff;
+}
+
+.bg-dark-gray {
+    background: linear-gradient(45deg, #636363, #a2ab58);
+    color: #fff;
+}
+
+/* List items */
+.role-list .list-group-item {
+    border: none;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    transition: 0.2s;
+}
+
+    .role-list .list-group-item:hover {
+        background: #eef2f7;
+    }
+
+/* Buttons */
+.btn {
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.btn-success {
+    background: #28c76f;
+    border: none;
+}
+
+.btn-warning {
+    background: #ff9f43;
+    border: none;
+    color: #fff;
+}
+
+.btn-danger {
+    background: #ea5455;
+    border: none;
+}
+
+    .btn-danger:hover {
+        transform: scale(1.05);
+    }
+
+/* Inputs */
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}

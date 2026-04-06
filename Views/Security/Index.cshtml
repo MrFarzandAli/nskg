@@ -1,4 +1,4 @@
-﻿@using Nskg.Models.ViewModels
+﻿@* @using Nskg.Models.ViewModels
 @model SecurityViewModel
 @{
     ViewData["Title"] = "Role";
@@ -82,4 +82,467 @@
     </label>
 
     <button type="submit">Save</button>
-</form>
+</form> *@
+@* @using Nskg.Models.ViewModels
+@model SecurityViewModel
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Security Management";
+}
+
+<h2 class="page-title mb-4">Security Management</h2>
+
+<div class="row g-4">
+
+    <!-- Roles Card -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Roles</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="CreateRole" method="post" class="d-flex mb-3 gap-2">
+                    <input asp-for="NewRoleName" class="form-control" placeholder="New Role" />
+                    <button type="submit" class="btn btn-success">Add Role</button>
+                </form>
+
+                <ul class="list-group">
+                    @foreach (var role in Model.Roles)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @role.Name
+                            <a asp-action="DeleteRole" asp-route-id="@role.Id" class="btn btn-sm btn-danger">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forms Card -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Forms</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="CreateForm" method="post" class="mb-3">
+                    <div class="row g-2">
+                        <div class="col">
+                            <input asp-for="NewForm.Name" class="form-control" placeholder="Form Name" />
+                        </div>
+                        <div class="col">
+                            <input asp-for="NewForm.Controller" class="form-control" placeholder="Controller" />
+                        </div>
+                        <div class="col">
+                            <input asp-for="NewForm.Action" class="form-control" placeholder="Action" />
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-success">Add Form</button>
+                        </div>
+                    </div>
+                </form>
+
+                <ul class="list-group">
+                    @foreach (var form in Model.Forms)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @form.Name
+                            <a asp-action="DeleteForm" asp-route-id="@form.Id" class="btn btn-sm btn-danger">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Role Card -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Assign Role to User</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="AssignRoleToUser" method="post" class="row g-2 align-items-center">
+                    <div class="col">
+                        <select asp-for="SelectedUserId"
+                                asp-items="@(new SelectList(Model.Users, "Id", "Email"))"
+                                class="form-select"></select>
+                    </div>
+                    <div class="col">
+                        <select asp-for="SelectedRoleId" asp-items="Model.RoleList" class="form-select"></select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">Assign</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Permissions Card -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Assign Form Permissions</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="AssignPermission" method="post" class="row g-2 align-items-center">
+                    <div class="col">
+                        <select name="roleId" asp-items="Model.RoleList" class="form-select"></select>
+                    </div>
+                    <div class="col">
+                        <select name="formId" asp-items="Model.FormList" class="form-select"></select>
+                    </div>
+                    <div class="col-auto">
+                        <div class="form-check form-check-inline">
+                            <input asp-for="CanView" class="form-check-input" />
+                            <label class="form-check-label">View</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input asp-for="CanCreate" class="form-check-input" />
+                            <label class="form-check-label">Create</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input asp-for="CanEdit" class="form-check-input" />
+                            <label class="form-check-label">Edit</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input asp-for="CanDelete" class="form-check-input" />
+                            <label class="form-check-label">Delete</label>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div> *@
+@* @using Nskg.Models.ViewModels
+@model SecurityViewModel
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Security Management";
+}
+
+<div class="page-header mb-4">
+    <h3 class="page-title">Security Management</h3>
+</div>
+
+<div class="row">
+
+    <!-- Roles -->
+    <div class="col-md-6 d-flex">
+        <div class="card custom-card w-100">
+            <div class="card-header bg-orange">
+                <h5>Roles</h5>
+            </div>
+
+            <div class="card-body">
+
+                <form asp-action="CreateRole" method="post" class="d-flex gap-2 mb-3">
+                    <input asp-for="NewRoleName" class="form-control" placeholder="New Role" />
+                    <button class="btn btn-success">Add Role</button>
+                </form>
+
+                <div class="list-group role-list">
+                    @foreach (var role in Model.Roles)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@role.Name</span>
+
+                            <button class="btn btn-sm btn-danger"
+                                    onclick="return confirmDelete(event, '@role.Name', '/Security/DeleteRole/@role.Id')">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Forms -->
+    <div class="col-md-6 d-flex">
+        <div class="card custom-card w-100">
+            <div class="card-header bg-yellow">
+                <h5>Forms</h5>
+            </div>
+
+            <div class="card-body">
+
+                <form asp-action="CreateForm" method="post" class="row g-2 mb-3">
+                    <div class="col">
+                        <input asp-for="NewForm.Name" class="form-control" placeholder="Form Name" />
+                    </div>
+                    <div class="col">
+                        <input asp-for="NewForm.Controller" class="form-control" placeholder="Controller" />
+                    </div>
+                    <div class="col">
+                        <input asp-for="NewForm.Action" class="form-control" placeholder="Action" />
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-success">Add Form</button>
+                    </div>
+                </form>
+
+                <div class="list-group role-list">
+                    @foreach (var form in Model.Forms)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@form.Name</span>
+
+                            <button class="btn btn-sm btn-danger"
+                                    onclick="return confirmDelete(event, '@form.Name', '/Security/DeleteForm/@form.Id')">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Role -->
+    <div class="col-md-6 d-flex mt-4">
+        <div class="card custom-card w-100">
+            <div class="card-header bg-blue">
+                <h5>Assign Role to User</h5>
+            </div>
+
+            <div class="card-body">
+                <form asp-action="AssignRoleToUser" method="post" class="row g-2">
+
+                    <div class="col">
+                        <select asp-for="SelectedUserId"
+                                asp-items="@(new SelectList(Model.Users, "Id", "Email"))"
+                                class="form-select"></select>
+                    </div>
+
+                    <div class="col">
+                        <select asp-for="SelectedRoleId" asp-items="Model.RoleList" class="form-select"></select>
+                    </div>
+
+                    <div class="col-auto">
+                        <button class="btn btn-warning">Assign</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permissions -->
+    <div class="col-md-6 d-flex mt-4">
+        <div class="card custom-card w-100">
+            <div class="card-header bg-dark-gray">
+                <h5>Assign Form Permissions</h5>
+            </div>
+
+            <div class="card-body">
+                <form asp-action="AssignPermission" method="post">
+
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <select name="roleId" asp-items="Model.RoleList" class="form-select"></select>
+                        </div>
+                        <div class="col">
+                            <select name="formId" asp-items="Model.FormList" class="form-select"></select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 mb-3">
+                        <label><input asp-for="CanView" /> View</label>
+                        <label><input asp-for="CanCreate" /> Create</label>
+                        <label><input asp-for="CanEdit" /> Edit</label>
+                        <label><input asp-for="CanDelete" /> Delete</label>
+                    </div>
+
+                    <button class="btn btn-warning">Save</button>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div> *@
+@using Nskg.Models.ViewModels
+@model SecurityViewModel
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Security Management";
+}
+
+<div class="page-header mb-4">
+    <h3 class="page-title fw-bold">Security Management</h3>
+</div>
+
+<div class="row g-4">
+
+    <!-- Roles -->
+    <div class="col-md-6 d-flex">
+        <div class="card custom-card w-100">
+            <div class="card-header bg-orange d-flex align-items-center">
+                <h5 class="mb-0">
+                    <i class="fa fa-user-shield me-2"></i> Roles
+                </h5>
+            </div>
+
+            <div class="card-body">
+
+                <form asp-action="CreateRole" method="post" class="d-flex gap-2 mb-3">
+                    <input asp-for="NewRoleName" class="form-control" placeholder="New Role" />
+                    <button class="btn btn-success">
+                        <i class="fa fa-plus"></i>
+                    </button>
+                </form>
+
+                <div class="list-group role-list">
+                    @foreach (var role in Model.Roles)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@role.Name</span>
+
+                            <button class="btn btn-sm btn-danger"
+                                    onclick="return confirmDelete(event, '@role.Name', '/Security/DeleteRole/@role.Id')">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Forms -->
+    <div class="col-md-6 d-flex">
+        <div class="card custom-card w-100">
+            <div class="card-header bg-yellow d-flex align-items-center">
+                <h5 class="mb-0">
+                    <i class="fa fa-window-maximize me-2"></i> Forms
+                </h5>
+            </div>
+
+            <div class="card-body">
+
+                <form asp-action="CreateForm" method="post" class="row g-2 mb-3">
+                    <div class="col">
+                        <input asp-for="NewForm.Name" class="form-control" placeholder="Form Name" />
+                    </div>
+                    <div class="col">
+                        <input asp-for="NewForm.Controller" class="form-control" placeholder="Controller" />
+                    </div>
+                    <div class="col">
+                        <input asp-for="NewForm.Action" class="form-control" placeholder="Action" />
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-success">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="list-group role-list">
+                    @foreach (var form in Model.Forms)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@form.Name</span>
+
+                            <button class="btn btn-sm btn-danger"
+                                    onclick="return confirmDelete(event, '@form.Name', '/Security/DeleteForm/@form.Id')">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Role -->
+    <div class="col-md-6 d-flex">
+        <div class="card custom-card w-100">
+            <div class="card-header bg-blue d-flex align-items-center">
+                <h5 class="mb-0">
+                    <i class="fa fa-user-plus me-2"></i> Assign Role
+                </h5>
+            </div>
+
+            <div class="card-body">
+                <form asp-action="AssignRoleToUser" method="post" class="row g-2 align-items-center">
+
+                    <div class="col">
+                        <select asp-for="SelectedUserId"
+                                asp-items="@(new SelectList(Model.Users, "Id", "Email"))"
+                                class="form-select"></select>
+                    </div>
+
+                    <div class="col">
+                        <select asp-for="SelectedRoleId"
+                                asp-items="Model.RoleList"
+                                class="form-select"></select>
+                    </div>
+
+                    <div class="col-auto">
+                        <button class="btn btn-warning">
+                            <i class="fa fa-check"></i> Assign
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permissions -->
+    <div class="col-md-6 d-flex">
+        <div class="card custom-card w-100">
+            <div class="card-header bg-dark-gray d-flex align-items-center">
+                <h5 class="mb-0">
+                    <i class="fa fa-lock me-2"></i> Permissions
+                </h5>
+            </div>
+
+            <div class="card-body">
+                <form asp-action="AssignPermission" method="post">
+
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <select name="roleId" asp-items="Model.RoleList" class="form-select"></select>
+                        </div>
+                        <div class="col">
+                            <select name="formId" asp-items="Model.FormList" class="form-select"></select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-3 mb-3">
+                        <label><input asp-for="CanView" /> View</label>
+                        <label><input asp-for="CanCreate" /> Create</label>
+                        <label><input asp-for="CanEdit" /> Edit</label>
+                        <label><input asp-for="CanDelete" /> Delete</label>
+                    </div>
+
+                    <button class="btn btn-warning">
+                        <i class="fa fa-save"></i> Save
+                    </button>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>

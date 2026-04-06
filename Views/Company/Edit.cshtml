@@ -1,4 +1,4 @@
-﻿@model Company
+﻿@* @model Company
 
 <h2>Edit Company</h2>
 
@@ -9,4 +9,68 @@
     <input asp-for="Email" class="form-control" />
     <br />
     <button type="submit" class="btn btn-primary">Update</button>
-</form>
+</form> *@
+@model Company
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Edit Company";
+}
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h3 class="page-title">Edit Company</h3>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Companies</a></li>
+                <li class="breadcrumb-item active">Edit Company</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Edit" method="post">
+                    <input type="hidden" asp-for="Id" />
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="Name" class="form-label">Company Name</label>
+                            <input asp-for="Name" class="form-control" placeholder="Enter Company Name" />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="Mobile" class="form-label">Mobile</label>
+                            <input asp-for="Mobile" class="form-control" placeholder="Enter Mobile Number" />
+                            <span asp-validation-for="Mobile" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="Email" class="form-label">Email</label>
+                            <input asp-for="Email" class="form-control" placeholder="Enter Email Address" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa fa-check"></i> Update
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary ms-2">
+                            <i class="fa fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

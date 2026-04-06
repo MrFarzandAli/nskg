@@ -27,6 +27,15 @@
 		
 	<!-- Main CSS -->
 	<link rel="stylesheet" href="~/assets/css/style.css">
+
+
+	<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+										
+									<!-- SweetAlert2 CSS & JS -->
+									<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+									
+									<!-- Toastr CSS & JS (Notifications ke liye) -->
+									<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
 	
 </head>
 	
@@ -753,7 +762,124 @@
 			
 			<!-- Page Content -->
 			<div class="content container-fluid">
-				@RenderBody()
+														
+																				@RenderBody()
+
+						
+																				@* <!-- TempData Toastr Notifications -->
+																				<script>
+																									$(document).ready(function () {
+
+																										// Toastr configuration
+																										toastr.options = {
+																											"closeButton": true,
+																											"debug": false,
+																											"newestOnTop": true,
+																											"progressBar": true,
+																											"positionClass": "toast-top-right",
+																											"preventDuplicates": true,
+																											"onclick": null,
+																											"showDuration": "300",
+																											"hideDuration": "1000",
+																											"timeOut": "5000",
+																											"extendedTimeOut": "1000",
+																											"showEasing": "swing",
+																											"hideEasing": "linear",
+																											"showMethod": "fadeIn",
+																											"hideMethod": "fadeOut"
+																										};
+
+																										// TempData Messages
+																										@if (TempData["SuccessMessage"] != null)
+																										{
+																												<text>toastr.success('@TempData["SuccessMessage"]', 'Success!');</text>
+																										}
+																										@if (TempData["ErrorMessage"] != null)
+																										{
+																												<text>toastr.error('@TempData["ErrorMessage"]', 'Error!');</text>
+																										}
+																										@if (TempData["WarningMessage"] != null)
+																										{
+																												<text>toastr.warning('@TempData["WarningMessage"]', 'Warning!');</text>
+																										}
+																										@if (TempData["InfoMessage"] != null)
+																										{
+																												<text>toastr.info('@TempData["InfoMessage"]', 'Info!');</text>
+																										}
+
+																									});
+																				</script>
+
+																				<!-- SweetAlert Delete Function (for all views including DataTable) -->
+																				<script>
+																									function confirmDelete(event, itemName, deleteUrl, tableRow = null) {
+																										event.preventDefault();
+
+																										Swal.fire({
+																											title: 'Are you sure?',
+																											html: `You want to delete <b>"${itemName}"</b>?`,
+																											icon: 'warning',
+																											showCancelButton: true,
+																											confirmButtonText: 'Yes, delete it!',
+																											cancelButtonText: 'Cancel',
+																											confirmButtonColor: '#d33',
+																											cancelButtonColor: '#3085d6',
+																											width: 360,
+																											showLoaderOnConfirm: true,
+																											preConfirm: async () => {
+																												try {
+																													const token = $('input[name="__RequestVerificationToken"]').val();
+																													const response = await fetch(deleteUrl, {
+																														method: 'DELETE',
+																														headers: {
+																															'Content-Type': 'application/json',
+																															'RequestVerificationToken': token
+																														}
+																													});
+
+																													const result = await response.json();
+																													if (!response.ok) throw new Error(result.message || 'Delete failed');
+																													return result;
+
+																												} catch (error) {
+																													Swal.showValidationMessage(`Error: ${error.message}`);
+																												}
+																											},
+																											allowOutsideClick: () => !Swal.isLoading()
+																										}).then((result) => {
+																											if (result.isConfirmed && result.value?.success) {
+
+																												// Success popup (same as your simplified version)
+																												Swal.fire({
+																													icon: 'success',
+																													title: 'Deleted!',
+																													text: result.value.message,
+																													showConfirmButton: false,
+																													timer: 1800,
+																													width: 320
+																												});
+
+																												// Remove row if DataTable row passed
+																												if (tableRow) {
+																													tableRow.remove().draw(false);
+																												} else {
+																													setTimeout(() => location.reload(), 1800);
+																												}
+																											} else if (result.isConfirmed && !result.value?.success) {
+																												Swal.fire({
+																													icon: 'error',
+																													title: 'Error!',
+																													text: result.value?.message || 'Delete failed!',
+																													showConfirmButton: false,
+																													timer: 2000,
+																													width: 320
+																												});
+																											}
+																										});
+
+																										return false;
+																									}
+																				</script> *@
 			</div>
 			<!-- /Page Content -->
 
@@ -1081,6 +1207,7 @@
 	<!-- jQuery -->
 	<script src="~/assets/js/jquery-3.7.0.min.js"></script>
 		
+																																			<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 	<!-- Bootstrap Core JS -->
 	<script src="~/assets/js/bootstrap.bundle.min.js"></script>
 		
@@ -1097,10 +1224,123 @@
 	<script src="~/assets/js/layout.js"></script>
 	<script src="~/assets/js/theme-settings.js"></script>
 
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+																																			<!-- Toastr Configuration and TempData Messages -->
+																																			<!-- Custom JS -->
+																																			<script src="~/assets/js/app.js"></script>
+																																			<script>
+																																				// Configure Toastr immediately after loading
+																																				toastr.options = {
+																																				"closeButton": true,
+																																				"debug": false,
+																																				"newestOnTop": true,
+																																				"progressBar": true,
+																																				"positionClass": "toast-top-right",
+																																				"preventDuplicates": true,
+																																				"onclick": null,
+																																				"showDuration": "300",
+																																				"hideDuration": "1000",
+																																				"timeOut": "5000",
+																																				"extendedTimeOut": "1000",
+																																				"showEasing": "swing",
+																																				"hideEasing": "linear",
+																																				"showMethod": "fadeIn",
+																																				"hideMethod": "fadeOut"
+																																				};
+
+																																				// Show TempData messages on page load
+																																				document.addEventListener('DOMContentLoaded', function() {
+																																				@if (TempData["SuccessMessage"] != null)
+																																				{
+																																					<text>toastr.success('@TempData["SuccessMessage"]', 'Success!');</text>
+																																				}
+																																				@if (TempData["ErrorMessage"] != null)
+																																				{
+																																					<text>toastr.error('@TempData["ErrorMessage"]', 'Error!');</text>
+																																				}
+																																				@if (TempData["WarningMessage"] != null)
+																																				{
+																																					<text>toastr.warning('@TempData["WarningMessage"]', 'Warning!');</text>
+																																				}
+																																				@if (TempData["InfoMessage"] != null)
+																																				{
+																																					<text>toastr.info('@TempData["InfoMessage"]', 'Info!');</text>
+																																				}
+																																				});
+																																			</script>
+
+																																			<!-- SweetAlert Delete Function -->
+																																			<script>
+																																				function confirmDelete(event, itemName, deleteUrl, tableRow = null) {
+																																				event.preventDefault();
+
+																																				Swal.fire({
+																																				title: 'Are you sure?',
+																																				html: `You want to delete <b>"${itemName}"</b>?`,
+																																				icon: 'warning',
+																																				showCancelButton: true,
+																																				confirmButtonText: 'Yes, delete it!',
+																																				cancelButtonText: 'Cancel',
+																																				confirmButtonColor: '#d33',
+																																				cancelButtonColor: '#3085d6',
+																																				width: 360,
+																																				showLoaderOnConfirm: true,
+																																				preConfirm: async () => {
+																																				try {
+																																				const token = $('input[name="__RequestVerificationToken"]').val();
+																																				const response = await fetch(deleteUrl, {
+																																				method: 'DELETE',
+																																				headers: {
+																																				'Content-Type': 'application/json',
+																																				'RequestVerificationToken': token
+																																				}
+																																				});
+
+																																				const result = await response.json();
+																																				if (!response.ok) throw new Error(result.message || 'Delete failed');
+																																				return result;
+
+																																				} catch (error) {
+																																				Swal.showValidationMessage(`Error: ${error.message}`);
+																																				}
+																																				},
+																																				allowOutsideClick: () => !Swal.isLoading()
+																																				}).then((result) => {
+																																				if (result.isConfirmed && result.value?.success) {
+																																				Swal.fire({
+																																				icon: 'success',
+																																				title: 'Deleted!',
+																																				text: result.value.message,
+																																				showConfirmButton: false,
+																																				timer: 1800,
+																																				width: 320
+																																				});
+
+																																				if (tableRow) {
+																																				tableRow.remove().draw(false);
+																																				} else {
+																																				setTimeout(() => location.reload(), 1800);
+																																				}
+																																				} else if (result.isConfirmed && !result.value?.success) {
+																																				Swal.fire({
+																																				icon: 'error',
+																																				title: 'Error!',
+																																				text: result.value?.message || 'Delete failed!',
+																																				showConfirmButton: false,
+																																				timer: 2000,
+																																				width: 320
+																																				});
+																																				}
+																																				});
+
+																																				return false;
+																																				}
+																																			</script>
+
 	@await RenderSectionAsync("Scripts", required: false)
 
-	<!-- Custom JS -->
-	<script src="~/assets/js/app.js"></script>
+	
 
 	
 		
