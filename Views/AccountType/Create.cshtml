@@ -1,0 +1,10 @@
+﻿@model Actype
+
+<h2>Create Account Type</h2>
+
+<form asp-action="Create" method="post">
+    <input asp-for="ACTYPE" class="form-control" placeholder="Account Type" />
+    <input asp-for="ACNAME" class="form-control" placeholder="Account Name" />
+    <br />
+    <button type="submit" class="btn btn-success">Save</button>
+</form>
