@@ -1,0 +1,6 @@
+﻿namespace Nskg.wwwroot.Reports
+{
+    public class report
+    {
+    }
+}

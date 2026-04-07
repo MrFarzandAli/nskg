@@ -118,19 +118,58 @@ namespace Nskg.Controllers
         }
 
         // 🔹 SHOW SCREEN
+        //public IActionResult SelectCompany()
+        //{
+        //    var model = new CompanySelectionViewModel
+        //    {
+        //        Companies = _context.Companies
+        //            .Select(c => new SelectListItem
+        //            {
+        //                Value = c.Id.ToString(),
+        //                Text = c.Name
+        //            }).ToList(),
+
+        //        FinancialYears = new List<SelectListItem>() // initially empty
+        //    };
+
+        //    return View(model);
+        //}
         public IActionResult SelectCompany()
         {
+            var companies = _context.Companies
+                .Select(c => new SelectListItem
+                {
+                    Value = c.Id.ToString(),
+                    Text = c.Name
+                }).ToList();
+
             var model = new CompanySelectionViewModel
             {
-                Companies = _context.Companies
-                    .Select(c => new SelectListItem
-                    {
-                        Value = c.Id.ToString(),
-                        Text = c.Name
-                    }).ToList(),
-
-                FinancialYears = new List<SelectListItem>() // initially empty
+                Companies = companies
             };
+
+            // 🔥 DEFAULT COMPANY SELECT
+            if (companies.Any())
+            {
+                model.SelectedCompanyId = int.Parse(companies.First().Value);
+
+                // 🔥 US COMPANY KE YEARS LOAD KARO
+                var years = _context.FinancialYears
+                    .Where(x => x.CompanyId == model.SelectedCompanyId && !x.IsClosed)
+                    .Select(y => new SelectListItem
+                    {
+                        Value = y.Id.ToString(),
+                        Text = y.YearName
+                    }).ToList();
+
+                model.FinancialYears = years;
+
+                // 🔥 DEFAULT YEAR SELECT
+                if (years.Any())
+                {
+                    model.SelectedFinancialYearId = int.Parse(years.First().Value);
+                }
+            }
 
             return View(model);
         }
