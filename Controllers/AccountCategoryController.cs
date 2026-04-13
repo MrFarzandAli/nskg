@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nskg.Models;
+using Nskg.Models.ViewModels;
 using Nskg.Repositories.Interfaces;
+using Nskg.Extensions;
 
 namespace Nskg.Controllers
 {
@@ -32,13 +34,21 @@ namespace Nskg.Controllers
 
         // ✅ CREATE (POST)
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(AccCat model)
+        public async Task<IActionResult> Create(AccCatViewModel vm)
         {
             try
             {
                 if (!ModelState.IsValid)
-                    return View(model);
+                    return View(vm);
+
+                int companyId = User.GetCompanyId();
+
+                var model = new AccCat
+                {
+                    CatCode = vm.CatCode,
+                    Category = vm.Category,
+                    CoCode = companyId.ToString()
+                };
 
                 await _unitOfWork.AccCat.AddAsync(model);
                 await _unitOfWork.SaveAsync();
@@ -65,9 +75,11 @@ namespace Nskg.Controllers
                 );
 
                 TempData["ErrorMessage"] = "❌ Failed to create Account Category!";
-                return View(model);
+                return View(vm);
             }
         }
+
+       
 
         // ✅ EDIT (GET)
         public async Task<IActionResult> Edit(string id)
