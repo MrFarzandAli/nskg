@@ -1,0 +1,19 @@
+﻿@{
+    ViewData["Title"] = "Audit Log Report";
+}
+
+<h2>Audit Log Report</h2>
+<form method="get" asp-action="GeneratePDF">
+    <div>
+        <label>From Date:</label>
+        <input type="date" name="fromDate" required />
+    </div>
+    <div>
+        <label>To Date:</label>
+        <input type="date" name="toDate" required />
+    </div>
+  
+    <div>
+        <button type="submit">Generate PDF</button>
+    </div>
+</form>

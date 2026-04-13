@@ -10,7 +10,8 @@
         public string RecordId { get; set; }
 
         public string Details { get; set; }
-
+        public int? CompanyId { get; set; }          // new
+        public int? FinancialYearId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 }

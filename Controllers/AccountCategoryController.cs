@@ -49,6 +49,7 @@ namespace Nskg.Controllers
                     "AccountCategory",
                     model.CatCode.ToString(),
                     $"Created Account Category: {model.Category}"
+                   
                 );
 
                 TempData["SuccessMessage"] = "✨ Account Category created successfully!";

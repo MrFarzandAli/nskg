@@ -220,7 +220,10 @@ namespace Nskg.Controllers
                     "Select",
                     "AccountSetup",
                     user.Id,
-                    $"Selected Company: {model.SelectedCompanyId}, Financial Year: {model.SelectedFinancialYearId}"
+                    $"Selected Company: {model.SelectedCompanyId}, Financial Year: {model.SelectedFinancialYearId}",
+                    companyId: model.SelectedCompanyId,
+    financialYearId: model.SelectedFinancialYearId
+
                 );
 
                 TempData["SuccessMessage"] = "✅ Company and Financial Year selected successfully!";
