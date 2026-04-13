@@ -1,11 +1,74 @@
-﻿@model AccCat
+﻿
+@model AccCat
 
-<h2>Edit Account Category</h2>
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Edit Account Category";
+}
 
-<form asp-action="Edit" method="post">
-    <input asp-for="CoCode" class="form-control" hidden />
-    <input asp-for="CatCode" class="form-control" />
-    <input asp-for="Category" class="form-control" />
-    <br />
-    <button type="submit" class="btn btn-primary">Update</button>
-</form>
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h3 class="page-title">Edit Account Category</h3>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a asp-controller="Home" asp-action="Index">Dashboard</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a asp-action="Index">Account Categories</a>
+                </li>
+                <li class="breadcrumb-item active">Edit Account Category</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+
+                <form asp-action="Edit" method="post">
+
+                    <!-- 🔥 Hidden ID -->
+                    <input type="hidden" asp-for="CatCode" />
+
+                    <div class="row">
+
+                        <!-- Category Code (Readonly) -->
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="CatCode" class="form-label">Category Code</label>
+                            <input asp-for="CatCode" class="form-control" readonly />
+                            <span asp-validation-for="CatCode" class="text-danger"></span>
+                        </div>
+
+                        <!-- Category Name -->
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="Category" class="form-label">Category Name</label>
+                            <input asp-for="Category" class="form-control" placeholder="Enter Category Name" />
+                            <span asp-validation-for="Category" class="text-danger"></span>
+                        </div>
+
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa fa-check"></i> Update
+                        </button>
+
+                        <a asp-action="Index" class="btn btn-secondary ms-2">
+                            <i class="fa fa-times"></i> Cancel
+                        </a>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

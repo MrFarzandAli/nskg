@@ -1,10 +1,59 @@
-﻿@model Actype
+﻿
+@model Actype
 
-<h2>Edit Account Type</h2>
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Edit Account Type";
+}
 
-<form asp-action="Edit" method="post">
-    <input asp-for="ACTYPE" class="form-control" />
-     <input asp-for="ACNAME" class="form-control" />
-    <br />
-    <button type="submit" class="btn btn-primary">Update</button>
-</form>
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h3 class="page-title">Edit Account Type</h3>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Account Types</a></li>
+                <li class="breadcrumb-item active">Edit Account Type</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Edit" method="post">
+                    <input type="hidden" asp-for="ACTYPE" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="ACTYPE" class="form-label">Account Type</label>
+                            <input asp-for="ACTYPE" class="form-control" placeholder="Enter Account Type" />
+                            <span asp-validation-for="ACTYPE" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="ACNAME" class="form-label">Account Name</label>
+                            <input asp-for="ACNAME" class="form-control" placeholder="Enter Account Name" />
+                            <span asp-validation-for="ACNAME" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa fa-check"></i> Update
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary ms-2">
+                            <i class="fa fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

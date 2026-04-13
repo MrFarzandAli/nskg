@@ -1,89 +1,4 @@
-﻿@* @using Nskg.Models.ViewModels
-@model SecurityViewModel
-@{
-    ViewData["Title"] = "Role";
-}
-<h2>Security Management</h2>
-
-<!-- ROLE SECTION -->
-<h4>Roles</h4>
-<form asp-action="CreateRole" method="post">
-    <input asp-for="NewRoleName" placeholder="New Role" />
-    <button type="submit">Add Role</button>
-</form>
-
-<ul>
-    @foreach (var role in Model.Roles)
-    {
-        <li>
-            @role.Name
-            <a asp-action="DeleteRole" asp-route-id="@role.Id">Delete</a>
-        </li>
-    }
-</ul>
-
-<hr />
-
-<!-- FORM SECTION -->
-<h4>Forms</h4>
-<form asp-action="CreateForm" method="post">
-    <input asp-for="NewForm.Name" placeholder="Form Name" />
-    <input asp-for="NewForm.Controller" placeholder="Controller" />
-    <input asp-for="NewForm.Action" placeholder="Action" />
-    <button type="submit">Add Form</button>
-</form>
-
-<ul>
-    @foreach (var form in Model.Forms)
-    {
-        <li>
-            @form.Name
-            <a asp-action="DeleteForm" asp-route-id="@form.Id">Delete</a>
-        </li>
-    }
-</ul>
-
-<hr />
-
-<!-- ASSIGN ROLE -->
-<h4>Assign Role to User</h4>
-<form asp-action="AssignRoleToUser" method="post">
-    <select asp-for="SelectedUserId"
-            asp-items="@(new SelectList(Model.Users, "Id", "Email"))"></select>
-
-    <select asp-for="SelectedRoleId" asp-items="Model.RoleList"></select>
-
-    <button type="submit">Assign</button>
-</form>
-
-<hr />
-
-<!-- PERMISSIONS -->
-<h4>Assign Form Permissions</h4>
-<form asp-action="AssignPermission" method="post">
-
-    <select name="roleId" asp-items="Model.RoleList"></select>
-    <select name="formId" asp-items="Model.FormList"></select>
-
-    <label>
-        <input asp-for="CanView" /> View
-    </label>
-
-    <label>
-        <input asp-for="CanCreate" /> Create
-    </label>
-
-    <label>
-        <input asp-for="CanEdit" /> Edit
-    </label>
-
-    <label>
-        <input asp-for="CanDelete" /> Delete
-    </label>
-
-    <button type="submit">Save</button>
-</form> *@
-@* @using Nskg.Models.ViewModels
+﻿@using Nskg.Models.ViewModels
 @model SecurityViewModel
 
 @{
@@ -91,115 +6,118 @@
     ViewData["Title"] = "Security Management";
 }
 
-<h2 class="page-title mb-4">Security Management</h2>
+<div class="container py-4">
+    <h3 class="fw-bold mb-4">Security Management</h3>
 
-<div class="row g-4">
+    <div class="card shadow-sm rounded-4 border-0">
+        <!-- Tabs Header -->
+        <ul class="nav nav-pills m-3" id="securityTabs" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active rounded-pill px-4 py-2 d-flex align-items-center justify-content-center" id="roles-tab" data-bs-toggle="tab" data-bs-target="#roles" type="button" role="tab">
+                    <i class="fa fa-user-shield me-2"></i> Roles
+                </button>
+            </li>
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link rounded-pill px-4 py-2 d-flex align-items-center justify-content-center" id="forms-tab" data-bs-toggle="tab" data-bs-target="#forms" type="button" role="tab">
+                    <i class="fa fa-window-maximize me-2"></i> Forms
+                </button>
+            </li>
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link rounded-pill px-4 py-2 d-flex align-items-center justify-content-center" id="assign-tab" data-bs-toggle="tab" data-bs-target="#assign" type="button" role="tab">
+                    <i class="fa fa-user-plus me-2"></i> Assign Role
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link rounded-pill px-4 py-2 d-flex align-items-center justify-content-center" id="permissions-tab" data-bs-toggle="tab" data-bs-target="#permissions" type="button" role="tab">
+                    <i class="fa fa-lock me-2"></i> Permissions
+                </button>
+            </li>
+        </ul>
 
-    <!-- Roles Card -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Roles</h5>
-            </div>
-            <div class="card-body">
-                <form asp-action="CreateRole" method="post" class="d-flex mb-3 gap-2">
+        <!-- Tabs Content -->
+        <div class="card-body tab-content p-4">
+
+            <!-- Roles Tab -->
+            <div class="tab-pane fade show active" id="roles" role="tabpanel">
+                <form asp-action="CreateRole" method="post" class="d-flex gap-2 mb-4">
                     <input asp-for="NewRoleName" class="form-control" placeholder="New Role" />
-                    <button type="submit" class="btn btn-success">Add Role</button>
+                    <button class="btn btn-success d-flex align-items-center justify-content-center px-3">
+                        <i class="fa fa-plus"></i>
+                    </button>
                 </form>
-
-                <ul class="list-group">
-                    @foreach (var role in Model.Roles)
+                <ul class="list-group list-group-flush">
+                    @foreach (var role in Model.Roles.Select((value, index) => new { value, index }))
                     {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            @role.Name
-                            <a asp-action="DeleteRole" asp-route-id="@role.Id" class="btn btn-sm btn-danger">
+                        <li class="list-group-item d-flex justify-content-between align-items-center @(role.index % 2 == 0 ? "bg-light" : "")">
+                            <span>@role.value.Name</span>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirmDelete(event, '@role.value.Name', '/Security/DeleteRole/@role.value.Id')">
                                 <i class="fa fa-trash"></i>
-                            </a>
+                            </button>
                         </li>
                     }
                 </ul>
             </div>
-        </div>
-    </div>
 
-    <!-- Forms Card -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0">Forms</h5>
-            </div>
-            <div class="card-body">
-                <form asp-action="CreateForm" method="post" class="mb-3">
-                    <div class="row g-2">
-                        <div class="col">
-                            <input asp-for="NewForm.Name" class="form-control" placeholder="Form Name" />
-                        </div>
-                        <div class="col">
-                            <input asp-for="NewForm.Controller" class="form-control" placeholder="Controller" />
-                        </div>
-                        <div class="col">
+            <!-- Forms Tab -->
+            <div class="tab-pane fade" id="forms" role="tabpanel">
+                <form asp-action="CreateForm" method="post" class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <input asp-for="NewForm.Name" class="form-control" placeholder="Form Name" />
+                    </div>
+                    <div class="col-md-4">
+                        <input asp-for="NewForm.Controller" class="form-control" placeholder="Controller" />
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex gap-2">
                             <input asp-for="NewForm.Action" class="form-control" placeholder="Action" />
-                        </div>
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-success">Add Form</button>
+                            <button class="btn btn-success d-flex align-items-center justify-content-center px-3">
+                                <i class="fa fa-plus"></i>
+                            </button>
                         </div>
                     </div>
                 </form>
-
-                <ul class="list-group">
-                    @foreach (var form in Model.Forms)
+                <ul class="list-group list-group-flush">
+                    @foreach (var form in Model.Forms.Select((value, index) => new { value, index }))
                     {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            @form.Name
-                            <a asp-action="DeleteForm" asp-route-id="@form.Id" class="btn btn-sm btn-danger">
+                        <li class="list-group-item d-flex justify-content-between align-items-center @(form.index % 2 == 0 ? "bg-light" : "")">
+                            <span>@form.value.Name</span>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirmDelete(event, '@form.value.Name', '/Security/DeleteForm/@form.value.Id')">
                                 <i class="fa fa-trash"></i>
-                            </a>
+                            </button>
                         </li>
                     }
                 </ul>
             </div>
-        </div>
-    </div>
 
-    <!-- Assign Role Card -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">Assign Role to User</h5>
-            </div>
-            <div class="card-body">
-                <form asp-action="AssignRoleToUser" method="post" class="row g-2 align-items-center">
-                    <div class="col">
-                        <select asp-for="SelectedUserId"
-                                asp-items="@(new SelectList(Model.Users, "Id", "Email"))"
-                                class="form-select"></select>
+            <!-- Assign Role Tab -->
+            <div class="tab-pane fade" id="assign" role="tabpanel">
+                <form asp-action="AssignRoleToUser" method="post" class="row g-3 align-items-center">
+                    <div class="col-md-6">
+                        <select asp-for="SelectedUserId" asp-items="@(new SelectList(Model.Users, "Id", "Email"))" class="form-select"></select>
                     </div>
-                    <div class="col">
+                    <div class="col-md-6">
                         <select asp-for="SelectedRoleId" asp-items="Model.RoleList" class="form-select"></select>
                     </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-primary">Assign</button>
+                    <div class="col-12 mt-3">
+                        <button class="btn btn-primary d-flex align-items-center">
+                            <i class="fa fa-check me-2"></i> Assign Role
+                        </button>
                     </div>
                 </form>
             </div>
-        </div>
-    </div>
 
-    <!-- Assign Permissions Card -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0">Assign Form Permissions</h5>
-            </div>
-            <div class="card-body">
-                <form asp-action="AssignPermission" method="post" class="row g-2 align-items-center">
-                    <div class="col">
+            <!-- Permissions Tab -->
+            <div class="tab-pane fade" id="permissions" role="tabpanel">
+                <form asp-action="AssignPermission" method="post" class="row g-3">
+                    <div class="col-md-6">
                         <select name="roleId" asp-items="Model.RoleList" class="form-select"></select>
                     </div>
-                    <div class="col">
+                    <div class="col-md-6">
                         <select name="formId" asp-items="Model.FormList" class="form-select"></select>
                     </div>
-                    <div class="col-auto">
+                    <div class="col-12 d-flex flex-wrap gap-3 mt-3">
                         <div class="form-check form-check-inline">
                             <input asp-for="CanView" class="form-check-input" />
                             <label class="form-check-label">View</label>
@@ -217,332 +135,59 @@
                             <label class="form-check-label">Delete</label>
                         </div>
                     </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-</div> *@
-@* @using Nskg.Models.ViewModels
-@model SecurityViewModel
-
-@{
-    Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "Security Management";
-}
-
-<div class="page-header mb-4">
-    <h3 class="page-title">Security Management</h3>
-</div>
-
-<div class="row">
-
-    <!-- Roles -->
-    <div class="col-md-6 d-flex">
-        <div class="card custom-card w-100">
-            <div class="card-header bg-orange">
-                <h5>Roles</h5>
-            </div>
-
-            <div class="card-body">
-
-                <form asp-action="CreateRole" method="post" class="d-flex gap-2 mb-3">
-                    <input asp-for="NewRoleName" class="form-control" placeholder="New Role" />
-                    <button class="btn btn-success">Add Role</button>
-                </form>
-
-                <div class="list-group role-list">
-                    @foreach (var role in Model.Roles)
-                    {
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@role.Name</span>
-
-                            <button class="btn btn-sm btn-danger"
-                                    onclick="return confirmDelete(event, '@role.Name', '/Security/DeleteRole/@role.Id')">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </div>
-                    }
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- Forms -->
-    <div class="col-md-6 d-flex">
-        <div class="card custom-card w-100">
-            <div class="card-header bg-yellow">
-                <h5>Forms</h5>
-            </div>
-
-            <div class="card-body">
-
-                <form asp-action="CreateForm" method="post" class="row g-2 mb-3">
-                    <div class="col">
-                        <input asp-for="NewForm.Name" class="form-control" placeholder="Form Name" />
-                    </div>
-                    <div class="col">
-                        <input asp-for="NewForm.Controller" class="form-control" placeholder="Controller" />
-                    </div>
-                    <div class="col">
-                        <input asp-for="NewForm.Action" class="form-control" placeholder="Action" />
-                    </div>
-                    <div class="col-auto">
-                        <button class="btn btn-success">Add Form</button>
-                    </div>
-                </form>
-
-                <div class="list-group role-list">
-                    @foreach (var form in Model.Forms)
-                    {
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@form.Name</span>
-
-                            <button class="btn btn-sm btn-danger"
-                                    onclick="return confirmDelete(event, '@form.Name', '/Security/DeleteForm/@form.Id')">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </div>
-                    }
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- Assign Role -->
-    <div class="col-md-6 d-flex mt-4">
-        <div class="card custom-card w-100">
-            <div class="card-header bg-blue">
-                <h5>Assign Role to User</h5>
-            </div>
-
-            <div class="card-body">
-                <form asp-action="AssignRoleToUser" method="post" class="row g-2">
-
-                    <div class="col">
-                        <select asp-for="SelectedUserId"
-                                asp-items="@(new SelectList(Model.Users, "Id", "Email"))"
-                                class="form-select"></select>
-                    </div>
-
-                    <div class="col">
-                        <select asp-for="SelectedRoleId" asp-items="Model.RoleList" class="form-select"></select>
-                    </div>
-
-                    <div class="col-auto">
-                        <button class="btn btn-warning">Assign</button>
-                    </div>
-
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Permissions -->
-    <div class="col-md-6 d-flex mt-4">
-        <div class="card custom-card w-100">
-            <div class="card-header bg-dark-gray">
-                <h5>Assign Form Permissions</h5>
-            </div>
-
-            <div class="card-body">
-                <form asp-action="AssignPermission" method="post">
-
-                    <div class="row g-2 mb-3">
-                        <div class="col">
-                            <select name="roleId" asp-items="Model.RoleList" class="form-select"></select>
-                        </div>
-                        <div class="col">
-                            <select name="formId" asp-items="Model.FormList" class="form-select"></select>
-                        </div>
-                    </div>
-
-                    <div class="d-flex gap-3 mb-3">
-                        <label><input asp-for="CanView" /> View</label>
-                        <label><input asp-for="CanCreate" /> Create</label>
-                        <label><input asp-for="CanEdit" /> Edit</label>
-                        <label><input asp-for="CanDelete" /> Delete</label>
-                    </div>
-
-                    <button class="btn btn-warning">Save</button>
-
-                </form>
-            </div>
-        </div>
-    </div>
-
-</div> *@
-@using Nskg.Models.ViewModels
-@model SecurityViewModel
-
-@{
-    Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "Security Management";
-}
-
-<div class="page-header mb-4">
-    <h3 class="page-title fw-bold">Security Management</h3>
-</div>
-
-<div class="row g-4">
-
-    <!-- Roles -->
-    <div class="col-md-6 d-flex">
-        <div class="card custom-card w-100">
-            <div class="card-header bg-orange d-flex align-items-center">
-                <h5 class="mb-0">
-                    <i class="fa fa-user-shield me-2"></i> Roles
-                </h5>
-            </div>
-
-            <div class="card-body">
-
-                <form asp-action="CreateRole" method="post" class="d-flex gap-2 mb-3">
-                    <input asp-for="NewRoleName" class="form-control" placeholder="New Role" />
-                    <button class="btn btn-success">
-                        <i class="fa fa-plus"></i>
-                    </button>
-                </form>
-
-                <div class="list-group role-list">
-                    @foreach (var role in Model.Roles)
-                    {
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@role.Name</span>
-
-                            <button class="btn btn-sm btn-danger"
-                                    onclick="return confirmDelete(event, '@role.Name', '/Security/DeleteRole/@role.Id')">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </div>
-                    }
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- Forms -->
-    <div class="col-md-6 d-flex">
-        <div class="card custom-card w-100">
-            <div class="card-header bg-yellow d-flex align-items-center">
-                <h5 class="mb-0">
-                    <i class="fa fa-window-maximize me-2"></i> Forms
-                </h5>
-            </div>
-
-            <div class="card-body">
-
-                <form asp-action="CreateForm" method="post" class="row g-2 mb-3">
-                    <div class="col">
-                        <input asp-for="NewForm.Name" class="form-control" placeholder="Form Name" />
-                    </div>
-                    <div class="col">
-                        <input asp-for="NewForm.Controller" class="form-control" placeholder="Controller" />
-                    </div>
-                    <div class="col">
-                        <input asp-for="NewForm.Action" class="form-control" placeholder="Action" />
-                    </div>
-                    <div class="col-auto">
-                        <button class="btn btn-success">
-                            <i class="fa fa-plus"></i>
+                    <div class="col-12 mt-3">
+                        <button class="btn btn-primary d-flex align-items-center">
+                            <i class="fa fa-save me-2"></i> Save Permissions
                         </button>
                     </div>
                 </form>
-
-                <div class="list-group role-list">
-                    @foreach (var form in Model.Forms)
-                    {
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@form.Name</span>
-
-                            <button class="btn btn-sm btn-danger"
-                                    onclick="return confirmDelete(event, '@form.Name', '/Security/DeleteForm/@form.Id')">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </div>
-                    }
-                </div>
-
             </div>
+
         </div>
     </div>
-
-    <!-- Assign Role -->
-    <div class="col-md-6 d-flex">
-        <div class="card custom-card w-100">
-            <div class="card-header bg-blue d-flex align-items-center">
-                <h5 class="mb-0">
-                    <i class="fa fa-user-plus me-2"></i> Assign Role
-                </h5>
-            </div>
-
-            <div class="card-body">
-                <form asp-action="AssignRoleToUser" method="post" class="row g-2 align-items-center">
-
-                    <div class="col">
-                        <select asp-for="SelectedUserId"
-                                asp-items="@(new SelectList(Model.Users, "Id", "Email"))"
-                                class="form-select"></select>
-                    </div>
-
-                    <div class="col">
-                        <select asp-for="SelectedRoleId"
-                                asp-items="Model.RoleList"
-                                class="form-select"></select>
-                    </div>
-
-                    <div class="col-auto">
-                        <button class="btn btn-warning">
-                            <i class="fa fa-check"></i> Assign
-                        </button>
-                    </div>
-
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Permissions -->
-    <div class="col-md-6 d-flex">
-        <div class="card custom-card w-100">
-            <div class="card-header bg-dark-gray d-flex align-items-center">
-                <h5 class="mb-0">
-                    <i class="fa fa-lock me-2"></i> Permissions
-                </h5>
-            </div>
-
-            <div class="card-body">
-                <form asp-action="AssignPermission" method="post">
-
-                    <div class="row g-2 mb-3">
-                        <div class="col">
-                            <select name="roleId" asp-items="Model.RoleList" class="form-select"></select>
-                        </div>
-                        <div class="col">
-                            <select name="formId" asp-items="Model.FormList" class="form-select"></select>
-                        </div>
-                    </div>
-
-                    <div class="d-flex flex-wrap gap-3 mb-3">
-                        <label><input asp-for="CanView" /> View</label>
-                        <label><input asp-for="CanCreate" /> Create</label>
-                        <label><input asp-for="CanEdit" /> Edit</label>
-                        <label><input asp-for="CanDelete" /> Delete</label>
-                    </div>
-
-                    <button class="btn btn-warning">
-                        <i class="fa fa-save"></i> Save
-                    </button>
-
-                </form>
-            </div>
-        </div>
-    </div>
-
 </div>
+
+<style>
+    /* Tab buttons - pill style modern */
+    .nav-pills .nav-link {
+        font-weight: 600;
+        border-radius: 50px;
+        padding: 0.65rem 1.5rem;
+        color: #495057;
+        transition: all 0.3s ease-in-out;
+    }
+    .nav-pills .nav-link.active {
+        background-color: #36b9cc;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .nav-pills .nav-link:hover {
+        background-color: #2c9faf;
+        color: #fff;
+    }
+
+    /* List group items */
+    .list-group-item {
+        border-radius: 0.6rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid #e3e6f0;
+        transition: all 0.2s ease-in-out;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .list-group-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        background-color: #f1f3f5;
+    }
+
+    /* Inputs & buttons */
+    .form-control { border-radius: 0.5rem; }
+    .form-control:focus { border-color: #36b9cc; box-shadow: 0 0 5px rgba(54,185,204,0.3); }
+
+    .btn { border-radius: 0.5rem; transition: all 0.2s ease-in-out; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+    .btn-outline-danger:hover {
+        color: #fff; background-color: #e74a3b; border-color: #e74a3b;
+    }
+</style>
