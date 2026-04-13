@@ -3,6 +3,7 @@
 <h2>Edit Account Category</h2>
 
 <form asp-action="Edit" method="post">
+    <input asp-for="CoCode" class="form-control" hidden />
     <input asp-for="CatCode" class="form-control" />
     <input asp-for="Category" class="form-control" />
     <br />

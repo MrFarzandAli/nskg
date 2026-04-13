@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nskg.Models;
+using Nskg.Models.ViewModels;
 using Nskg.Repositories.Interfaces;
+using Nskg.Extensions;
 
 namespace Nskg.Controllers
 {
@@ -27,16 +29,26 @@ namespace Nskg.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(AccCat model)
+        public async Task<IActionResult> Create(AccCatViewModel vm)
         {
             if (ModelState.IsValid)
             {
+                int companyId = User.GetCompanyId();
+
+                var model = new AccCat
+                {
+                    CatCode = vm.CatCode,
+                    Category = vm.Category,
+                    CoCode = companyId.ToString()
+                };
+
                 await _unitOfWork.AccCat.AddAsync(model);
                 await _unitOfWork.SaveAsync();
 
                 return RedirectToAction("Index");
             }
-            return View(model);
+
+            return View(vm);
         }
 
         public async Task<IActionResult> Edit(string id)
