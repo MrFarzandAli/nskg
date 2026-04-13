@@ -1,0 +1,215 @@
+﻿@using Nskg.Models.ViewModels
+@model ChartVM
+
+
+<style>
+    .account-item.active {
+        background-color: #0d6efd;
+        color: white;
+    }
+</style>
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between mb-3">
+        <input type="text" id="search" class="form-control w-25" placeholder="🔍 Search..." />
+
+        <div>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#accountModal">+ Account</button>
+            <button class="btn btn-success btn-sm" onclick="openDetailModal()">+ Detail</button>
+        </div>
+    </div>
+
+    <div class="row">
+
+        <!-- LEFT -->
+        <div class="col-md-4 border-end">
+            <h6>Accounts</h6>
+
+            <ul class="list-group" id="accountList">
+                @foreach (var item in Model.Accounts)
+                {
+                    <li class="list-group-item account-item"
+                        onclick="loadDetails(@item.Id,'@item.AC1', this)">
+                        <b>@item.AC1</b> - @item.Name
+                    </li>
+                }
+            </ul>
+        </div>
+
+        <!-- RIGHT -->
+        <div class="col-md-8">
+            <h6>Details</h6>
+
+            <table class="table table-hover table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="detailList"></tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- ACCOUNT MODAL -->
+<div class="modal fade" id="accountModal">
+    <div class="modal-dialog">
+        <form id="accountForm">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5>Add Account</h5>
+                </div>
+
+                <div class="modal-body">
+                    <input name="Name" class="form-control mb-2" placeholder="Name" required />
+                    <select name="CType" asp-items="Model.Categories" class="form-control mb-2">
+                        <option value="">Select Account Category</option>
+                    </select>
+                    <select name="actype" class="form-control mb-2" required>
+                        <option value="">select Account Type</option>
+                        <option value="A">ASSETS</option>
+                        <option value="L">LAIBILITY</option>
+                        <option value="C">CAPITAL</option>
+                        <option value="I">INCOME</option>
+                        <option value="E">EXPENSE</option>
+
+                    </select>
+                   
+                   
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-success">Save</button>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal fade" id="detailModal">
+    <div class="modal-dialog">
+        <form id="detailForm">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5>Add Account</h5>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="Id" id="detailId" />
+                    <input type="hidden" name="GLChart1Id" id="selectedAccountId" />
+
+                    <input name="Name" class="form-control mb-2" placeholder="Name" required />
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Save</button>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+
+    <script>
+        let currentAccountId = 0;
+
+        // LOAD DETAILS
+        function loadDetails(id, ac1, el) {
+            currentAccountId = id;
+
+            $('.account-item').removeClass('active');
+            $(el).addClass('active');
+
+            $('#selectedAccountId').val(id);
+            $('#selectedAC1').val(ac1);
+
+            $.get('/GLChart/GetDetails?accountId=' + id, function (data) {
+                $('#detailList').html(data);
+            });
+        }
+
+        // ADD ACCOUNT (FIXED)
+        $('#accountForm').submit(function (e) {
+            e.preventDefault();
+
+            $.post('/GLChart/AddAccount', $(this).serialize(), function () {
+                location.reload();
+            });
+        });
+
+        // OPEN DETAIL MODAL
+        function openDetailModal() {
+
+            if (currentAccountId === 0) {
+                alert("Select account first");
+                return;
+            }
+
+            $('#detailForm')[0].reset();
+            $('#detailId').val('');
+
+            $('#detailModal').modal('show');
+        }
+
+        // ADD / UPDATE DETAIL (FIXED)
+        $('#detailForm').submit(function (e) {
+            e.preventDefault();
+
+            let id = $('#detailId').val();
+            let url = id ? '/GLChart/UpdateDetail' : '/GLChart/AddDetail';
+
+            $.post(url, $(this).serialize(), function () {
+                $('#detailModal').modal('hide');
+                loadDetails(currentAccountId);
+            });
+        });
+
+        // EDIT DETAIL (FIXED)
+        function editDetail(id) {
+            $.get('/GLChart/GetDetail?id=' + id, function (data) {
+
+                $('#detailId').val(data.id);
+                $('#selectedAccountId').val(data.glChart1Id);
+                $('#name').val(data.name);
+
+                $('#detailModal').modal('show');
+            });
+        }
+
+        // DELETE DETAIL
+        function deleteDetail(id) {
+            if (!confirm("Are you sure?")) return;
+
+            $.post('/GLChart/DeleteDetail?id=' + id, function () {
+                loadDetails(currentAccountId);
+            });
+        }
+
+        // SEARCH
+        $('#search').on('keyup', function () {
+            var value = $(this).val().toLowerCase();
+
+            $('#accountList li').filter(function () {
+                $(this).toggle($(this).text().toLowerCase().includes(value));
+            });
+
+            $('#detailList tr').filter(function () {
+                $(this).toggle($(this).text().toLowerCase().includes(value));
+            });
+        });
+
+    </script>
+
+}

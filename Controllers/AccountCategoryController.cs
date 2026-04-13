@@ -39,7 +39,7 @@ namespace Nskg.Controllers
             try
             {
                 if (!ModelState.IsValid)
-                    return View(model);
+                    return View(vm);
 
                 int companyId = User.GetCompanyId();
 
@@ -74,12 +74,11 @@ namespace Nskg.Controllers
                 );
 
                 TempData["ErrorMessage"] = "❌ Failed to create Account Category!";
-                return View(model);
+                return View(vm);
             }
         }
 
-            return View(vm);
-        }
+       
 
         // ✅ EDIT (GET)
         public async Task<IActionResult> Edit(string id)

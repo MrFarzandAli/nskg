@@ -30,23 +30,6 @@ namespace Nskg.Controllers
             _audit = audit; // ✅ ADD
         }
 
-        // 🔹 SHOW SCREEN
-        //public IActionResult SelectCompany()
-        //{
-        //    var model = new CompanySelectionViewModel
-        //    {
-        //        Companies = _context.Companies
-        //            .Select(c => new SelectListItem
-        //            {
-        //                Value = c.Id.ToString(),
-        //                Text = c.Name
-        //            }).ToList(),
-
-        //        FinancialYears = new List<SelectListItem>() // initially empty
-        //    };
-
-        //    return View(model);
-        //}
         public IActionResult SelectCompany()
         {
             var companies = _context.Companies
