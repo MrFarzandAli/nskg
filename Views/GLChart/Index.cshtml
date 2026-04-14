@@ -1,4 +1,4 @@
-﻿@using Nskg.Models.ViewModels
+﻿@*  @using Nskg.Models.ViewModels
 @model ChartVM
 
 
@@ -183,6 +183,323 @@
                 $('#detailId').val(data.id);
                 $('#selectedAccountId').val(data.glChart1Id);
                 $('#name').val(data.name);
+
+                $('#detailModal').modal('show');
+            });
+        }
+
+        // DELETE DETAIL
+        function deleteDetail(id) {
+            if (!confirm("Are you sure?")) return;
+
+            $.post('/GLChart/DeleteDetail?id=' + id, function () {
+                loadDetails(currentAccountId);
+            });
+        }
+
+        // SEARCH
+        $('#search').on('keyup', function () {
+            var value = $(this).val().toLowerCase();
+
+            $('#accountList li').filter(function () {
+                $(this).toggle($(this).text().toLowerCase().includes(value));
+            });
+
+            $('#detailList tr').filter(function () {
+                $(this).toggle($(this).text().toLowerCase().includes(value));
+            });
+        });
+
+    </script>
+
+} *@ 
+ @using Nskg.Models.ViewModels
+@model ChartVM
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Chart of Accounts";
+}
+
+<style>
+
+    .account-item {
+        cursor: pointer;
+        padding: 12px 15px;
+        border-radius: 6px;
+        transition: 0.2s;
+        margin-bottom: 6px;
+        background: #fff;
+        border: 1px solid #f0f0f0;
+    }
+
+        .account-item:hover {
+            background: #f8f9ff;
+            transform: translateX(2px);
+        }
+
+        .account-item.active {
+            background: #eef2ff;
+            border-left: 5px solid #4f46e5;
+            font-weight: 600;
+        }
+
+    .card-header {
+        background: #fff;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .section-title {
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+</style>
+
+<!-- HEADER -->
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h3 class="page-title">Chart of Accounts</h3>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Dashboard</a></li>
+                <li class="breadcrumb-item active">Accounts</li>
+            </ul>
+        </div>
+
+        <div class="col-auto ms-auto">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#accountModal">
+                <i class="fa fa-plus"></i> Account
+            </button>
+
+            <button class="btn btn-success" onclick="openDetailModal()">
+                <i class="fa fa-plus"></i> Detail
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN -->
+<div class="row g-3">
+
+    <!-- LEFT -->
+    <div class="col-md-4">
+
+        <div class="card shadow-sm">
+
+            <div class="card-header">
+                <div class="toolbar">
+                    <span class="section-title">Accounts</span>
+                </div>
+
+                <input type="text" id="search" class="form-control form-control-sm mt-2"
+                       placeholder="Search account..." />
+            </div>
+
+            <div class="card-body" style="max-height: 70vh; overflow-y:auto;">
+
+                @foreach (var item in Model.Accounts)
+                {
+                    <div class="account-item"
+                         onclick="loadDetails(@item.Id,'@item.AC1', this)">
+                        <div><b>@item.AC1</b></div>
+                        <small class="text-muted">@item.Name</small>
+                    </div>
+                }
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col-md-8">
+
+        <div class="card shadow-sm">
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="section-title">Account Details</span>
+            </div>
+
+            <div class="card-body">
+
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="detailList"></tbody>
+
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ACCOUNT MODAL -->
+<div class="modal fade" id="accountModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="accountForm" class="modal-content shadow-lg border-0">
+
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Add Account</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-3">
+
+                <div class="mb-2">
+                    <label class="form-label">Account Name</label>
+                    <input name="Name" class="form-control" placeholder="Enter account name" required />
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label">Category</label>
+                    <select name="CType" asp-items="Model.Categories" class="form-select">
+                        <option value="">Select Category</option>
+                    </select>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label">Account Type</label>
+                    <select name="actype" class="form-select">
+                        <option value="">Select Type</option>
+                        <option value="A">ASSETS</option>
+                        <option value="L">LIABILITY</option>
+                        <option value="C">CAPITAL</option>
+                        <option value="I">INCOME</option>
+                        <option value="E">EXPENSE</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary w-100">
+                    Save Account
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+<!-- DETAIL MODAL -->
+
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="detailForm" class="modal-content shadow-lg border-0">
+
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Add Detail</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-3">
+
+                <input type="hidden" name="Id" id="detailId" />
+                <input type="hidden" name="GLChart1Id" id="selectedAccountId" />
+
+                <div class="mb-2">
+                    <label class="form-label">Detail Name</label>
+                    @*                     <input name="Name" class="form-control" placeholder="Enter detail name" required />*@
+                    <input id="detailName" name="Name" class="form-control" placeholder="Enter detail name" required />
+                 </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-success w-100">
+                    Save Detail
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- SCRIPT -->
+@section Scripts {
+
+    <script>
+        let currentAccountId = 0;
+
+        // LOAD DETAILS
+        function loadDetails(id, ac1, el) {
+            currentAccountId = id;
+
+            $('.account-item').removeClass('active');
+            $(el).addClass('active');
+
+            $('#selectedAccountId').val(id);
+            $('#selectedAC1').val(ac1);
+
+            $.get('/GLChart/GetDetails?accountId=' + id, function (data) {
+                $('#detailList').html(data);
+            });
+        }
+
+        // ADD ACCOUNT (FIXED)
+        $('#accountForm').submit(function (e) {
+            e.preventDefault();
+
+            $.post('/GLChart/AddAccount', $(this).serialize(), function () {
+                location.reload();
+            });
+        });
+
+        // OPEN DETAIL MODAL
+        function openDetailModal() {
+
+            if (currentAccountId === 0) {
+                alert("Select account first");
+                return;
+            }
+
+            $('#detailForm')[0].reset();
+            $('#detailId').val('');
+
+            $('#detailModal').modal('show');
+        }
+
+        // ADD / UPDATE DETAIL (FIXED)
+        $('#detailForm').submit(function (e) {
+            e.preventDefault();
+
+            let id = $('#detailId').val();
+            let url = id ? '/GLChart/UpdateDetail' : '/GLChart/AddDetail';
+
+            $.post(url, $(this).serialize(), function () {
+                $('#detailModal').modal('hide');
+                loadDetails(currentAccountId);
+            });
+        });
+
+        // EDIT DETAIL (FIXED)
+        function editDetail(id) {
+            $.get('/GLChart/GetDetail?id=' + id, function (data) {
+
+                $('#detailId').val(data.id);
+                $('#selectedAccountId').val(data.glChart1Id);
+               // $('#name').val(data.name);
+                       $('#detailName').val(data.name); // ✅ FIXED
+
 
                 $('#detailModal').modal('show');
             });

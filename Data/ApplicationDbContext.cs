@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Nskg.Models;
 using Nskg.Models.Security;
-
+using Microsoft.Data.SqlClient;
 namespace Nskg.Data
 {
     public class ApplicationDbContext : IdentityDbContext
