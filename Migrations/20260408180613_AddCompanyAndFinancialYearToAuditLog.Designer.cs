@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260408180613_AddCompanyAndFinancialYearToAuditLog")]
+    partial class AddCompanyAndFinancialYearToAuditLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -224,37 +227,6 @@ namespace Nskg.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Nskg.Models.AcPara", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Accode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Acname")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Actype")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Cocode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("Opening")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Parent")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AcPara");
-                });
-
             modelBuilder.Entity("Nskg.Models.AccCat", b =>
                 {
                     b.Property<string>("CatCode")
@@ -403,242 +375,6 @@ namespace Nskg.Migrations
                     b.ToTable("FinancialYears");
                 });
 
-            modelBuilder.Entity("Nskg.Models.GLChart1", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AC1")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)");
-
-                    b.Property<string>("ACCCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AcType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("BSSQ")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CoCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IncBal")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<decimal?>("Opening")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int?>("PLSQ")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("PrevBal")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("SubCatCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("GLChart1");
-                });
-
-            modelBuilder.Entity("Nskg.Models.GLChart3", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AC1")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AC2")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AC3")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ACC")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AcType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Add1")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Add2")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Add3")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Area")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("Bharti")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("CHName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("CRDays")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("City")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("Closing")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("CoCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CommExp")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CommExp2")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CommExp3")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("CommPer")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("CurrBill")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("CurrRec")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Fax")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("GLChart1Id")
-                        .HasColumnType("int");
-
-                    b.Property<string>("IncBal")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Mobile")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NTN")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("OPComm")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("OPComm2")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("OPComm3")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Opening")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("PRate")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Phone1")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Phone2")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Phone3")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Plot")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("PrevBal")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Rate")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Rate2")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("SCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("SPer")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("STaxNo")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Street")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("TR_DRate")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("TR_LRate")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("TR_RRate")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Unit")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("WH_IT")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("WH_IT_ACC")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("WH_ST")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("WH_ST_ACC")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GLChart1Id");
-
-                    b.ToTable("GLChart3");
-                });
-
             modelBuilder.Entity("Nskg.Models.Security.Form", b =>
                 {
                     b.Property<int>("Id")
@@ -776,22 +512,6 @@ namespace Nskg.Migrations
                         .IsRequired();
 
                     b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("Nskg.Models.GLChart3", b =>
-                {
-                    b.HasOne("Nskg.Models.GLChart1", "GLChart1")
-                        .WithMany("GLChart3s")
-                        .HasForeignKey("GLChart1Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("GLChart1");
-                });
-
-            modelBuilder.Entity("Nskg.Models.GLChart1", b =>
-                {
-                    b.Navigation("GLChart3s");
                 });
 #pragma warning restore 612, 618
         }

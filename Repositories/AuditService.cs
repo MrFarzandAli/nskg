@@ -15,7 +15,8 @@ namespace Nskg.Repositories
             _httpContext = httpContext;
         }
 
-        public async Task LogAsync(string action, string table, string recordId, string details)
+        public async Task LogAsync(string action, string table, string recordId, string details, int? companyId = null,
+            int? financialYearId = null)
         {
             var user = _httpContext.HttpContext?.User?.Identity?.Name ?? "Anonymous";
 
@@ -26,6 +27,8 @@ namespace Nskg.Repositories
                 TableName = table,
                 RecordId = recordId,
                 Details = details,
+                CompanyId = companyId,           // assign
+                FinancialYearId = financialYearId, // assign
                 CreatedAt = DateTime.Now
             };
 

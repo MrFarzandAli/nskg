@@ -17,6 +17,23 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
+    <!-- Compatibility package for components generated against System.Data.SqlClient -->
+    <PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="nskgdataset.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>nskgdataset.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="nskgDataSet1.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>nskgDataSet1.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="nskgDataSet2.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>nskgDataSet2.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
 </Project>

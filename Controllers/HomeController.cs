@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 namespace Nskg.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class HomeController : Controller
     {
         private readonly IPermissionService _permissionService;
