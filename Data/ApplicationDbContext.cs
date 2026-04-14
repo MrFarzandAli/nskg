@@ -22,6 +22,7 @@ namespace Nskg.Data
         public DbSet<AccCat> AccCat { get; set; }
         public DbSet<GLChart1> GLChart1 { get; set; }
         public DbSet<GLChart3> GLChart3 { get; set; }
+        public DbSet<AcPara> AcPara { get; set; }
 
 
         public DbSet<AuditLog> AuditLogs { get; set; }

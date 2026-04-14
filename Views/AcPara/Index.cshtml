@@ -1,0 +1,190 @@
+﻿@model List<AcPara>
+
+@* <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+ *@
+<h3 class="mb-3">Accounts Parameters</h3>
+
+<button class="btn btn-primary mb-3" onclick="openAdd()">+ Add Account</button>
+
+<table id="tbl" class="table table-striped">
+    <thead>
+        <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Parent/Child</th>
+            <th>Opening</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Accode</td>
+                <td>@item.Acname</td>
+                <td>@item.Actype</td>
+                <td>@(item.Parent == "P" ? "Parent" : "Child")</td>
+                <td>@item.Opening</td>
+                <td>
+                    <button class="btn btn-sm btn-warning" onclick="edit('@item.Id')">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteItem('@item.Id')">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Modal -->
+<div class="modal fade" id="formModal">
+    <div class="modal-dialog">
+        <div class="modal-content p-3">
+
+            <input type="hidden" id="mode" />
+            <input type="hidden" id="Id" />
+
+            <label>Type</label>
+            <select id="Parent" class="form-control mb-2">
+                <option value="">Select Type</option>
+                <option value="P">Parent</option>
+                <option value="C">Child</option>
+            </select>
+
+            <label>Select Account</label>
+            <select id="Accode" class="form-control mb-2">
+                <option value="">Select Account</option>
+            </select>
+
+         
+            <input id="Acname" class="form-control mb-2" hidden />
+
+            <label>Select Account Type</label>
+            <select id="Actype" class="form-control mb-2">
+                <option value="">Select Account Type</option>
+                @foreach (var item in ViewBag.AccountType)
+                {
+                    <option value="@item.ACTYPE">@item.ACNAME</option>
+                }
+            </select>
+
+
+            <button class="btn btn-success" onclick="save()">Save</button>
+
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+        $('#tbl').DataTable();
+
+        $('#Parent').change(function () {
+        if ($(this).val() === 'C') {
+        $('#parentDiv').show();
+        } else {
+        $('#parentDiv').hide();
+        }
+        });
+        });
+
+        function openAdd() {
+        $('#formModal').modal('show');
+        $('#mode').val('add');
+        $('input').val('');
+        }
+
+               function edit(id) {
+            fetch('/AcPara/Get?id=' + id)
+                .then(res => res.json())
+                .then(data => {
+
+                    $('#mode').val('edit');
+                    $('#Id').val(data.id);
+
+                    // 🔥 load dropdown first
+                    fetch('/AcPara/GetAccounts?type=' + data.parent)
+                        .then(res => res.json())
+                        .then(list => {
+
+                            let dropdown = $('#Accode');
+                            dropdown.empty();
+
+                            list.forEach(item => {
+                                dropdown.append(`<option value="${item.accode}">${item.accode} - ${item.acname}</option>`);
+                            });
+
+                            $('#Accode').val(data.accode);
+                        });
+
+                    $('#Acname').val(data.acname);
+                    $('#Actype').val(data.actype);
+                    $('#Parent').val(data.parent);
+                    $('#Opening').val(data.opening);
+
+                    $('#formModal').modal('show');
+                });
+        }
+
+        function save() {
+
+               let data = {
+            Id: parseInt($('#Id').val()) || 0,
+            Accode: $('#Accode').val(),
+            Acname: $('#Acname').val(),
+            Actype: $('#Actype').val(),
+            Parent: $('#Parent').val(),
+            Opening: parseFloat($('#Opening').val()) || 0
+        };
+
+        let mode = $('#mode').val();
+        let url = mode === 'edit' ? '/AcPara/Edit' : '/AcPara/Create';
+
+        fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+        })
+        .then(res => {
+        if (!res.ok) return res.text().then(err => { throw err });
+        location.reload();
+        })
+        .catch(err => alert(err));
+        }
+
+        function deleteItem(id) {
+        if (confirm("Delete this account?")) {
+        fetch('/AcPara/Delete?id=' + id, { method: 'POST' })
+        .then(() => location.reload());
+        }
+        }
+
+                   $('#Parent').change(function () {
+
+            let type = $(this).val();
+
+            fetch('/AcPara/GetAccounts?type=' + type)
+                .then(res => res.json())
+                .then(data => {
+
+                    let dropdown = $('#Accode');
+                    dropdown.empty();
+
+                    dropdown.append('<option value="">Select Account</option>');
+
+                    data.forEach(item => {
+                        dropdown.append(
+                            `<option value="${item.accode}">${item.accode} - ${item.acname}</option>`
+                        );
+                    });
+
+                });
+        });
+                $('#Accode').change(function () {
+            let text = $("#Accode option:selected").text();
+            let name = text.split('-')[1];
+            $('#Acname').val(name);
+        });
+    </script>
+}
