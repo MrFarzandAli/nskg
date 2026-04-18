@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260418133711_altertablesCompanyAndVoucher")]
+    partial class altertablesCompanyAndVoucher
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -241,10 +244,8 @@ namespace Nskg.Migrations
                     b.Property<string>("Acname")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ActypeCode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(1)")
-                        .HasColumnName("ACTYPE");
+                    b.Property<string>("Actype")
+                        .HasColumnType("nvarchar(1)");
 
                     b.Property<string>("Cocode")
                         .HasColumnType("nvarchar(max)");
@@ -252,7 +253,13 @@ namespace Nskg.Migrations
                     b.Property<int?>("GLChart1Id")
                         .HasColumnType("int");
 
+                    b.Property<int?>("GLChart1Id1")
+                        .HasColumnType("int");
+
                     b.Property<int?>("GLChart3Id")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("GLChart3Id1")
                         .HasColumnType("int");
 
                     b.Property<decimal?>("Opening")
@@ -265,17 +272,17 @@ namespace Nskg.Migrations
 
                     b.HasIndex("ACTYPE");
 
-                    b.HasIndex("ActypeCode");
+                    b.HasIndex("Actype");
 
                     b.HasIndex("GLChart1Id");
 
+                    b.HasIndex("GLChart1Id1");
+
                     b.HasIndex("GLChart3Id");
 
-                    b.ToTable("AcPara", t =>
-                        {
-                            t.Property("ACTYPE")
-                                .HasColumnName("ACTYPE1");
-                        });
+                    b.HasIndex("GLChart3Id1");
+
+                    b.ToTable("AcPara");
                 });
 
             modelBuilder.Entity("Nskg.Models.AccCat", b =>
@@ -927,14 +934,9 @@ namespace Nskg.Migrations
                     b.Property<string>("Wcode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("gl3Id")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("VoHeadId");
-
-                    b.HasIndex("gl3Id");
 
                     b.ToTable("VoDet");
                 });
@@ -1141,23 +1143,30 @@ namespace Nskg.Migrations
                         .WithMany("acParas")
                         .HasForeignKey("ACTYPE");
 
-                    b.HasOne("Nskg.Models.Actype", "Actype")
+                    b.HasOne("Nskg.Models.Actype", "ActypeNavigation")
                         .WithMany()
-                        .HasForeignKey("ActypeCode")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("Actype")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Nskg.Models.GLChart1", "GLChart1")
-                        .WithMany("acParas")
+                        .WithMany()
                         .HasForeignKey("GLChart1Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Nskg.Models.GLChart3", "GLChart3")
+                    b.HasOne("Nskg.Models.GLChart1", null)
                         .WithMany("acParas")
+                        .HasForeignKey("GLChart1Id1");
+
+                    b.HasOne("Nskg.Models.GLChart3", "GLChart3")
+                        .WithMany()
                         .HasForeignKey("GLChart3Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Actype");
+                    b.HasOne("Nskg.Models.GLChart3", null)
+                        .WithMany("acParas")
+                        .HasForeignKey("GLChart3Id1");
+
+                    b.Navigation("ActypeNavigation");
 
                     b.Navigation("GLChart1");
 
@@ -1194,13 +1203,7 @@ namespace Nskg.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Nskg.Models.GLChart3", "gl3")
-                        .WithMany()
-                        .HasForeignKey("gl3Id");
-
                     b.Navigation("VoHead");
-
-                    b.Navigation("gl3");
                 });
 
             modelBuilder.Entity("Nskg.Models.VoHead", b =>

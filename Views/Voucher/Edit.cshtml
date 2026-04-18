@@ -1,0 +1,93 @@
+﻿@using Nskg.Models.ViewModels
+@model VoucherVM
+
+<form method="post">
+    <input type="hidden" asp-for="Head.Id" />
+    <div class="row">
+        <div class="col-md-3">
+            <label>Type</label>
+            <input asp-for="Head.Votype" class="form-control" />
+        </div>
+
+        <div class="col-md-3">
+            <label>Date</label>
+            <input asp-for="Head.Vodate" type="date" class="form-control" />
+        </div>
+
+        <div class="col-md-6">
+            <label>Narration</label>
+            <input asp-for="Head.Narration" class="form-control" />
+        </div>
+    </div>
+
+    <hr />
+
+    <table class="table" id="tbl">
+        <thead>
+            <tr>
+                <th>Account</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th>Chq No</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.Details.Count; i++)
+            {
+                <tr>
+                    <td><input asp-for="Details[i].Ac1" /></td>
+                    <td><input asp-for="Details[i].Dramt" /></td>
+                    <td><input asp-for="Details[i].Cramt" /></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button type="button" onclick="addRow()">Add Row</button>
+
+    <hr />
+
+    <div>
+        Debit: <span id="dr">0</span>
+        Credit: <span id="cr">0</span>
+        Diff: <span id="df">0</span>
+    </div>
+
+    <button type="submit" class="btn btn-success">Upate</button>
+
+</form>
+@section scripts {
+<script>
+    let i = 0;
+
+    function addRow() {
+        let row = `
+        <tr>
+            <td><input name="Details[${i}].Ac1" class="form-control"/></td>
+            <td><input name="Details[${i}].Dramt" onkeyup="calc()" class="form-control"/></td>
+            <td><input name="Details[${i}].Cramt" onkeyup="calc()" class="form-control"/></td>
+            <td><input name="Details[${i}].Chqno" class="form-control"/></td>
+            <td><button type="button" onclick="this.closest('tr').remove()">X</button></td>
+        </tr>`;
+        document.querySelector("#tbl tbody").insertAdjacentHTML("beforeend", row);
+        i++;
+    }
+
+    function calc() {
+        let dr = 0, cr = 0;
+
+        document.querySelectorAll("[name*='Dramt']").forEach(x => dr += +x.value || 0);
+        document.querySelectorAll("[name*='Cramt']").forEach(x => cr += +x.value || 0);
+
+        document.getElementById("dr").innerText = dr;
+        document.getElementById("cr").innerText = cr;
+        document.getElementById("df").innerText = dr - cr;
+    }
+</script>
+    <script>
+        $(document).ready(function () {
+            $('.select2').select2();
+        });
+    </script>
+}

@@ -5,6 +5,7 @@ using Nskg.Repositories;
 using Nskg.Repositories.Interfaces;
 using Nskg.Service;
 using Nskg.Service.Interfaces;
+using Nskg.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,7 @@ builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<AccountingService, AccountingService>();
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 

@@ -1,0 +1,25 @@
+﻿@model List<VoHead>
+
+<table class="table table-bordered">
+    <tr>
+        <th>Voucher No</th>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Action</th>
+    </tr>
+
+    @foreach (var v in Model)
+    {
+        <tr>
+            <td>@v.Vono</td>
+            <td>@(v.Vodate?.ToString("d") ?? "")</td>
+            <td>@v.Votype</td>
+            <td>
+                <a href="/Voucher/Edit/@v.Id">Edit</a> |
+                <a href="/Voucher/Delete/@v.Id">Delete</a>
+            </td>
+        </tr>
+    }
+</table>
+
+<a asp-controller="Voucher" asp-action="Create" asp-route-type="@ViewBag.type" class="btn btn-primary">Create</a>

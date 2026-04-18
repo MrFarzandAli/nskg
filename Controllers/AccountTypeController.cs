@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nskg.Extensions;
 using Nskg.Models;
 using Nskg.Repositories.Interfaces;
 
@@ -40,6 +41,7 @@ namespace Nskg.Controllers
                 if (!ModelState.IsValid)
                     return View(model);
 
+                model.COCODE = User.GetCompanyId().ToString();
                 await _unitOfWork.Actype.AddAsync(model);
                 await _unitOfWork.SaveAsync();
 

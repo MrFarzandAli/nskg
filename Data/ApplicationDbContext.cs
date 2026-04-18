@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Nskg.Models;
 using Nskg.Models.Security;
-using Microsoft.Data.SqlClient;
+using System.Reflection.Emit;
 namespace Nskg.Data
 {
     public class ApplicationDbContext : IdentityDbContext
@@ -23,6 +24,10 @@ namespace Nskg.Data
         public DbSet<GLChart1> GLChart1 { get; set; }
         public DbSet<GLChart3> GLChart3 { get; set; }
         public DbSet<AcPara> AcPara { get; set; }
+        public DbSet<VoHead> VoHead { get; set; }
+        public DbSet<VoDet> VoDet { get; set; }
+        public DbSet<GLTrans> GLTrans { get; set; }
+        public DbSet<VoucherTypeSetting> VoucherTypeSettings { get; set; }
 
 
         public DbSet<AuditLog> AuditLogs { get; set; }
@@ -39,6 +44,31 @@ namespace Nskg.Data
                 .WithMany(x => x.GLChart3s)
                 .HasForeignKey(x => x.GLChart1Id)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<VoHead>()
+           .HasMany(x => x.Details)
+           .WithOne(x => x.VoHead)
+           .HasForeignKey(x => x.VoHeadId)
+           .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<AcPara>()
+    .HasOne(a => a.Actype)
+    .WithMany(p => p.acParas)    // explicitly bind to Actype.acParas
+    .HasForeignKey(a => a.ActypeCode)
+    .HasPrincipalKey(p => p.ACTYPE)
+    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AcPara>()
+    .HasOne(a => a.GLChart1)
+    .WithMany(g => g.acParas)           // explicitly match GLChart1.acParas
+    .HasForeignKey(a => a.GLChart1Id)
+    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AcPara>()
+    .HasOne(a => a.GLChart3)
+    .WithMany(g => g.acParas)           // explicitly match GLChart3.acParas
+    .HasForeignKey(a => a.GLChart3Id)
+    .OnDelete(DeleteBehavior.Restrict);
         }
     }
 

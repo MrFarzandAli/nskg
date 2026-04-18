@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260418111003_alterTableACPARA")]
+    partial class alterTableACPARA
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -232,19 +235,14 @@ namespace Nskg.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ACTYPE")
-                        .HasColumnType("nvarchar(1)");
-
                     b.Property<string>("Accode")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Acname")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ActypeCode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(1)")
-                        .HasColumnName("ACTYPE");
+                    b.Property<string>("Actype")
+                        .HasColumnType("nvarchar(1)");
 
                     b.Property<string>("Cocode")
                         .HasColumnType("nvarchar(max)");
@@ -263,19 +261,13 @@ namespace Nskg.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ACTYPE");
-
-                    b.HasIndex("ActypeCode");
+                    b.HasIndex("Actype");
 
                     b.HasIndex("GLChart1Id");
 
                     b.HasIndex("GLChart3Id");
 
-                    b.ToTable("AcPara", t =>
-                        {
-                            t.Property("ACTYPE")
-                                .HasColumnName("ACTYPE1");
-                        });
+                    b.ToTable("AcPara");
                 });
 
             modelBuilder.Entity("Nskg.Models.AccCat", b =>
@@ -374,9 +366,6 @@ namespace Nskg.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Cocode")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -927,14 +916,9 @@ namespace Nskg.Migrations
                     b.Property<string>("Wcode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("gl3Id")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("VoHeadId");
-
-                    b.HasIndex("gl3Id");
 
                     b.ToTable("VoDet");
                 });
@@ -1044,12 +1028,7 @@ namespace Nskg.Migrations
                     b.Property<string>("VoucType")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("gl3Id")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("gl3Id");
 
                     b.ToTable("VoHead");
                 });
@@ -1137,27 +1116,22 @@ namespace Nskg.Migrations
 
             modelBuilder.Entity("Nskg.Models.AcPara", b =>
                 {
-                    b.HasOne("Nskg.Models.Actype", null)
-                        .WithMany("acParas")
-                        .HasForeignKey("ACTYPE");
-
-                    b.HasOne("Nskg.Models.Actype", "Actype")
+                    b.HasOne("Nskg.Models.Actype", "ActypeNavigation")
                         .WithMany()
-                        .HasForeignKey("ActypeCode")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("Actype")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Nskg.Models.GLChart1", "GLChart1")
-                        .WithMany("acParas")
+                        .WithMany()
                         .HasForeignKey("GLChart1Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Nskg.Models.GLChart3", "GLChart3")
-                        .WithMany("acParas")
+                        .WithMany()
                         .HasForeignKey("GLChart3Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Actype");
+                    b.Navigation("ActypeNavigation");
 
                     b.Navigation("GLChart1");
 
@@ -1194,41 +1168,12 @@ namespace Nskg.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Nskg.Models.GLChart3", "gl3")
-                        .WithMany()
-                        .HasForeignKey("gl3Id");
-
                     b.Navigation("VoHead");
-
-                    b.Navigation("gl3");
-                });
-
-            modelBuilder.Entity("Nskg.Models.VoHead", b =>
-                {
-                    b.HasOne("Nskg.Models.GLChart3", "gl3")
-                        .WithMany()
-                        .HasForeignKey("gl3Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("gl3");
-                });
-
-            modelBuilder.Entity("Nskg.Models.Actype", b =>
-                {
-                    b.Navigation("acParas");
                 });
 
             modelBuilder.Entity("Nskg.Models.GLChart1", b =>
                 {
                     b.Navigation("GLChart3s");
-
-                    b.Navigation("acParas");
-                });
-
-            modelBuilder.Entity("Nskg.Models.GLChart3", b =>
-                {
-                    b.Navigation("acParas");
                 });
 
             modelBuilder.Entity("Nskg.Models.VoHead", b =>
