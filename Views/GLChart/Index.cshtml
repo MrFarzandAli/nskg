@@ -1,218 +1,4 @@
-﻿@*  @using Nskg.Models.ViewModels
-@model ChartVM
-
-
-<style>
-    .account-item.active {
-        background-color: #0d6efd;
-        color: white;
-    }
-</style>
-
-<div class="container-fluid">
-
-    <!-- HEADER -->
-    <div class="d-flex justify-content-between mb-3">
-        <input type="text" id="search" class="form-control w-25" placeholder="🔍 Search..." />
-
-        <div>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#accountModal">+ Account</button>
-            <button class="btn btn-success btn-sm" onclick="openDetailModal()">+ Detail</button>
-        </div>
-    </div>
-
-    <div class="row">
-
-        <!-- LEFT -->
-        <div class="col-md-4 border-end">
-            <h6>Accounts</h6>
-
-            <ul class="list-group" id="accountList">
-                @foreach (var item in Model.Accounts)
-                {
-                    <li class="list-group-item account-item"
-                        onclick="loadDetails(@item.Id,'@item.AC1', this)">
-                        <b>@item.AC1</b> - @item.Name
-                    </li>
-                }
-            </ul>
-        </div>
-
-        <!-- RIGHT -->
-        <div class="col-md-8">
-            <h6>Details</h6>
-
-            <table class="table table-hover table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Code</th>
-                        <th>Name</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="detailList"></tbody>
-            </table>
-        </div>
-
-    </div>
-</div>
-
-<!-- ACCOUNT MODAL -->
-<div class="modal fade" id="accountModal">
-    <div class="modal-dialog">
-        <form id="accountForm">
-            <div class="modal-content">
-
-                <div class="modal-header">
-                    <h5>Add Account</h5>
-                </div>
-
-                <div class="modal-body">
-                    <input name="Name" class="form-control mb-2" placeholder="Name" required />
-                    <select name="CType" asp-items="Model.Categories" class="form-control mb-2">
-                        <option value="">Select Account Category</option>
-                    </select>
-                    <select name="actype" class="form-control mb-2" required>
-                        <option value="">select Account Type</option>
-                        <option value="A">ASSETS</option>
-                        <option value="L">LAIBILITY</option>
-                        <option value="C">CAPITAL</option>
-                        <option value="I">INCOME</option>
-                        <option value="E">EXPENSE</option>
-
-                    </select>
-                   
-                   
-                </div>
-
-                <div class="modal-footer">
-                    <button class="btn btn-success">Save</button>
-                </div>
-
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- DETAIL MODAL -->
-<div class="modal fade" id="detailModal">
-    <div class="modal-dialog">
-        <form id="detailForm">
-            <div class="modal-content">
-
-                <div class="modal-header">
-                    <h5>Add Account</h5>
-                </div>
-
-                <div class="modal-body">
-                    <input type="hidden" name="Id" id="detailId" />
-                    <input type="hidden" name="GLChart1Id" id="selectedAccountId" />
-
-                    <input name="Name" class="form-control mb-2" placeholder="Name" required />
-                </div>
-
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-success">Save</button>
-                </div>
-
-            </div>
-        </form>
-    </div>
-</div>
-
-@section Scripts {
-
-    <script>
-        let currentAccountId = 0;
-
-        // LOAD DETAILS
-        function loadDetails(id, ac1, el) {
-            currentAccountId = id;
-
-            $('.account-item').removeClass('active');
-            $(el).addClass('active');
-
-            $('#selectedAccountId').val(id);
-            $('#selectedAC1').val(ac1);
-
-            $.get('/GLChart/GetDetails?accountId=' + id, function (data) {
-                $('#detailList').html(data);
-            });
-        }
-
-        // ADD ACCOUNT (FIXED)
-        $('#accountForm').submit(function (e) {
-            e.preventDefault();
-
-            $.post('/GLChart/AddAccount', $(this).serialize(), function () {
-                location.reload();
-            });
-        });
-
-        // OPEN DETAIL MODAL
-        function openDetailModal() {
-
-            if (currentAccountId === 0) {
-                alert("Select account first");
-                return;
-            }
-
-            $('#detailForm')[0].reset();
-            $('#detailId').val('');
-
-            $('#detailModal').modal('show');
-        }
-
-        // ADD / UPDATE DETAIL (FIXED)
-        $('#detailForm').submit(function (e) {
-            e.preventDefault();
-
-            let id = $('#detailId').val();
-            let url = id ? '/GLChart/UpdateDetail' : '/GLChart/AddDetail';
-
-            $.post(url, $(this).serialize(), function () {
-                $('#detailModal').modal('hide');
-                loadDetails(currentAccountId);
-            });
-        });
-
-        // EDIT DETAIL (FIXED)
-        function editDetail(id) {
-            $.get('/GLChart/GetDetail?id=' + id, function (data) {
-
-                $('#detailId').val(data.id);
-                $('#selectedAccountId').val(data.glChart1Id);
-                $('#name').val(data.name);
-
-                $('#detailModal').modal('show');
-            });
-        }
-
-        // DELETE DETAIL
-        function deleteDetail(id) {
-            if (!confirm("Are you sure?")) return;
-
-            $.post('/GLChart/DeleteDetail?id=' + id, function () {
-                loadDetails(currentAccountId);
-            });
-        }
-
-        // SEARCH
-        $('#search').on('keyup', function () {
-            var value = $(this).val().toLowerCase();
-
-            $('#accountList li').filter(function () {
-                $(this).toggle($(this).text().toLowerCase().includes(value));
-            });
-
-            $('#detailList tr').filter(function () {
-                $(this).toggle($(this).text().toLowerCase().includes(value));
-            });
-        });
-
-    </script>
-
-} *@ 
+﻿@Html.AntiForgeryToken()
  @using Nskg.Models.ViewModels
 @model ChartVM
 
@@ -355,7 +141,7 @@
 
 <!-- ACCOUNT MODAL -->
 <div class="modal fade" id="accountModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form id="accountForm" class="modal-content shadow-lg border-0">
 
             <div class="modal-header bg-primary text-white">
@@ -456,11 +242,24 @@
         }
 
         // ADD ACCOUNT (FIXED)
-        $('#accountForm').submit(function (e) {
+        // $('#accountForm').submit(function (e) {
+        //     e.preventDefault();
+
+        //     $.post('/GLChart/AddAccount', $(this).serialize(), function () {
+        //         location.reload();
+        //     });
+        // });
+                $('#accountForm').submit(function (e) {
             e.preventDefault();
 
-            $.post('/GLChart/AddAccount', $(this).serialize(), function () {
-                location.reload();
+            $.post('/GLChart/AddAccount', $(this).serialize(), function (res) {
+
+                if (res.success) {
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    toastr.error(res.message);
+                }
+
             });
         });
 
@@ -479,15 +278,33 @@
         }
 
         // ADD / UPDATE DETAIL (FIXED)
-        $('#detailForm').submit(function (e) {
+        // $('#detailForm').submit(function (e) {
+        //     e.preventDefault();
+
+        //     let id = $('#detailId').val();
+        //     let url = id ? '/GLChart/UpdateDetail' : '/GLChart/AddDetail';
+
+        //     $.post(url, $(this).serialize(), function () {
+        //         $('#detailModal').modal('hide');
+        //         loadDetails(currentAccountId);
+        //     });
+        // });
+                $('#detailForm').submit(function (e) {
             e.preventDefault();
 
             let id = $('#detailId').val();
             let url = id ? '/GLChart/UpdateDetail' : '/GLChart/AddDetail';
 
-            $.post(url, $(this).serialize(), function () {
-                $('#detailModal').modal('hide');
-                loadDetails(currentAccountId);
+            $.post(url, $(this).serialize(), function (res) {
+
+                if (res.success) {
+                    $('#detailModal').modal('hide');
+                    toastr.success(res.message);
+                    loadDetails(currentAccountId);
+                } else {
+                    toastr.error(res.message);
+                }
+
             });
         });
 
@@ -506,27 +323,164 @@
         }
 
         // DELETE DETAIL
-        function deleteDetail(id) {
-            if (!confirm("Are you sure?")) return;
+        // function deleteDetail(id) {
+        //     if (!confirm("Are you sure?")) return;
 
-            $.post('/GLChart/DeleteDetail?id=' + id, function () {
-                loadDetails(currentAccountId);
+        //     $.post('/GLChart/DeleteDetail?id=' + id, function () {
+        //         loadDetails(currentAccountId);
+        //     });
+        // }
+        //                 function deleteDetail(id, name) {
+
+        //     Swal.fire({
+        //         title: 'Are you sure?',
+        //         html: `Delete <b>${name}</b>?`,
+        //         icon: 'warning',
+        //         showCancelButton: true,
+        //         confirmButtonText: 'Yes, delete it!',
+        //         confirmButtonColor: '#d33'
+        //     }).then((result) => {
+
+        //         if (result.isConfirmed) {
+
+        //             const token = $('input[name="__RequestVerificationToken"]').val();
+
+        //             fetch('/GLChart/DeleteDetail?id=' + id, {
+        //                 method: 'DELETE',
+        //                 headers: {
+        //                     'RequestVerificationToken': token
+        //                 }
+        //             })
+        //             .then(res => res.json())
+        //             .then(result => {
+
+        //                 if (result.success) {
+
+        //                     Swal.fire({
+        //                         icon: 'success',
+        //                         title: 'Deleted!',
+        //                         text: result.message,
+        //                         timer: 1500,
+        //                         showConfirmButton: false
+        //                     });
+
+        //                     // reload nahi → live update
+        //                     loadDetails(currentAccountId);
+
+        //                 } else {
+        //                     toastr.error(result.message);
+        //                 }
+
+        //             })
+        //             .catch(() => toastr.error("Delete failed"));
+
+        //         }
+        //     });
+        // }
+                function deleteDetail(event, id, itemName, btn) {
+
+            event.preventDefault();
+
+            let deleteUrl = '/GLChart/DeleteDetail?id=' + id;
+
+            // 🔥 current row
+            let tableRow = $(btn).closest('tr');
+
+            Swal.fire({
+                title: 'Are you sure?',
+                html: `You want to delete <b>"${itemName}"</b>?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                width: 360,
+                showLoaderOnConfirm: true,
+
+                preConfirm: async () => {
+                    try {
+                        const token = $('input[name="__RequestVerificationToken"]').val();
+
+                        const response = await fetch(deleteUrl, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': token
+                            }
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok)
+                            throw new Error(result.message || 'Delete failed');
+
+                        return result;
+
+                    } catch (error) {
+                        Swal.showValidationMessage(`Error: ${error.message}`);
+                    }
+                },
+
+                allowOutsideClick: () => !Swal.isLoading()
+
+            }).then((result) => {
+
+                if (result.isConfirmed && result.value?.success) {
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: result.value.message,
+                        showConfirmButton: false,
+                        timer: 1800,
+                        width: 320
+                    });
+
+                    // ✅ NO reload → row remove
+                    tableRow.remove();
+
+                }
+                else if (result.isConfirmed && !result.value?.success) {
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: result.value?.message || 'Delete failed!',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        width: 320
+                    });
+                }
             });
-        }
 
+            return false;
+        }
         // SEARCH
-        $('#search').on('keyup', function () {
+                $('#search').on('keyup', function () {
+
             var value = $(this).val().toLowerCase();
 
-            $('#accountList li').filter(function () {
+            // ✅ ACCOUNT SEARCH (LEFT SIDE)
+            $('.account-item').filter(function () {
                 $(this).toggle($(this).text().toLowerCase().includes(value));
             });
 
+            // ✅ DETAIL SEARCH (RIGHT SIDE TABLE)
             $('#detailList tr').filter(function () {
                 $(this).toggle($(this).text().toLowerCase().includes(value));
             });
+
         });
 
+    </script>
+    <script>
+        $(document).ready(function () {
+            var msg = '@TempData["SuccessMessage"]';
+            if (msg) {
+                toastr.success(msg, 'Success');
+            }
+        });
     </script>
 
 }

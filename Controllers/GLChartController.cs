@@ -5,16 +5,20 @@ using Nskg.Data;
 using Nskg.Extensions;
 using Nskg.Models;
 using Nskg.Models.ViewModels;
+using Nskg.Repositories.Interfaces;
 
 namespace Nskg.Controllers
 {
     public class GLChartController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAuditService _audit;
 
-        public GLChartController(ApplicationDbContext context)
+
+        public GLChartController(ApplicationDbContext context, IAuditService audit)
         {
             _context = context;
+            _audit = audit;
         }
 
         public IActionResult Index()
@@ -41,61 +45,112 @@ namespace Nskg.Controllers
             return PartialView("_GLChart3List", data);
         }
 
+       
         [HttpPost]
-        public IActionResult AddAccount(GLChart1 model)
+        public async Task<IActionResult> AddAccount(GLChart1 model)
         {
-            model.AC1 = GenerateAC1();
-            model.CoCode = User.GetCompanyId().ToString();
+            try
+            {
+                model.AC1 = GenerateAC1();
+                model.CoCode = User.GetCompanyId().ToString();
 
-            _context.GLChart1.Add(model);
-            _context.SaveChanges();
+                _context.GLChart1.Add(model);
+                _context.SaveChanges();
 
-            return Ok();
+                await _audit.LogAsync("Create", "GLChart1", model.Id.ToString(), $"Created Account: {model.Name}");
+
+                TempData["SuccessMessage"] = "Account created successfully!";
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                await _audit.LogAsync("Error", "GLChart1", "0", ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         [HttpPost]
-        public IActionResult UpdateAccount(GLChart1 model)
+        public async Task<IActionResult> UpdateAccount(GLChart1 model)
         {
-            var data = _context.GLChart1.Find(model.Id);
-            if (data == null) return NotFound();
+            try
+            {
+                var data = _context.GLChart1.Find(model.Id);
+                if (data == null)
+                    return Json(new { success = false, message = "Not found!" });
 
-            data.AC1 = model.AC1;
-            data.Name = model.Name;
+                data.Name = model.Name;
+                data.CType = model.CType;
+                data.AcType = model.AcType;
 
-            _context.SaveChanges();
-            return Ok();
+                _context.SaveChanges();
+
+                await _audit.LogAsync("Update", "GLChart1", model.Id.ToString(), $"Updated Account: {model.Name}");
+
+                TempData["SuccessMessage"] = "Account updated successfully!";
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                await _audit.LogAsync("Error", "GLChart1", model.Id.ToString(), ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
-        [HttpPost]
-        public IActionResult DeleteAccount(int id)
+       
+        [HttpDelete]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAccount(int id)
         {
-            var data = _context.GLChart1.Find(id);
-            if (data == null) return NotFound();
+            try
+            {
+                var data = _context.GLChart1.Find(id);
+                if (data == null)
+                    return Json(new { success = false, message = "Not found!" });
 
-            _context.GLChart1.Remove(data);
-            _context.SaveChanges();
+                _context.GLChart1.Remove(data);
+                _context.SaveChanges();
 
-            return Ok();
+                await _audit.LogAsync("Delete", "GLChart1", id.ToString(), $"Deleted Account: {data.Name}");
+
+                TempData["SuccessMessage"] = "Account deleted successfully!";
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                await _audit.LogAsync("Error", "GLChart1", id.ToString(), ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         // DETAIL
+       
         [HttpPost]
-        public IActionResult AddDetail(GLChart3 model)
+        public async Task<IActionResult> AddDetail(GLChart3 model)
         {
-            var account = _context.GLChart1.Find(model.GLChart1Id);
+            try
+            {
+                var account = _context.GLChart1.Find(model.GLChart1Id);
 
-            model.AC1 = account.AC1; // inherit parent
-            model.AC3 = GenerateAC3(model.GLChart1Id);
-            model.ACC = account.AC1 + GenerateAC3(model.GLChart1Id);
-            model.AcType = account.AcType;
-            model.CType = account.CType;
-            model.CHName = account.Name;
-            model.CoCode = User.GetCompanyId().ToString();
+                model.AC1 = account.AC1;
+                model.AC3 = GenerateAC3(model.GLChart1Id);
+                model.ACC = account.AC1 + GenerateAC3(model.GLChart1Id);
+                model.AcType = account.AcType;
+                model.CType = account.CType;
+                model.CHName = account.Name;
+                model.CoCode = User.GetCompanyId().ToString();
 
-            _context.GLChart3.Add(model);
-            _context.SaveChanges();
+                _context.GLChart3.Add(model);
+                _context.SaveChanges();
 
-            return Ok();
+                await _audit.LogAsync("Create", "GLChart3", model.Id.ToString(), $"Created Detail: {model.Name}");
+
+                return Json(new { success = true, message = "Detail added successfully!" });
+            }
+            catch (Exception ex)
+            {
+                await _audit.LogAsync("Error", "GLChart3", "0", ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         [HttpGet]
@@ -112,29 +167,53 @@ namespace Nskg.Controllers
         }
 
         [HttpPost]
-        public IActionResult UpdateDetail(GLChart3 model)
+        public async Task<IActionResult> UpdateDetail(GLChart3 model)
         {
-            var data = _context.GLChart3.Find(model.Id);
-            if (data == null) return NotFound();
+            try
+            {
+                var data = _context.GLChart3.Find(model.Id);
+                if (data == null)
+                    return Json(new { success = false, message = "Not found!" });
 
-            data.Name = model.Name;
+                data.Name = model.Name;
+                _context.SaveChanges();
 
-            _context.SaveChanges();
-            return Ok();
+                await _audit.LogAsync("Update", "GLChart3", model.Id.ToString(), $"Updated Detail: {model.Name}");
+
+                return Json(new { success = true, message = "Detail updated!" });
+            }
+            catch (Exception ex)
+            {
+                await _audit.LogAsync("Error", "GLChart3", model.Id.ToString(), ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
-        [HttpPost]
-        public IActionResult DeleteDetail(int id)
+
+      
+        [HttpDelete]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteDetail(int id)
         {
-            var data = _context.GLChart3.Find(id);
-            if (data == null) return NotFound();
+            try
+            {
+                var data = _context.GLChart3.Find(id);
+                if (data == null)
+                    return Json(new { success = false, message = "Not found!" });
 
-            _context.GLChart3.Remove(data);
-            _context.SaveChanges();
+                _context.GLChart3.Remove(data);
+                _context.SaveChanges();
 
-            return Ok();
+                await _audit.LogAsync("Delete", "GLChart3", id.ToString(), $"Deleted Detail: {data.Name}");
+
+                return Json(new { success = true, message = "Deleted successfully!" });
+            }
+            catch (Exception ex)
+            {
+                await _audit.LogAsync("Error", "GLChart3", id.ToString(), ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
         }
-
         private string GenerateAC1()
         {
             var last = _context.GLChart1
