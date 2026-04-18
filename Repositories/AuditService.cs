@@ -6,19 +6,22 @@ namespace Nskg.Repositories
 {
     public class AuditService : IAuditService
     {
-        private readonly ApplicationDbContext _context;
         private readonly IHttpContextAccessor _httpContext;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public AuditService(ApplicationDbContext context, IHttpContextAccessor httpContext)
+        public AuditService(IHttpContextAccessor httpContext, IServiceScopeFactory scopeFactory)
         {
-            _context = context;
             _httpContext = httpContext;
+            _scopeFactory = scopeFactory;
         }
 
-        public async Task LogAsync(string action, string table, string recordId, string details, int? companyId = null,
-            int? financialYearId = null)
+        public async Task LogAsync(string action, string table, string recordId, string details,
+            int? companyId = null, int? financialYearId = null)
         {
             var user = _httpContext.HttpContext?.User?.Identity?.Name ?? "Anonymous";
+
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             var log = new AuditLog
             {
@@ -27,13 +30,13 @@ namespace Nskg.Repositories
                 TableName = table,
                 RecordId = recordId,
                 Details = details,
-                CompanyId = companyId,           // assign
-                FinancialYearId = financialYearId, // assign
+                CompanyId = companyId,
+                FinancialYearId = financialYearId,
                 CreatedAt = DateTime.Now
             };
 
-            await _context.AuditLogs.AddAsync(log);
-            await _context.SaveChangesAsync();
+            context.AuditLogs.Add(log);
+            await context.SaveChangesAsync(); // ✅ SAFE because isolated context
         }
     }
 }

@@ -33,5 +33,6 @@ namespace Nskg.Models
 
         // 🔗 Navigation
         public ICollection<GLChart3>? GLChart3s { get; set; }
+        public List<AcPara>? acParas { get; set; }
     }
 }

@@ -25,7 +25,7 @@
             <tr>
                 <td>@item.Accode</td>
                 <td>@item.Acname</td>
-                <td>@item.Actype</td>
+                <td>@item.Actype?.ACNAME</td>
                 <td>@(item.Parent == "P" ? "Parent" : "Child")</td>
                 <td>@item.Opening</td>
                 <td>
@@ -58,7 +58,6 @@
             </select>
 
          
-            <input id="Acname" class="form-control mb-2" hidden />
 
             <label>Select Account Type</label>
             <select id="Actype" class="form-control mb-2">
@@ -89,10 +88,12 @@
         });
         });
 
-        function openAdd() {
-        $('#formModal').modal('show');
-        $('#mode').val('add');
-        $('input').val('');
+                function openAdd() {
+            $('#formModal').modal('show');
+            $('#mode').val('add');
+
+            $('#Id').val('');
+            $('#Accode').empty().append('<option>Select Account</option>');
         }
 
                function edit(id) {
@@ -112,10 +113,10 @@
                             dropdown.empty();
 
                             list.forEach(item => {
-                                dropdown.append(`<option value="${item.accode}">${item.accode} - ${item.acname}</option>`);
+                               dropdown.append(`<option value="${item.glId}">${item.accode} - ${item.acname}</option>`);
                             });
 
-                            $('#Accode').val(data.accode);
+                            $('#Accode').val(data.glId);
                         });
 
                     $('#Acname').val(data.acname);
@@ -127,30 +128,30 @@
                 });
         }
 
-        function save() {
+                function save() {
 
-               let data = {
-            Id: parseInt($('#Id').val()) || 0,
-            Accode: $('#Accode').val(),
-            Acname: $('#Acname').val(),
-            Actype: $('#Actype').val(),
-            Parent: $('#Parent').val(),
-            Opening: parseFloat($('#Opening').val()) || 0
-        };
+            let data = {
+                Id: parseInt($('#Id').val()) || 0,
+                ActypeCode: $('#Actype').val(),
+                Parent: $('#Parent').val(),
+                Opening: parseFloat($('#Opening').val()) || 0,
+                GLChart1Id: $('#Parent').val() === 'P' ? parseInt($('#Accode').val()) : null,
+                GLChart3Id: $('#Parent').val() === 'C' ? parseInt($('#Accode').val()) : null
+            };
 
-        let mode = $('#mode').val();
-        let url = mode === 'edit' ? '/AcPara/Edit' : '/AcPara/Create';
+            let mode = $('#mode').val();
+            let url = mode === 'edit' ? '/AcPara/Edit' : '/AcPara/Create';
 
-        fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-        })
-        .then(res => {
-        if (!res.ok) return res.text().then(err => { throw err });
-        location.reload();
-        })
-        .catch(err => alert(err));
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => {
+                if (!res.ok) return res.text().then(err => { throw err });
+                location.reload();
+            })
+            .catch(err => alert(err));
         }
 
         function deleteItem(id) {
@@ -175,7 +176,7 @@
 
                     data.forEach(item => {
                         dropdown.append(
-                            `<option value="${item.accode}">${item.accode} - ${item.acname}</option>`
+                            `<option value="${item.glId}">${item.accode} - ${item.acname}</option>`
                         );
                     });
 

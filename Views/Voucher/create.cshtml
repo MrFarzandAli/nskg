@@ -1,0 +1,163 @@
+﻿@using Nskg.Models.ViewModels
+@model VoucherVM
+
+<form method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <input type="hidden" asp-for="Head.Votype" />
+    <div class="row">
+       
+        <div class="col-md-3">
+            <label>Voucher No#</label>
+            <input asp-for="Head.Vono" type="text" class="form-control" />
+        </div>
+
+        <div class="col-md-3">
+            <label>Transaction Date</label>
+            <input asp-for="Head.Vodate" type="date" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label>Entry Date</label>
+            <input asp-for="Head.EntryDate" type="date" class="form-control" />
+        </div>
+
+       
+    </div>
+    <div class="row">
+        <div class="col-md-3">
+            <label>Account Name</label>
+            <select asp-for="Head.gl3Id" class="form-control" asp-items="@(new SelectList(ViewBag.HeaderAccounts, "Value", "Text"))"></select>
+        </div>
+        <div class="col-md-6">
+            <label>Payee/Receiver</label>
+            <input asp-for="Head.PersonName" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label>Inv./Ref.No</label>
+            <input asp-for="Head.Invno" class="form-control" />
+        </div>
+
+    </div>
+    <div class="row">       
+        <div class="col-md-9">
+            <label>Narration</label>
+            <input asp-for="Head.Narration" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label>Pay/Rec</label>
+            <select asp-for="Head.Partycode" class="form-control" asp-items="@(new SelectList(ViewBag.PartyAccounts, "Value", "Text"))"></select>
+        </div>
+    </div>
+
+    <hr />
+
+    <table class="table" id="tbl">
+        <thead>
+            <tr>
+                <th>Account</th>
+                <th>Transporter/Station</th>
+                <th>Bilti No</th>
+                <th>Bill No</th>
+                <th>Vehicle No</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th>Chq No</th>
+                <th>Chq Date</th>
+                <th>Party Tax</th>
+                <th>Narration</th>
+
+                <th></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <button type="button" onclick="addRow()">Add Row</button>
+
+    <hr />
+
+    <div>
+        Total Entries: <span id="entries">0</span>
+        Debit: <span id="dr">0</span>
+        Credit: <span id="cr">0</span>
+        Diff: <span id="df">0</span>
+    </div>
+
+    <button type="submit" class="btn btn-success">Save</button>
+
+</form>
+@section scripts {
+    <script>
+        let i = 0;
+
+        function addRow() {
+            let row = `
+            <tr>
+                   <td>
+            <select name="Details[${i}].gl3Id" class="form-control select2">
+                <option value="">Select Account</option>
+                @foreach (var acc in ViewBag.Accounts)
+                {
+                            <option value="@acc.Value">@acc.Text</option>
+                }
+            </select>
+        </td>
+           <td>
+            <select name="Details[${i}].Transcode" class="form-control select2">
+                <option value=""> Select Transporter/Station</option>
+                @foreach (var acc in ViewBag.transporterList)
+                {
+                                <option value="@acc.Value">@acc.Text</option>
+                }
+            </select>
+        </td>
+        <td><input name="Details[${i}].Billtino"  class="form-control"/></td>
+        <td><input name="Details[${i}].Bilno" class="form-control"/></td>
+        <td><input name="Details[${i}].Vehicleno" class="form-control"/></td>
+                <td><input name="Details[${i}].Dramt" onkeyup="calc()" class="form-control"/></td>
+                <td><input name="Details[${i}].Cramt" onkeyup="calc()" class="form-control"/></td>
+                <td><input name="Details[${i}].Chqno" class="form-control"/></td>
+                <td><input name="Details[${i}].ChqDate" type="Date" class="form-control"/></td>
+                <td><input name="Details[${i}].Ptax" class="form-control"/></td>
+                <td><input name="Details[${i}].Narration" class="form-control"/></td>
+                <td><button type="button" onclick="this.closest('tr').remove()">X</button></td>
+            </tr>`;
+            document.querySelector("#tbl tbody").insertAdjacentHTML("beforeend", row);
+            i++;
+        }
+
+        
+                function calc() {
+            let dr = 0, cr = 0;
+
+            const rows = document.querySelectorAll("table tbody tr");
+
+            let entries = 0;
+
+            rows.forEach(tr => {
+                let d = +(tr.querySelector("[name*='Dramt']")?.value || 0);
+                let c = +(tr.querySelector("[name*='Cramt']")?.value || 0);
+
+                if (d > 0 || c > 0) entries++;
+
+                dr += d;
+                cr += c;
+            });
+
+            let diff = dr - cr;
+
+            document.getElementById("dr").innerText = dr.toFixed(2);
+            document.getElementById("cr").innerText = cr.toFixed(2);
+            document.getElementById("df").innerText = diff.toFixed(2);
+            document.getElementById("entries").innerText = entries;
+
+            document.querySelector("button[type='submit']").disabled = diff !== 0 || entries === 0;
+        }
+    </script>
+    <script>
+        $(document).ready(function () {
+            $('.select2').select2();
+             addRow();
+        });
+    </script>
+
+}

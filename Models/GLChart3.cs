@@ -95,5 +95,7 @@ namespace Nskg.Models
 
         // 🔗 Navigation
         public GLChart1? GLChart1 { get; set; }
+        public List<AcPara>? acParas { get; set; }
+
     }
 }

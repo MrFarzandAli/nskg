@@ -19,5 +19,7 @@ namespace Nskg.Models
         [Column("COCODE")]
         [StringLength(2)]
         public string? COCODE { get; set; }
+
+        public List<AcPara>? acParas { get; set; }
     }
 }

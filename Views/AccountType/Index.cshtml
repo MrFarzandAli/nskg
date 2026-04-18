@@ -4,7 +4,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Account Types";
 }
-
+@Html.AntiForgeryToken()
 <div class="page-header">
     <div class="row align-items-center">
         <div class="col">
@@ -85,11 +85,26 @@
             });
         });
 
-        function confirmDelete(e, name, url) {
+            function confirmDelete(e, name, url) {
             e.preventDefault();
-            if (confirm('Are you sure you want to delete "' + name + '"?')) {
-                window.location.href = url;
-            }
+
+            if (!confirm('Are you sure you want to delete "' + name + '"?'))
+                return;
+
+            fetch(url, {
+                method: "DELETE",
+                headers: {
+                    "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val()
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    location.reload();
+                }
+            })
+            .catch(err => console.error(err));
         }
     </script>
 }

@@ -96,7 +96,9 @@ namespace Nskg.Controllers
                 var existingClaims = await _userManager.GetClaimsAsync(user);
 
                 var companyClaim = existingClaims.FirstOrDefault(c => c.Type == "CompanyId");
+                var companycodeClaim = existingClaims.FirstOrDefault(c => c.Type == "CompanyCode");
                 var yearClaim = existingClaims.FirstOrDefault(c => c.Type == "FinancialYearId");
+
 
                 if (companyClaim != null)
                     await _userManager.RemoveClaimAsync(user, companyClaim);
@@ -104,8 +106,13 @@ namespace Nskg.Controllers
                 if (yearClaim != null)
                     await _userManager.RemoveClaimAsync(user, yearClaim);
 
+                if (companycodeClaim != null)
+                    await _userManager.RemoveClaimAsync(user, companycodeClaim);
+
+                var company = _context.Companies.FirstOrDefault(x => x.Id == model.SelectedCompanyId);
                 // ADD NEW CLAIMS
                 await _userManager.AddClaimAsync(user, new Claim("CompanyId", model.SelectedCompanyId.ToString()));
+                await _userManager.AddClaimAsync(user, new Claim("CompanyCode", company.Cocode));
                 await _userManager.AddClaimAsync(user, new Claim("FinancialYearId", model.SelectedFinancialYearId.ToString()));
 
                 // 🔹 Refresh SignIn (VERY IMPORTANT)
