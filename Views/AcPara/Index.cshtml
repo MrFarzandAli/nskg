@@ -1,77 +1,13 @@
-﻿
+﻿@model List<AcPara>
 
-@model List<AcPara>
-@Html.AntiForgeryToken()
-@{
-    Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "Accounts Parameters";
-}
+@* <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+ *@
+<h3 class="mb-3">Accounts Parameters</h3>
 
-<!-- PAGE HEADER -->
-<div class="page-header">
-    <div class="row align-items-center">
-        <div class="col">
-            <h3 class="page-title">Accounts Parameters</h3>
-            <ul class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Dashboard</a></li>
-                <li class="breadcrumb-item active">Accounts Parameters</li>
-            </ul>
-        </div>
+<button class="btn btn-primary mb-3" onclick="openAdd()">+ Add Account</button>
 
-        <div class="col-auto float-end ms-auto">
-            <button class="btn add-btn" onclick="openAdd()">
-                <i class="fa fa-plus"></i> Add Account
-            </button>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-12">
-
-        <div class="card">
-            <div class="card-body">
-
-                <div class="table-responsive">
-                    <table id="tbl" class="table table-striped table-hover table-nowrap">
-                        <thead>
-                            <tr>
-                                <th>Code</th>
-                                <th>Name</th>
-                                <th>Type</th>
-                                <th>Parent/Child</th>
-                                <th>Opening</th>
-                                <th class="text-end">Action</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @foreach (var item in Model)
-                            {
-                                <tr>
-                                    <td>@item.Accode</td>
-                                    <td>@item.Acname</td>
-                                    <td>@item.Actype</td>
-                                    <td>@(item.Parent == "P" ? "Parent" : "Child")</td>
-                                    <td>@item.Opening</td>
-
-                                    <td class="text-end">
-                                        <div class="d-flex justify-content-end gap-2">
-                                            <button class="btn btn-sm btn-primary" onclick="edit('@item.Id')">
-                                                <i class="fa fa-pencil"></i> Edit
-                                            </button>
-
-                                            <button type="button" class="btn btn-sm btn-danger" @* onclick="deleteItem('@item.Id')" *@onclick="return confirmDelete(event, '@item.Acname', '/AcPara/Delete?id=@item.Id')">
-                                                <i class="fa fa-trash"></i> Delete
-                                            </button>
-                                                                                    </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-
-                    </table>
-                </div>
 <table id="tbl" class="table table-striped">
     <thead>
         <tr>
@@ -101,59 +37,26 @@
     </tbody>
 </table>
 
-            </div>
-        </div>
-
-    </div>
-</div>
 <!-- Modal -->
-<!-- DETAIL MODAL -->
-<div class="modal fade" id="formModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content shadow-lg border-0">
+<div class="modal fade" id="formModal">
+    <div class="modal-dialog">
+        <div class="modal-content p-3">
 
-            <!-- HEADER -->
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Account Form</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
+            <input type="hidden" id="mode" />
+            <input type="hidden" id="Id" />
 
-            <div class="modal-body p-3">
+            <label>Type</label>
+            <select id="Parent" class="form-control mb-2">
+                <option value="">Select Type</option>
+                <option value="P">Parent</option>
+                <option value="C">Child</option>
+            </select>
 
-                <input type="hidden" id="mode" />
-                <input type="hidden" id="Id" />
+            <label>Select Account</label>
+            <select id="Accode" class="form-control mb-2">
+                <option value="">Select Account</option>
+            </select>
 
-                <div class="mb-2">
-                    <label class="form-label">Type</label>
-                    <select id="Parent" class="form-control">
-                        <option value="">Select Type</option>
-                        <option value="P">Parent</option>
-                        <option value="C">Child</option>
-                    </select>
-                </div>
-
-                <div class="mb-2">
-                    <label class="form-label">Select Account</label>
-                    <select id="Accode" class="form-control">
-                        <option value="">Select Account</option>
-                    </select>
-                </div>
-
-                <div class="mb-2">
-                    <label class="form-label">Account Name</label>
-                    <input id="Acname" class="form-control" readonly />
-                </div>
-
-                <div class="mb-2">
-                    <label class="form-label">Account Type</label>
-                    <select id="Actype" class="form-control">
-                        <option value="">Select Account Type</option>
-                        @foreach (var item in ViewBag.AccountType)
-                        {
-                            <option value="@item.ACTYPE">@item.ACNAME</option>
-                        }
-                    </select>
-                </div>
          
 
             <label>Select Account Type</label>
@@ -165,73 +68,26 @@
                 }
             </select>
 
-                <div class="mb-2">
-                    <label class="form-label">Opening</label>
-                    <input id="Opening" class="form-control" type="number" />
-                </div>
 
-            </div>
+            <button class="btn btn-success" onclick="save()">Save</button>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success w-100" onclick="save()">
-                    Save Account
-                </button>
-            </div>
-
-        </form>
+        </div>
     </div>
 </div>
 @section Scripts {
     <script>
         $(document).ready(function () {
+        $('#tbl').DataTable();
 
-            // DataTable init
-            $('#tbl').DataTable();
-
-            // Parent change → load accounts
-            $('#Parent').change(function () {
-
-                let type = $(this).val();
-
-                fetch('/AcPara/GetAccounts?type=' + type)
-                    .then(res => res.json())
-                    .then(data => {
-
-                        let dropdown = $('#Accode');
-                        dropdown.empty();
-
-                        dropdown.append('<option value="">Select Account</option>');
-
-                        data.forEach(item => {
-                            dropdown.append(
-                                `<option value="${item.accode}">${item.accode} - ${item.acname}</option>`
-                            );
-                        });
-
-                    });
-            });
-
-            // Accode change → set name
-            $('#Accode').change(function () {
-                let text = $("#Accode option:selected").text();
-                let name = text.split('-')[1];
-                $('#Acname').val(name ? name.trim() : '');
-            });
-
+        $('#Parent').change(function () {
+        if ($(this).val() === 'C') {
+        $('#parentDiv').show();
+        } else {
+        $('#parentDiv').hide();
+        }
+        });
         });
 
-        // ================= OPEN ADD =================
-        function openAdd() {
-            $('#formModal').modal('show');
-            $('#mode').val('add');
-
-            // clear fields properly
-            $('#Id').val('');
-            $('#Accode').val('');
-            $('#Acname').val('');
-            $('#Actype').val('');
-            $('#Parent').val('');
-            $('#Opening').val('');
                 function openAdd() {
             $('#formModal').modal('show');
             $('#mode').val('add');
@@ -240,8 +96,7 @@
             $('#Accode').empty().append('<option>Select Account</option>');
         }
 
-        // ================= EDIT =================
-        function edit(id) {
+               function edit(id) {
             fetch('/AcPara/Get?id=' + id)
                 .then(res => res.json())
                 .then(data => {
@@ -249,7 +104,7 @@
                     $('#mode').val('edit');
                     $('#Id').val(data.id);
 
-                    // load dropdown first
+                    // 🔥 load dropdown first
                     fetch('/AcPara/GetAccounts?type=' + data.parent)
                         .then(res => res.json())
                         .then(list => {
@@ -273,18 +128,8 @@
                 });
         }
 
-        // ================= SAVE =================
-                function save() {
                 function save() {
 
-            let data = {
-                Id: parseInt($('#Id').val()) || 0,
-                Accode: $('#Accode').val(),
-                Acname: $('#Acname').val(),
-                Actype: $('#Actype').val(),
-                Parent: $('#Parent').val(),
-                Opening: parseFloat($('#Opening').val()) || 0
-            };
             let data = {
                 Id: parseInt($('#Id').val()) || 0,
                 ActypeCode: $('#Actype').val(),
@@ -302,119 +147,45 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
-            .then(res => res.json())
-            .then(result => {
-
-                if (result.success) {
-
-                    toastr.success(result.message, 'Success');
-
-                    $('#formModal').modal('hide');
-
-                    setTimeout(() => location.reload(), 1200);
-
-                } else {
-                    toastr.error(result.message, 'Error');
-                }
-
-            })
-            .catch(err => {
-                console.error(err);
-                toastr.error("Something went wrong!");
-            });
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
             .then(res => {
                 if (!res.ok) return res.text().then(err => { throw err });
                 location.reload();
             })
             .catch(err => alert(err));
         }
-      
-                                                                                                                                                function confirmDelete(event, itemName, deleteUrl, tableRow = null) {
-                                                                                                                                                event.preventDefault();
 
-                                                                                                                                                Swal.fire({
-                                                                                                                                                title: 'Are you sure?',
-                                                                                                                                                html: `You want to delete <b>"${itemName}"</b>?`,
-                                                                                                                                                icon: 'warning',
-                                                                                                                                                showCancelButton: true,
-                                                                                                                                                confirmButtonText: 'Yes, delete it!',
-                                                                                                                                                cancelButtonText: 'Cancel',
-                                                                                                                                                confirmButtonColor: '#d33',
-                                                                                                                                                cancelButtonColor: '#3085d6',
-                                                                                                                                                width: 360,
-                                                                                                                                                showLoaderOnConfirm: true,
-                                                                                                                                                preConfirm: async () => {
-                                                                                                                                                try {
-                                                                                                                                                const token = $('input[name="__RequestVerificationToken"]').val();
-                                                                                                                                                const response = await fetch(deleteUrl, {
-                                                                                                                                                method: 'DELETE',
-                                                                                                                                                headers: {
-                                                                                                                                                'Content-Type': 'application/json',
-                                                                                                                                                'RequestVerificationToken': token
-                                                                                                                                                }
-                                                                                                                                                });
+        function deleteItem(id) {
+        if (confirm("Delete this account?")) {
+        fetch('/AcPara/Delete?id=' + id, { method: 'POST' })
+        .then(() => location.reload());
+        }
+        }
 
-                                                                                                                                                const result = await response.json();
-                                                                                                                                                if (!response.ok) throw new Error(result.message || 'Delete failed');
-                                                                                                                                                return result;
+                   $('#Parent').change(function () {
 
-                                                                                                                                                } catch (error) {
-                                                                                                                                                Swal.showValidationMessage(`Error: ${error.message}`);
-                                                                                                                                                }
-                                                                                                                                                },
-                                                                                                                                                allowOutsideClick: () => !Swal.isLoading()
-                                                                                                                                                }).then((result) => {
-                                                                                                                                                if (result.isConfirmed && result.value?.success) {
-                                                                                                                                                Swal.fire({
-                                                                                                                                                icon: 'success',
-                                                                                                                                                title: 'Deleted!',
-                                                                                                                                                text: result.value.message,
-                                                                                                                                                showConfirmButton: false,
-                                                                                                                                                timer: 1800,
-                                                                                                                                                width: 320
-                                                                                                                                                });
+            let type = $(this).val();
 
-                                                                                                                                                if (tableRow) {
-                                                                                                                                                tableRow.remove().draw(false);
-                                                                                                                                                } else {
-                                                                                                                                                setTimeout(() => location.reload(), 1800);
-                                                                                                                                                }
-                                                                                                                                                } else if (result.isConfirmed && !result.value?.success) {
-                                                                                                                                                Swal.fire({
-                                                                                                                                                icon: 'error',
-                                                                                                                                                title: 'Error!',
-                                                                                                                                                text: result.value?.message || 'Delete failed!',
-                                                                                                                                                showConfirmButton: false,
-                                                                                                                                                timer: 2000,
-                                                                                                                                                width: 320
-                                                                                                                                                });
-                                                                                                                                                }
-                                                                                                                                                });
+            fetch('/AcPara/GetAccounts?type=' + type)
+                .then(res => res.json())
+                .then(data => {
 
-                                                                                                                                                return false;
-                                                                                                                                                }
-    
-     
-    </script>
-    <script>
-        $(document).ready(function () {
+                    let dropdown = $('#Accode');
+                    dropdown.empty();
 
-            var msg = '@TempData["SuccessMessage"]';
+                    dropdown.append('<option value="">Select Account</option>');
 
-            if (msg) {
-                toastr.success(msg, 'Success');
-            }
                     data.forEach(item => {
                         dropdown.append(
                             `<option value="${item.glId}">${item.accode} - ${item.acname}</option>`
                         );
                     });
 
+                });
+        });
+                $('#Accode').change(function () {
+            let text = $("#Accode option:selected").text();
+            let name = text.split('-')[1];
+            $('#Acname').val(name);
         });
     </script>
 }
