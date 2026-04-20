@@ -1,4 +1,4 @@
-﻿@model List<VoHead>
+﻿@* @model List<VoHead>
 
 <table class="table table-bordered">
     <tr>
@@ -22,4 +22,128 @@
     }
 </table>
 
-<a asp-controller="Voucher" asp-action="Create" asp-route-type="@ViewBag.type" class="btn btn-primary">Create</a>
+<a asp-controller="Voucher" asp-action="Create" asp-route-type="@ViewBag.type" class="btn btn-primary">Create</a> *@
+@model IEnumerable<VoHead>
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Vouchers";
+}
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h3 class="page-title">Vouchers</h3>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a asp-controller="Home" asp-action="Index">Dashboard</a>
+                </li>
+                <li class="breadcrumb-item active">Vouchers</li>
+            </ul>
+        </div>
+
+        <div class="col-auto float-end ms-auto">
+            <a asp-controller="Voucher"
+                   asp-action="Create"
+                   asp-route-type="@ViewBag.type"
+                   class="btn add-btn">
+                <i class="fa fa-plus"></i> Add Voucher
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+
+        <!-- Card -->
+        <div class="card">
+            <div class="card-body">
+
+                <div class="table-responsive">
+                    <table id="voucherTable"
+                           class="table table-striped table-hover table-nowrap">
+                        <thead>
+                            <tr>
+                                <th>Voucher No</th>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var v in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <h2 class="table-avatar">
+                                            <a href="#">@v.Vono</a>
+                                        </h2>
+                                    </td>
+
+                                    <td>@(v.Vodate?.ToString("dd-MMM-yyyy") ?? "")</td>
+
+                                    <td>
+                                        <span class="badge bg-info text-dark">
+                                            @v.Votype
+                                        </span>
+                                    </td>
+
+                                    <td class="text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+
+                                            <a asp-action="Edit"
+                                                   asp-route-id="@v.Id"
+                                                   class="btn btn-sm btn-primary">
+                                                <i class="fa fa-pencil"></i> Edit
+                                            </a>
+
+                                            <button type="button"
+                                                    class="btn btn-sm btn-danger"
+                                                    onclick="return confirmDelete(event, 'Voucher @v.Vono', '/Voucher/Delete/@v.Id')">
+                                                <i class="fa fa-trash"></i> Delete
+                                            </button>
+                                            
+
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </div>
+        </div>
+        <!-- /Card -->
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            $('#voucherTable').DataTable({
+                "paging": true,
+                "lengthChange": true,
+                "searching": true,
+                "ordering": true,
+                "info": true,
+                "autoWidth": false,
+                "responsive": true
+            });
+
+        });
+
+        function confirmDelete(event, name, url) {
+            if (!confirm("Are you sure you want to delete " + name + "?")) {
+                event.preventDefault();
+                return false;
+            }
+            window.location.href = url;
+        }
+    </script>
+}
