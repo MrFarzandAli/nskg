@@ -422,6 +422,8 @@ namespace Nskg.Controllers
                     .ToList();
 
                 ViewBag.Type = type;
+                ViewBag.PageTitle = GetVoucherTitle(type) + " List"; // ✅ ADD THIS
+
                 return View(data);
             }
             catch (Exception ex)

@@ -20,6 +20,9 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
         {
             _config = config;
             _env = env;
+
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
         }
 
         // GET: Display form
@@ -78,6 +81,17 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
                     return Content($"Report file not found at: {reportPath}");
                 }
 
+                //using (LocalReport report = new LocalReport())
+                //{
+                //    report.ReportPath = reportPath;
+                //    report.DataSources.Clear();
+                //    report.DataSources.Add(new ReportDataSource("DSAuditLog", dt));
+
+                //    // byte[] pdfBytes = report.Render("PDF");
+                //    byte[] bytes = report.Render("HTML5");
+                //    return File(bytes, "text/html");
+                //  //  return File(pdfBytes, "application/pdf", "AuditLogReport.pdf");
+                //}
                 using (LocalReport report = new LocalReport())
                 {
                     report.ReportPath = reportPath;
@@ -85,6 +99,11 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
                     report.DataSources.Add(new ReportDataSource("DSAuditLog", dt));
 
                     byte[] pdfBytes = report.Render("PDF");
+
+                    if (pdfBytes == null || pdfBytes.Length == 0)
+                    {
+                        return Content("PDF generation failed.");
+                    }
 
                     return File(pdfBytes, "application/pdf", "AuditLogReport.pdf");
                 }
