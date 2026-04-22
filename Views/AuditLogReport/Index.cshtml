@@ -6,41 +6,53 @@
     var fromDateValue = ViewBag.FromDate as string;
     var toDateValue = ViewBag.ToDate as string;
 }
-<style>
-    background: linear-gradient(45deg, #4e73df, #224abe);
 
+<style>
+    .custom-card {
+        border-radius: 10px;
+    }
+
+    .heading-glow {
+        font-weight: 600;
+    }
+
+    .custom-btn {
+        border-radius: 6px;
+    }
+
+    iframe {
+        border-radius: 8px;
+    }
 </style>
+
 <div class="container mt-4">
 
-    <!-- Page Header -->
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="fw-bold">Audit Log Report</h3>
     </div>
 
     <!-- Filter Card -->
-   
     <div class="card custom-card mb-4">
 
-        <!-- Card Header -->
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0 heading-glow">
                 <i class="fa fa-filter me-2"></i> Filter Report
             </h5>
         </div>
 
-        <!-- Card Body -->
         <div class="card-body">
 
             <form method="get" class="row g-3">
 
                 <div class="col-md-4">
                     <label class="form-label">From Date</label>
-                    <input type="date" class="form-control custom-input" name="fromDate" value="@fromDateValue" required />
+                    <input type="date" class="form-control" name="fromDate" value="@fromDateValue" required />
                 </div>
 
                 <div class="col-md-4">
                     <label class="form-label">To Date</label>
-                    <input type="date" class="form-control custom-input" name="toDate" value="@toDateValue" required />
+                    <input type="date" class="form-control" name="toDate" value="@toDateValue" required />
                 </div>
 
                 <div class="col-md-4">
@@ -49,22 +61,23 @@
                     <div class="d-flex gap-2">
 
                         <button type="submit"
-                                class="btn btn-primary flex-fill custom-btn"
-                                asp-action="ViewReport">
-                            <i class="fa fa-search"></i> View
-                        </button>
-
-                        <button type="submit"
                                 class="btn btn-success flex-fill custom-btn"
                                 asp-action="ExportExcel">
                             <i class="fa fa-file-excel"></i> Excel
                         </button>
 
-                        <button type="submit"
+                             <button type="submit"
                                 class="btn btn-danger flex-fill custom-btn"
                                 asp-action="GeneratePDF"
                                 formtarget="_blank">
                             <i class="fa fa-file-pdf"></i> PDF
+                        </button>
+
+                        <!-- 🔵 NEW ON SCREEN BUTTON -->
+                        <button type="button"
+                                class="btn btn-info flex-fill custom-btn"
+                                onclick="loadOnScreenReport()">
+                            <i class="fa fa-desktop"></i> On Screen
                         </button>
 
                     </div>
@@ -74,49 +87,59 @@
 
         </div>
     </div>
-    <!-- Message -->
-    @if (!string.IsNullOrWhiteSpace(message))
-    {
-        <div class="alert alert-info">
-            @message
+
+   
+    <!-- 🔵 ON SCREEN REPORT (IFRAME) -->
+   
+    <div class="card shadow-sm">
+    
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">On Screen Report</h5>
         </div>
-    }
 
-    <!-- Table Card -->
-    @if (logs != null && logs.Rows.Count > 0)
-    {
-        <div class="card shadow-sm">
-            <div class="card-body">
-
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered align-middle">
-
-                        <thead class="table-dark text-center">
-                            <tr>
-                                @foreach (System.Data.DataColumn col in logs.Columns)
-                                {
-                                    <th>@col.ColumnName</th>
-                                }
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @foreach (System.Data.DataRow row in logs.Rows)
-                            {
-                                <tr>
-                                    @foreach (var item in row.ItemArray)
-                                    {
-                                        <td>@item</td>
-                                    }
-                                </tr>
-                            }
-                        </tbody>
-
-                    </table>
-                </div>
-
-            </div>
+        <!-- 🔵 LOADER -->
+        <div id="reportLoader" style="display:none; padding:20px; text-align:center;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <div class="mt-2">Loading report...</div>
         </div>
-    }
 
+        <!-- REPORT -->
+        <div class="card-body p-0">
+            <iframe id="reportFrame"
+                    style="width:100%; height:650px; display:none;"></iframe>
+        </div>
+
+    </div>
 </div>
+
+<!-- SCRIPT -->
+
+<script>
+    function loadOnScreenReport() {
+
+        var fromDate = $('input[name="fromDate"]').val();
+        var toDate = $('input[name="toDate"]').val();
+
+        if (!fromDate || !toDate) {
+            alert("Please select From Date and To Date");
+            return;
+        }
+
+        // 🔵 SHOW LOADER FIRST
+        $('#reportLoader').show();
+        $('#reportFrame').hide();
+
+        var url = '/AuditLogReport/OnScreenReport'
+            + '?fromDate=' + fromDate
+            + '&toDate=' + toDate;
+
+        // 🔵 LOAD IFRAME
+        $('#reportFrame').attr('src', url);
+
+        // 🔵 WHEN IFRAME LOAD COMPLETE
+        $('#reportFrame').on('load', function () {
+            $('#reportLoader').hide();
+            $('#reportFrame').show();
+        });
+    }
+</script>
