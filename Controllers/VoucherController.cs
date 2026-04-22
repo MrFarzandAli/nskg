@@ -592,6 +592,59 @@ namespace Nskg.Controllers
         }
 
         // EDIT GET
+        //public IActionResult Edit(int id)
+        //{
+        //    try
+        //    {
+        //        var data = _context.VoHead
+        //            .Include(x => x.Details)
+        //            .FirstOrDefault(x => x.Id == id);
+
+        //        if (data == null)
+        //        {
+        //            TempData["ErrorMessage"] = "❌ Voucher not found!";
+        //            return RedirectToAction("Index", new { type = "" });
+        //        }
+
+
+
+        //        var type = data.Votype?.ToUpper();
+
+        //        ViewBag.VoucherType = type;
+        //        ViewBag.Type = type;
+
+        //        // Load all dropdowns same as Create
+        //        LoadDropdowns(type);
+
+
+        //        // Receipt types (CR, BR)
+        //        ViewBag.IsReceipt = type == "CR" || type == "BR";
+
+        //        // Full columns for JV, CP, BP (show everything)
+        //        ViewBag.IsFull = type == "JV" || type == "CP" || type == "BP";
+
+        //        // specific flags
+        //        ViewBag.IsCashReceipt = type == "CR";
+        //        ViewBag.IsBankReceipt = type == "BR";
+        //        ViewBag.IsCashPayment = type == "CP";
+        //        ViewBag.IsBankPayment = type == "BP";
+
+        //        ViewBag.Votype = GetVoucherTitle(type);
+
+        //        return View(new VoucherVM
+        //        {
+        //            Head = data,
+        //            Details = data.Details.ToList()
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _audit.LogAsync("Error", "Voucher", id.ToString(), ex.Message).Wait();
+        //        TempData["ErrorMessage"] = "❌ Failed to load voucher for editing!";
+        //        return RedirectToAction("Index", new { type = "" });
+        //    }
+        //}
+        // EDIT GET
         public IActionResult Edit(int id)
         {
             try
@@ -606,17 +659,15 @@ namespace Nskg.Controllers
                     return RedirectToAction("Index", new { type = "" });
                 }
 
-                
+                // Load all dropdowns same as Create
+                LoadDropdowns(data.Votype);
 
                 var type = data.Votype?.ToUpper();
 
                 ViewBag.VoucherType = type;
                 ViewBag.Type = type;
 
-                // Load all dropdowns same as Create
-                LoadDropdowns(type);
-
-
+                // ✅ SET ALL FLAGS (same as Create action)
                 // Receipt types (CR, BR)
                 ViewBag.IsReceipt = type == "CR" || type == "BR";
 
@@ -644,7 +695,6 @@ namespace Nskg.Controllers
                 return RedirectToAction("Index", new { type = "" });
             }
         }
-
         // EDIT POST
         [HttpPost]
         [ValidateAntiForgeryToken]

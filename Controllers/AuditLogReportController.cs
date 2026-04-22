@@ -61,6 +61,7 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
             return dt;
         }
 
+       
         [HttpGet]
         public IActionResult GeneratePDF(DateTime fromDate, DateTime toDate, int? companyId, int? financialYearId)
         {
@@ -68,53 +69,78 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
             {
                 DataTable dt = GetAuditLogs(fromDate, toDate, companyId, financialYearId);
 
-                if (dt.Rows.Count == 0)
+                if (dt == null || dt.Rows.Count == 0)
                 {
                     return Content("No data found for selected date range.");
                 }
 
                 string reportPath = Path.Combine(_env.WebRootPath, "Reports", "AuditLogrpt.rdlc");
 
-                // Check if file exists
                 if (!System.IO.File.Exists(reportPath))
                 {
-                    return Content($"Report file not found at: {reportPath}");
+                    return Content($"Report file not found: {reportPath}");
                 }
 
-                //using (LocalReport report = new LocalReport())
-                //{
-                //    report.ReportPath = reportPath;
-                //    report.DataSources.Clear();
-                //    report.DataSources.Add(new ReportDataSource("DSAuditLog", dt));
-
-                //    // byte[] pdfBytes = report.Render("PDF");
-                //    byte[] bytes = report.Render("HTML5");
-                //    return File(bytes, "text/html");
-                //  //  return File(pdfBytes, "application/pdf", "AuditLogReport.pdf");
-                //}
                 using (LocalReport report = new LocalReport())
                 {
                     report.ReportPath = reportPath;
+
                     report.DataSources.Clear();
+
+                    dt.TableName = "DSAuditLog";
                     report.DataSources.Add(new ReportDataSource("DSAuditLog", dt));
 
                     byte[] pdfBytes = report.Render("PDF");
 
-                    if (pdfBytes == null || pdfBytes.Length == 0)
+                    if (pdfBytes == null || pdfBytes.Length < 1000)
                     {
-                        return Content("PDF generation failed.");
+                        try
+                        {
+                            byte[] htmlBytes = report.Render("HTML5");
+                            if (htmlBytes != null && htmlBytes.Length > 0)
+                            {
+                                try
+                                {
+                                    var debugHtmlPath = Path.Combine(_env.WebRootPath, "Reports", "_last_audit_report_debug.html");
+                                    System.IO.File.WriteAllBytes(debugHtmlPath, htmlBytes);
+                                    return File(htmlBytes, "text/html");
+                                }
+                                catch
+                                {
+                                    return File(htmlBytes, "text/html");
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // ignore fallback errors
+                        }
+
+                        if (pdfBytes != null && pdfBytes.Length > 0)
+                        {
+                            try
+                            {
+                                var debugPath = Path.Combine(_env.WebRootPath, "Reports", "_last_audit_report_debug.pdf");
+                                System.IO.File.WriteAllBytes(debugPath, pdfBytes);
+                                return Content($"PDF generation failed or corrupted output. Debug file written to: {debugPath}");
+                            }
+                            catch
+                            {
+                                // ignore file write errors
+                            }
+                        }
+
+                        return Content("PDF generation failed or corrupted output. Try opening report as HTML (fallback) or verify RDLC dataset names and resources.");
                     }
 
-                    return File(pdfBytes, "application/pdf", "AuditLogReport.pdf");
+                    return File(pdfBytes, "application/pdf", "AuditLogReport.pdf", enableRangeProcessing: true);
                 }
             }
             catch (Exception ex)
             {
-                // Detailed error
-                return Content($"Error: {ex.Message}\n\nStack Trace: {ex.StackTrace}");
+                return Content($"ERROR: {ex.Message}\n\nSTACK: {ex.StackTrace}");
             }
         }
-
         [HttpGet]
         public IActionResult ViewReport(DateTime fromDate, DateTime toDate, int? companyId, int? financialYearId)
         {
