@@ -88,7 +88,7 @@
  *@ 
 
  <form method="post">
-
+    <input asp-for="Head.Votype" class="form-control form-control-sm" hidden />
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-3">
 
@@ -216,12 +216,9 @@
                                 Account
                             </th>
 
-                            @if (ViewBag.IsReceipt || ViewBag.IsFull)
+                            @if (Model.Head.Votype == "CP" || Model.Head.Votype == "CR" || Model.Head.Votype == "JV")
                             {
-                                <th>
-                                    <i class="fa fa-truck me-1"></i>
-                                    Transport
-                                </th>
+                                <th>Transport</th>
                             }
 
                             <th>
@@ -234,7 +231,7 @@
                                 Bill No
                             </th>
 
-                            @if (ViewBag.IsReceipt || ViewBag.IsFull)
+                            @if (Model.Head.Votype == "CP" || Model.Head.Votype == "CR" || Model.Head.Votype == "JV")
                             {
                                 <th>
                                     <i class="fa fa-car me-1"></i>
@@ -252,7 +249,7 @@
                                 Credit
                             </th>
 
-                            @if (ViewBag.IsBankReceipt || ViewBag.IsFull)
+                            @if (Model.Head.Votype == "BP" || Model.Head.Votype == "BR" || Model.Head.Votype == "JV")
                             {
                                 <th>
                                     <i class="fa fa-credit-card me-1"></i>
@@ -265,7 +262,7 @@
                                 </th>
                             }
 
-                            @if (ViewBag.IsCashReceipt || ViewBag.IsFull)
+                            @if (Model.Head.Votype == "CP" || Model.Head.Votype == "CR" || Model.Head.Votype == "JV")
                             {
                                 <th>
                                     <i class="fa fa-percent me-1"></i>
@@ -335,55 +332,46 @@
 @section scripts {
     <script>
         let i = 0;
-             // ✅ ADD THIS HERE (GLOBAL FLAGS)
-        let type = '@ViewBag.VoucherType';
+        const type = '@Model.Head.Votype';
 
-        let isReceipt = (type === "CR" || type === "BR");
-        let isCash = (type === "CR");
-        let isBank = (type === "BR");
-                        function addRow() {
-            let type = '@ViewBag.VoucherType';
-    
-            // For JV, CP, BP - show ALL columns
-            // For CR - hide cheque columns
-            // For BR - hide tax column
-    
-            let isFull = (type === "JV" || type === "CP" || type === "BP");
-            let isReceipt = (type === "CR" || type === "BR");
-            let isCash = (type === "CR");
-            let isBank = (type === "BR");
-    
-            // Transport column - show for ALL receipt types (CR, BR) AND full types (JV, CP, BP)
-            let transportCol = (isReceipt || isFull) ? `
-                <td>
-                    <select name="Details[${i}].Transcode" class="form-control select2">
-                        <option value="">Select Transport</option>
-                        @foreach (var acc in ViewBag.transporterList)
-                        {
-                                <option value="@acc.Value">@acc.Text</option>
-                        }
-                    </select>
-                </td>
-            ` : "";
-    
-            // Vehicle column - show for ALL receipt types (CR, BR) AND full types (JV, CP, BP)
-            let vehicleCol = (isReceipt || isFull) ? `
-                <td><input name="Details[${i}].Vehicleno" class="form-control"/></td>
-            ` : "";
-    
-            // Tax column - show for Cash Receipt (CR) only, NOT for BR, and show for full types
-            let taxCol = (isCash || isFull) ? `
-                <td><input name="Details[${i}].Ptax" class="form-control"/></td>
-            ` : "";
-    
-            // Cheque columns - show for Bank Receipt (BR) only, and show for full types
-            let chequeCols = (isBank || isFull) ? `
-                <td><input name="Details[${i}].Chqno" class="form-control"/></td>
-                <td><input name="Details[${i}].ChqDate" type="date" class="form-control"/></td>
-            ` : "";
-    
-            let row = `
-            <tr>
+        const isFullType = ["CP", "CR", "JV"].includes(type);
+        const isChequeType = ["BP", "BR", "JV"].includes(type);
+
+        const showTransport = isFullType;
+        const showVehicle   = isFullType;
+        const showTax       = isFullType;
+        const showCheque    = isChequeType;
+
+        // ✅ VOUCHER RULE ENGINE (NEW)
+        const VoucherRules = {
+            CP: { debit: true, credit: false },  // user enters Debit only
+            CR: { debit: false, credit: true },  // user enters Credit only
+            BP: { debit: true, credit: false },
+            BR: { debit: false, credit: true },
+            JV: { debit: true, credit: true }
+        };
+
+        const rule = VoucherRules[type] || VoucherRules.JV;
+
+        function applyRowRules(row) {
+            const dr = row.querySelector("[name*='Dramt']");
+            const cr = row.querySelector("[name*='Cramt']");
+
+            if (dr) dr.disabled = !rule.debit;
+            if (cr) cr.disabled = !rule.credit;
+
+            if (!rule.debit) dr.value = "";
+            if (!rule.credit) cr.value = "";
+        }
+
+        function addRow() {
+
+            const noDataRow = document.getElementById("noDataRow");
+            if (noDataRow) noDataRow.remove();
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
                 <td>
                     <select name="Details[${i}].gl3Id" class="form-control select2">
                         <option>Select Account</option>
@@ -393,47 +381,68 @@
                         }
                     </select>
                 </td>
-        
-                ${transportCol}
-        
+
+                ${showTransport ? `
+                <td>
+                    <select name="Details[${i}].Transcode" class="form-control select2">
+                        <option value="">Select Transport</option>
+                        @foreach (var acc in ViewBag.transporterList)
+                        {
+                                <option value="@acc.Value">@acc.Text</option>
+                        }
+                    </select>
+                </td>` : ""}
+
                 <td><input name="Details[${i}].Billtino" class="form-control"/></td>
                 <td><input name="Details[${i}].Bilno" class="form-control"/></td>
-        
-                ${vehicleCol}
-        
+
+                ${showVehicle ? `<td><input name="Details[${i}].Vehicleno" class="form-control"/></td>` : ""}
+
                 <td><input name="Details[${i}].Dramt" onkeyup="calc()" class="form-control"/></td>
                 <td><input name="Details[${i}].Cramt" onkeyup="calc()" class="form-control"/></td>
-        
-                ${chequeCols}
-        
-                ${taxCol}
-        
+
+                ${showCheque ? `
+                <td><input name="Details[${i}].Chqno" class="form-control"/></td>
+                <td><input name="Details[${i}].ChqDate" type="date" class="form-control"/></td>` : ""}
+
+                ${showTax ? `<td><input name="Details[${i}].Ptax" class="form-control"/></td>` : ""}
+
                 <td><input name="Details[${i}].Narration" class="form-control"/></td>
-        
+
                 <td>
                     <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
                         <i class="fa fa-trash"></i>
                     </button>
                 </td>
-            </tr>`;
-    
-            document.querySelector("#tbl tbody").insertAdjacentHTML("beforeend", row);
+            `;
+
+            document.querySelector("#tbl tbody").appendChild(row);
+
+            applyRowRules(row);
+
             i++;
+
+            $("#tbl .select2").select2();
         }
-        
 
-        
-                function calc() {
-            let dr = 0, cr = 0;
+        function calc() {
 
-           // const rows = document.querySelectorAll("table tbody tr");
-           const rows = document.querySelectorAll("#tbl tbody tr:not(#noDataRow)");
+            let dr = 0, cr = 0, entries = 0;
 
-            let entries = 0;
+            document.querySelectorAll("#tbl tbody tr:not(#noDataRow)").forEach(row => {
 
-            rows.forEach(tr => {
-                let d = +(tr.querySelector("[name*='Dramt']")?.value || 0);
-                let c = +(tr.querySelector("[name*='Cramt']")?.value || 0);
+                const drInput = row.querySelector("[name*='Dramt']");
+                const crInput = row.querySelector("[name*='Cramt']");
+
+                const d = parseFloat(drInput?.value || 0);
+                const c = parseFloat(crInput?.value || 0);
+
+                if (d > 0 && c > 0) {
+                    alert("Row cannot have both Debit and Credit");
+                    drInput.value = "";
+                    crInput.value = "";
+                    return;
+                }
 
                 if (d > 0 || c > 0) entries++;
 
@@ -441,27 +450,25 @@
                 cr += c;
             });
 
-            let diff = dr - cr;
+            const diff = dr - cr;
 
             document.getElementById("dr").innerText = dr.toFixed(2);
             document.getElementById("cr").innerText = cr.toFixed(2);
             document.getElementById("df").innerText = diff.toFixed(2);
             document.getElementById("entries").innerText = entries;
 
-            document.querySelector("button[type='submit']").disabled = diff !== 0 || entries === 0;
-        }
-    </script>
-    <script>
-        $(document).ready(function () {
-            $('.select2').select2();
-             addRow();
-        });
-    </script>
-    <script>
-                function removeRow(btn) {
-            btn.closest('tr').remove();
+            const btn = document.querySelector("button[type='submit']");
+            btn.disabled = diff !== 0 || entries === 0;
 
-            let rows = document.querySelectorAll("#tbl tbody tr");
+            btn.classList.toggle("btn-danger", diff !== 0);
+            btn.classList.toggle("btn-success", diff === 0);
+        }
+
+        function removeRow(btn) {
+
+            btn.closest("tr").remove();
+
+            const rows = document.querySelectorAll("#tbl tbody tr");
 
             if (rows.length === 0) {
                 document.querySelector("#tbl tbody").innerHTML = `
@@ -474,6 +481,11 @@
 
             calc();
         }
-    </script>
 
+        $(document).ready(function () {
+            $(".select2").select2();
+            addRow();
+        });
+
+    </script>
 }

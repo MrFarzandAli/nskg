@@ -29,7 +29,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Vouchers";
 }
-
+@Html.AntiForgeryToken()
 <div class="page-header">
     <div class="row align-items-center">
         <div class="col">
@@ -102,7 +102,7 @@
 
                                             <button type="button"
                                                     class="btn btn-sm btn-danger"
-                                                    onclick="return confirmDelete(event, 'Voucher @v.Vono', '/Voucher/Delete/@v.Id')">
+                                                    onclick="confirmDelete(@v.Id, '@v.Vono')">
                                                 <i class="fa fa-trash"></i> Delete
                                             </button>
                                             
@@ -139,12 +139,31 @@
 
         });
 
-        function confirmDelete(event, name, url) {
-            if (!confirm("Are you sure you want to delete " + name + "?")) {
-                event.preventDefault();
-                return false;
+               function confirmDelete(id, name) {
+
+            if (!confirm("Are you sure you want to delete Voucher " + name + "?")) {
+                return;
             }
-            window.location.href = url;
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            $.ajax({
+                url: '/Voucher/Delete',
+                type: 'POST',
+                data: {
+                    id: id,
+                    __RequestVerificationToken: token
+                },
+                success: function (res) {
+                    alert(res.message);
+                    if (res.success) {
+                        location.reload();
+                    }
+                },
+                error: function () {
+                    alert("Delete failed!");
+                }
+            });
         }
     </script>
 }
