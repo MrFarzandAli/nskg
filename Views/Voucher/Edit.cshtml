@@ -580,7 +580,7 @@
         });
     </script>
 } *@
-@using Nskg.Models.ViewModels
+@* @using Nskg.Models.ViewModels
 @model VoucherVM
 
 <form method="post">
@@ -1096,4 +1096,373 @@
             calc(); // Calculate totals on page load
         });
     </script>
+} *@
+
+@using Nskg.Models.ViewModels
+@model VoucherVM
+
+<form method="post">
+    <input type="hidden" asp-for="Head.Id" />
+    <input type="hidden" asp-for="Head.Votype" />
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-0">
+                <i class="fa fa-edit text-primary me-1"></i>
+                Edit @(ViewBag.Votype ?? Model?.Head?.Votype ?? "Voucher")
+            </h3>
+            <small class="text-muted">
+                <i class="fa fa-info-circle me-1"></i>
+                Update accounting voucher entries
+            </small>
+        </div>
+        <div>
+            <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addRow()">
+                <i class="fa fa-plus me-1"></i> Add Row
+            </button>
+            <button type="submit" class="btn btn-success btn-sm">
+                <i class="fa fa-save me-1"></i> Update
+            </button>
+        </div>
+    </div>
+
+    <!-- MASTER -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Voucher No</label>
+                    <input asp-for="Head.Vono" class="form-control form-control-sm" readonly />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Transaction Date</label>
+                    <input asp-for="Head.Vodate" type="date" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Entry Date</label>
+                    <input asp-for="Head.EntryDate" type="date" class="form-control form-control-sm" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Account</label>
+                    <select asp-for="Head.gl3Id" class="form-select form-select-sm"
+                            asp-items="@(new SelectList(ViewBag.HeaderAccounts, "Value", "Text"))">
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Pay / Receive</label>
+                    <select asp-for="Head.Partycode" class="form-select form-select-sm"
+                            asp-items="@(new SelectList(ViewBag.PartyAccounts, "Value", "Text"))">
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small text-muted">Payee / Receiver</label>
+                    <input asp-for="Head.PersonName" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Reference No</label>
+                    <input asp-for="Head.Invno" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">Narration</label>
+                    <input asp-for="Head.Narration" class="form-control form-control-sm" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DETAILS -->
+    <div class="card mt-3 border-0 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center bg-white">
+            <h5 class="mb-0">Voucher Details</h5>
+            <span class="badge bg-light text-dark">Edit Mode</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle mb-0" id="tbl">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>Account</th>
+                            @if (ViewBag.IsReceipt == true || ViewBag.IsFull == true)
+                            {
+                                <th>Transport</th>
+                            }
+                            <th>Bilti No</th>
+                            <th>Bill No</th>
+                            @if (ViewBag.IsReceipt == true || ViewBag.IsFull == true)
+                            {
+                                <th>Vehicle</th>
+                            }
+                            <th class="text-success">Debit</th>
+                            <th class="text-danger">Credit</th>
+                            @if (ViewBag.IsBankReceipt == true || ViewBag.IsBankPayment == true || ViewBag.IsFull == true)
+                            {
+                                <th>Cheque No</th>
+                                <th>Cheque Date</th>
+                            }
+                            @if (ViewBag.IsCashReceipt == true || ViewBag.IsCashPayment == true || ViewBag.IsFull == true)
+                            {
+                                <th>Tax</th>
+                            }
+                            <th>Narration</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                        @if (Model.Details != null && Model.Details.Any())
+                        {
+                            @for (int idx = 0; idx < Model.Details.Count; idx++)
+                            {
+                                var d = Model.Details[idx];
+                                bool isReceiptVoucher = (ViewBag.IsCashReceipt == true || ViewBag.IsBankReceipt == true);
+                                bool isPaymentVoucher = (ViewBag.IsCashPayment == true || ViewBag.IsBankPayment == true);
+                                <tr>
+                                    <td>
+                                        <select name="Details[@idx].gl3Id" class="form-control select2">
+                                            <option value="">Select Account</option>
+                                            @foreach (var acc in ViewBag.Accounts)
+                                            {
+                                                if (acc.Value == d.gl3Id?.ToString())
+                                                {
+                                                    <option value="@acc.Value" selected>@acc.Text</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@acc.Value">@acc.Text</option>
+                                                }
+                                            }
+                                        </select>
+                                        <input type="hidden" name="Details[@idx].Id" value="@d.Id" />
+                                    </td>
+                                    @if (ViewBag.IsReceipt == true || ViewBag.IsFull == true)
+                                    {
+                                        <td>
+                                            <select name="Details[@idx].Transcode" class="form-control select2">
+                                                <option value="">Select Transport</option>
+                                                @foreach (var acc in ViewBag.transporterList)
+                                                {
+                                                    if (acc.Value == d.Transcode?.ToString())
+                                                    {
+                                                        <option value="@acc.Value" selected>@acc.Text</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@acc.Value">@acc.Text</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </td>
+                                    }
+                                    <td><input name="Details[@idx].Billtino" value="@d.Billtino" class="form-control" /></td>
+                                    <td><input name="Details[@idx].Bilno" value="@d.Bilno" class="form-control" /></td>
+                                    @if (ViewBag.IsReceipt == true || ViewBag.IsFull == true)
+                                    {
+                                        <td><input name="Details[@idx].Vehicleno" value="@d.Vehicleno" class="form-control" /></td>
+                                    }
+                                    <td>
+                                        <input name="Details[@idx].Dramt" value="@d.Dramt" onkeyup="calc()" class="form-control" @(isReceiptVoucher ? "disabled" : "") />
+                                        @if (isReceiptVoucher)
+                                        {
+                                            <input type="hidden" name="Details[@idx].Dramt" value="@d.Dramt" />
+                                        }
+                                    </td>
+                                    <td>
+                                        <input name="Details[@idx].Cramt" value="@d.Cramt" onkeyup="calc()" class="form-control" @(isPaymentVoucher ? "disabled" : "") />
+                                        @if (isPaymentVoucher)
+                                        {
+                                            <input type="hidden" name="Details[@idx].Cramt" value="@d.Cramt" />
+                                        }
+                                    </td>
+                                    @if (ViewBag.IsBankReceipt == true || ViewBag.IsBankPayment == true || ViewBag.IsFull == true)
+                                    {
+                                        <td><input name="Details[@idx].Chqno" value="@d.Chqno" class="form-control" /></td>
+                                        <td><input name="Details[@idx].ChqDate" type="date" value="@(d.ChqDate?.ToString("yyyy-MM-dd"))" class="form-control" /></td>
+                                    }
+                                    @if (ViewBag.IsCashReceipt == true || ViewBag.IsCashPayment == true || ViewBag.IsFull == true)
+                                    {
+                                        <td><input name="Details[@idx].Ptax" value="@d.Ptax" class="form-control" /></td>
+                                    }
+                                    <td><input name="Details[@idx].Narration" value="@d.Narration" class="form-control" /></td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr id="noDataRow">
+                                <td colspan="20" class="text-center text-muted py-3">No Data Available</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="card mt-3 border-0 shadow-sm">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <p class="mb-1 text-muted small">Total Entries</p>
+                    <h5 id="entries" class="fw-bold">0</h5>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1 text-muted small">Debit</p>
+                    <h5 id="dr" class="text-success fw-bold">0</h5>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1 text-muted small">Credit</p>
+                    <h5 id="cr" class="text-danger fw-bold">0</h5>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1 text-muted small">Difference</p>
+                    <h5 id="df" class="text-primary fw-bold">0</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section scripts {
+    <script>
+        let i = @(Model.Details?.Count ?? 0);
+        let type = '@ViewBag.VoucherType';
+        let isFull = (type === "JV" || type === "CP" || type === "BP");
+        let isReceipt = (type === "CR" || type === "BR");
+        let isCashReceipt = (type === "CR");
+        let isBankReceipt = (type === "BR");
+        let isCashPayment = (type === "CP");
+        let isBankPayment = (type === "BP");
+
+        let disableDebit = (isCashReceipt || isBankReceipt);
+        let disableCredit = (isCashPayment || isBankPayment);
+
+        function addRow() {
+            let transportCol = (isReceipt || isFull) ? `
+                <td>
+                    <select name="Details[${i}].Transcode" class="form-control select2">
+                        <option value="">Select Transport</option>
+                        @foreach (var acc in ViewBag.transporterList)
+                        {
+                                <option value="@acc.Value">@acc.Text</option>
+                        }
+                    </select>
+                </td>
+            ` : "";
+
+            let vehicleCol = (isReceipt || isFull) ? `
+                <td><input name="Details[${i}].Vehicleno" class="form-control"/></td>
+            ` : "";
+
+            let debitCol = `
+                <td>
+                    <input name="Details[${i}].Dramt" onkeyup="calc()" class="form-control" ${disableDebit ? 'disabled' : ''}/>
+                    ${disableDebit ? `<input type="hidden" name="Details[${i}].Dramt" value="0"/>` : ''}
+                </td>
+            `;
+
+            let creditCol = `
+                <td>
+                    <input name="Details[${i}].Cramt" onkeyup="calc()" class="form-control" ${disableCredit ? 'disabled' : ''}/>
+                    ${disableCredit ? `<input type="hidden" name="Details[${i}].Cramt" value="0"/>` : ''}
+                </td>
+            `;
+
+            let taxCol = (isCashReceipt || isCashPayment || isFull) ? `
+                <td><input name="Details[${i}].Ptax" class="form-control"/></td>
+            ` : "";
+
+            let chequeCols = (isBankReceipt || isBankPayment || isFull) ? `
+                <td><input name="Details[${i}].Chqno" class="form-control"/></td>
+                <td><input name="Details[${i}].ChqDate" type="date" class="form-control"/></td>
+            ` : "";
+
+            let row = `
+                <tr>
+                    <td>
+                        <select name="Details[${i}].gl3Id" class="form-control select2">
+                            <option>Select Account</option>
+                            @foreach (var acc in ViewBag.Accounts)
+                            {
+                                    <option value="@acc.Value">@acc.Text</option>
+                            }
+                        </select>
+                        <input type="hidden" name="Details[${i}].Id" value="0" />
+                    </td>
+                    ${transportCol}
+                    <td><input name="Details[${i}].Billtino" class="form-control"/></td>
+                    <td><input name="Details[${i}].Bilno" class="form-control"/></td>
+                    ${vehicleCol}
+                    ${debitCol}
+                    ${creditCol}
+                    ${chequeCols}
+                    ${taxCol}
+                    <td><input name="Details[${i}].Narration" class="form-control"/></td>
+                    <td>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+
+            let noDataRow = document.getElementById("noDataRow");
+            if (noDataRow) noDataRow.remove();
+
+            document.querySelector("#tbl tbody").insertAdjacentHTML("beforeend", row);
+            $('.select2').select2();
+            i++;
+            calc();
+        }
+
+        function calc() {
+            let dr = 0, cr = 0;
+            const rows = document.querySelectorAll("#tbl tbody tr:not(#noDataRow)");
+            let entries = 0;
+
+            rows.forEach(tr => {
+                let dInput = tr.querySelector("[name*='Dramt']:not([type='hidden'])");
+                let cInput = tr.querySelector("[name*='Cramt']:not([type='hidden'])");
+                
+                let d = dInput ? +(dInput.value || 0) : 0;
+                let c = cInput ? +(cInput.value || 0) : 0;
+
+                if (d > 0 || c > 0) entries++;
+
+                dr += d;
+                cr += c;
+            });
+
+            let diff = dr - cr;
+
+            document.getElementById("dr").innerText = dr.toFixed(2);
+            document.getElementById("cr").innerText = cr.toFixed(2);
+            document.getElementById("df").innerText = diff.toFixed(2);
+            document.getElementById("entries").innerText = entries;
+        }
+
+        function removeRow(btn) {
+            btn.closest('tr').remove();
+            let rows = document.querySelectorAll("#tbl tbody tr");
+            if (rows.length === 0) {
+                document.querySelector("#tbl tbody").innerHTML = `
+                    <tr id="noDataRow">
+                        <td colspan="20" class="text-center text-muted py-3">No Data Available</td>
+                    </tr>
+                `;
+            }
+            calc();
+        }
+
+        $(document).ready(function () {
+            $('.select2').select2();
+            calc();
+        });
+    </script>
 }
+
