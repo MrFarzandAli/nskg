@@ -89,15 +89,14 @@
     </div>
 
    
-    <!-- 🔵 ON SCREEN REPORT (IFRAME) -->
-   
-    <div class="card shadow-sm">
-    
+    <!-- 🔵 ON SCREEN REPORT -->
+    <div id="reportCard" class="card shadow-sm" style="display:none;">
+
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0">On Screen Report</h5>
         </div>
 
-        <!-- 🔵 LOADER -->
+        <!-- LOADER -->
         <div id="reportLoader" style="display:none; padding:20px; text-align:center;">
             <div class="spinner-border text-primary" role="status"></div>
             <div class="mt-2">Loading report...</div>
@@ -114,6 +113,7 @@
 
 <!-- SCRIPT -->
 
+
 <script>
     function loadOnScreenReport() {
 
@@ -125,7 +125,10 @@
             return;
         }
 
-        // 🔵 SHOW LOADER FIRST
+        // 🔵 SHOW CARD FIRST
+        $('#reportCard').show();
+
+        // 🔵 SHOW LOADER
         $('#reportLoader').show();
         $('#reportFrame').hide();
 
@@ -133,10 +136,11 @@
             + '?fromDate=' + fromDate
             + '&toDate=' + toDate;
 
-        // 🔵 LOAD IFRAME
+        // 🔥 FIX: remove previous event binding
+        $('#reportFrame').off('load');
+
         $('#reportFrame').attr('src', url);
 
-        // 🔵 WHEN IFRAME LOAD COMPLETE
         $('#reportFrame').on('load', function () {
             $('#reportLoader').hide();
             $('#reportFrame').show();

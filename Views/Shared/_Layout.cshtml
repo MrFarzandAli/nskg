@@ -246,7 +246,8 @@
 						</li>
 						@if (User.IsInRole("Admin"))
 						{
-							<li>								
+							<li>
+																								
 								<a asp-controller="Company" asp-action="Index"><i class="la la-users"></i><span>Companies</span></a>
 								<a asp-controller="FinancialYear" asp-action="Index"><i class="la la-users"></i><span>Financial Years</span></a>
 								<a asp-controller="Security" asp-action="Index"><i class="la la-users"></i><span>Security</span></a>
@@ -259,6 +260,8 @@
 								<a asp-controller="Voucher" asp-action="Index" asp-route-type="CP">Cash Payment</a>
 								<a asp-controller="Voucher" asp-action="Index" asp-route-type="BR">Bank Receipt</a>
 								<a asp-controller="Voucher" asp-action="Index" asp-route-type="BP">Bank Payment</a>
+						        <a asp-controller="auditlogreport" asp-action="Index"><i class="la la-users"></i><span>Audit Log Report</span></a>
+
 							</li>						
 						}
 					</ul>
