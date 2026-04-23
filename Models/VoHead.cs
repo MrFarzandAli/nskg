@@ -48,7 +48,7 @@
 
         public int CompanyId { get; set; }
         public int FinancialYearId { get; set; }
-        public int gl3Id { get; set; }
+        public int? gl3Id { get; set; }
 
         public string Status { get; set; } = "Draft";
 

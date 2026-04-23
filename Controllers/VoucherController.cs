@@ -496,16 +496,16 @@ namespace Nskg.Controllers
                     var dr = vm.Details.Sum(x => x.Dramt ?? 0);
                     var cr = vm.Details.Sum(x => x.Cramt ?? 0);
 
-                    //if (dr != cr)
-                    //{
-                    //    TempData["ErrorMessage"] = "❌ Debit and Credit amounts must be equal!";
-                    //    LoadDropdowns();
-                    //    return View(vm);
-                    //}
+                    if (dr != cr && type == "JV")
+                    {
+                        TempData["ErrorMessage"] = "❌ Debit and Credit amounts must be equal!";
+                        LoadDropdowns(type);
+                        return View(vm);
+                    }
                 }
 
                 var account = _context.GLChart3.FirstOrDefault(x => x.Id == vm.Head.gl3Id);
-                if (account == null)
+                if (account == null && type != "JV")
                 {
                     TempData["ErrorMessage"] = "❌ Invalid account selected!";
                     LoadDropdowns(type);
@@ -524,9 +524,9 @@ namespace Nskg.Controllers
                 vm.Head.FinancialYearId = User.GetFinancialYearId();
                 vm.Head.Cocode = User.GetCompanyCode();
                 vm.Head.Userid = User.GetUserId();
-                vm.Head.Ac1 = account.AC1;
-                vm.Head.Ac3 = account.AC3;
-                vm.Head.Haccode = account.ACC;
+                vm.Head.Ac1 = account?.AC1;
+                vm.Head.Ac3 = account?.AC3;
+                vm.Head.Haccode = account?.ACC;
 
                 _context.VoHead.Add(vm.Head);
                 _context.SaveChanges();
@@ -546,7 +546,7 @@ namespace Nskg.Controllers
                         d.Vodate = vm.Head.Vodate;
                         d.Ac1 = DetailAccount.AC1;
                         d.Ac3 = DetailAccount.AC3;
-                        d.Hacc = account.ACC;
+                        d.Hacc = account?.ACC;
                         d.Acc = DetailAccount.ACC;
                         d.Actype = DetailAccount.AcType;
                         d.Cocode = User.GetCompanyCode();
