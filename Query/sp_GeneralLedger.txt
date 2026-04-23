@@ -1,0 +1,85 @@
+﻿select * from GLTrans
+
+CREATE INDEX IX_Ledger_Accode_Date 
+ON GLTrans (id, Docdate, CompanyId, FinancialYearId);
+
+EXEC sp_GeneralLedger 
+    @Accode = '07001',
+    @FromDate = '2026-04-24',
+    @ToDate = '2026-04-30',
+    @CompanyId = 2,
+    @FinancialYearId = 2;
+
+ALTER PROCEDURE sp_GeneralLedger
+(
+    @Accode NVARCHAR(20),
+    @FromDate DATE,
+    @ToDate DATE,
+    @CompanyId INT,
+    @FinancialYearId INT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @OpeningDebit DECIMAL(18,2) = 0;
+    DECLARE @OpeningCredit DECIMAL(18,2) = 0;
+
+    -- Opening calculation
+    SELECT 
+        @OpeningDebit = ISNULL(SUM(Debit), 0),
+        @OpeningCredit = ISNULL(SUM(Credit), 0)
+    FROM GLTrans
+    WHERE Accode = @Accode
+      AND Docdate < @FromDate
+      AND CompanyId = @CompanyId
+      AND FinancialYearId = @FinancialYearId;
+
+    DECLARE @OpeningBalance DECIMAL(18,2);
+    SET @OpeningBalance = @OpeningDebit - @OpeningCredit;
+
+    -- Main Ledger with Opening Row
+    ;WITH LedgerData AS
+    (
+        -- Opening Row
+        SELECT 
+            0 AS SortOrder,
+            NULL AS Docdate,
+            '' AS DocNo,
+            'Opening Balance' AS Narration,
+            @OpeningDebit AS Debit,
+            @OpeningCredit AS Credit,
+            @OpeningBalance AS Balance,
+            0 AS Id
+
+        UNION ALL
+
+        -- Transactions
+        SELECT 
+            1 AS SortOrder,
+            Docdate,
+            DocNo,
+            ISNULL(Narration,'') AS Narration,
+            Debit,
+            Credit,
+            @OpeningBalance 
+            + SUM(Debit - Credit) OVER (ORDER BY Docdate, Id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+            Id
+        FROM GLTrans
+        WHERE Accode = @Accode
+          AND Docdate BETWEEN @FromDate AND @ToDate
+          AND CompanyId = @CompanyId
+          AND FinancialYearId = @FinancialYearId
+    )
+
+    SELECT 
+        Docdate,
+        DocNo,
+        Narration,
+        Debit,
+        Credit,
+        Balance
+    FROM LedgerData
+    ORDER BY SortOrder, Docdate, Id;
+
+END                                         

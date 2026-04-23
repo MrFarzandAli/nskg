@@ -715,7 +715,22 @@ namespace Nskg.Controllers
 
             try
             {
-              
+                var setting = _context.VoucherTypeSettings
+                   .FirstOrDefault(x => x.Code == oldType);
+
+                if (setting != null && setting.AutoBalance)
+                {
+                    var dr = vm.Details.Sum(x => x.Dramt ?? 0);
+                    var cr = vm.Details.Sum(x => x.Cramt ?? 0);
+
+                    if (dr != cr && oldType == "JV")
+                    {
+                        TempData["ErrorMessage"] = "❌ Debit and Credit amounts must be equal!";
+                        LoadDropdowns(oldType);
+                        return View(vm);
+                    }
+                }
+
 
                 // =========================================
                 // 🔥 STEP 1: REMOVE OLD GL TRANSACTIONS
@@ -730,7 +745,8 @@ namespace Nskg.Controllers
                 }
 
                 var account = _context.GLChart3.FirstOrDefault(x => x.Id == vm.Head.gl3Id);
-                if (account == null)
+              
+                if (account == null && oldType != "JV")
                 {
                     TempData["ErrorMessage"] = "❌ Invalid account selected!";
                     LoadDropdowns(oldType);
@@ -756,9 +772,9 @@ namespace Nskg.Controllers
                 existing.FinancialYearId = User.GetFinancialYearId();
                 existing.Cocode = User.GetCompanyCode();
                 existing.Userid = User.GetUserId();
-                existing.Ac1 = account.AC1;
-                existing.Ac3 = account.AC3;
-                existing.Haccode = account.ACC;
+                existing.Ac1 = account?.AC1;
+                existing.Ac3 = account?.AC3;
+                existing.Haccode = account?.ACC;
 
                 // =========================================
                 // 🔥 STEP 3: REPLACE DETAILS
@@ -777,7 +793,7 @@ namespace Nskg.Controllers
                         d.Vodate = vm.Head.Vodate;
                         d.Ac1 = DetailAccount.AC1;
                         d.Ac3 = DetailAccount.AC3;
-                        d.Hacc = account.ACC;
+                        d.Hacc = account?.ACC;
                         d.Acc = DetailAccount.ACC;
                         d.Actype = DetailAccount.AcType;
                         d.Cocode = User.GetCompanyCode();
