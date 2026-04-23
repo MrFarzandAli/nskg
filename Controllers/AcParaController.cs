@@ -4,16 +4,19 @@ using Nskg.Data;
 using Nskg.Extensions;
 using Nskg.Models;
 using Nskg.Models.ViewModels;
+using Nskg.Repositories.Interfaces;
 
 namespace Nskg.Controllers
 {
     public class AcParaController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAuditService _audit;   // ✅ ADD
 
-        public AcParaController(ApplicationDbContext context)
+        public AcParaController(ApplicationDbContext context, IAuditService audit)
         {
             _context = context;
+            _audit = audit;   // ✅ ADD
         }
 
         public IActionResult Index()
@@ -35,110 +38,119 @@ namespace Nskg.Controllers
             return View(data);
         }
 
+
         [HttpPost]
-        public IActionResult Create([FromBody] AcPara model)
+        public async Task<IActionResult> Create([FromBody] AcPara model)
         {
-            // ✅ Actype validation
-            if (!string.IsNullOrEmpty(model.ActypeCode) &&
-                !_context.Actype.Any(x => x.ACTYPE == model.ActypeCode))
-                return BadRequest("Invalid Account Type");
-
-            model.Cocode = User.GetCompanyId().ToString();
-            // ✅ Parent/Child logic
-            if (model.Parent == "P")
+            try
             {
-                if (model.GLChart1Id == null)
-                    return BadRequest("Parent account required");
+                if (!string.IsNullOrEmpty(model.ActypeCode) &&
+                    !_context.Actype.Any(x => x.ACTYPE == model.ActypeCode))
+                    return Json(new { success = false, message = "Invalid Account Type" });
 
-                var gl = _context.GLChart1.Find(model.GLChart1Id);
-                model.Accode = gl?.AC1;
-                model.Acname = gl?.Name;
+                model.Cocode = User.GetCompanyId().ToString();
 
-                model.GLChart3Id = null;
+                if (model.Parent == "P")
+                {
+                    var gl = _context.GLChart1.Find(model.GLChart1Id);
+                    model.Accode = gl?.AC1;
+                    model.Acname = gl?.Name;
+                    model.GLChart3Id = null;
+                }
+                else if (model.Parent == "C")
+                {
+                    var gl = _context.GLChart3.Find(model.GLChart3Id);
+                    model.Accode = gl?.ACC;
+                    model.Acname = gl?.Name;
+                    model.GLChart1Id = null;
+                }
+
+                if (_context.AcPara.Any(x => x.Accode == model.Accode))
+                    return Json(new { success = false, message = "Account code already exists!" });
+
+                _context.AcPara.Add(model);
+                _context.SaveChanges();
+
+                await _audit.LogAsync("Create", "AcPara", model.Id.ToString(), $"Created Account: {model.Acname}");
+
+                return Json(new { success = true, message = "Account created successfully!" });
             }
-            else if (model.Parent == "C")
+            catch (Exception ex)
             {
-                if (model.GLChart3Id == null)
-                    return BadRequest("Child account required");
-
-                var gl = _context.GLChart3.Find(model.GLChart3Id);
-                model.Accode = gl?.ACC;
-                model.Acname = gl?.Name;
-
-                model.GLChart1Id = null;
+                await _audit.LogAsync("Error", "AcPara", "0", ex.Message);
+                return Json(new { success = false, message = "Something went wrong!" });
             }
-
-            if (_context.AcPara.Any(x => x.Accode == model.Accode))
-                return BadRequest("Account code already exists!");
-
-            _context.AcPara.Add(model);
-            _context.SaveChanges();
-
-            return Ok();
         }
 
 
+
         [HttpPost]
-        public IActionResult Edit([FromBody] AcPara model)
+        public async Task<IActionResult> Edit([FromBody] AcPara model)
         {
-            var data = _context.AcPara.Find(model.Id);
-            if (data == null) return NotFound();
-
-            if (_context.AcPara.Any(x => x.Accode == model.Accode && x.Id != model.Id))
-                return BadRequest("Account code already exists!");
-
-            // ✅ Actype validation
-            if (!string.IsNullOrEmpty(model.ActypeCode) &&
-                !_context.Actype.Any(x => x.ACTYPE == model.ActypeCode))
-                return BadRequest("Invalid Account Type");
-
-            data.ActypeCode = model.ActypeCode;
-            data.Parent = model.Parent;
-            data.Opening = model.Opening;
-
-            if (model.Parent == "P")
+            try
             {
-                var gl = _context.GLChart1.Find(model.GLChart1Id);
+                var data = _context.AcPara.Find(model.Id);
+                if (data == null)
+                    return Json(new { success = false, message = "Not found!" });
 
-                data.GLChart1Id = model.GLChart1Id;
-                data.GLChart3Id = null;
+                if (_context.AcPara.Any(x => x.Accode == model.Accode && x.Id != model.Id))
+                    return Json(new { success = false, message = "Account code already exists!" });
 
-                data.Accode = gl?.AC1;
-                data.Acname = gl?.Name;
+                if (!string.IsNullOrEmpty(model.ActypeCode) &&
+                    !_context.Actype.Any(x => x.ACTYPE == model.ActypeCode))
+                    return Json(new { success = false, message = "Invalid Account Type" });
+
+                data.ActypeCode = model.ActypeCode;
+                data.Parent = model.Parent;
+                data.Opening = model.Opening;
+
+                if (model.Parent == "P")
+                {
+                    var gl = _context.GLChart1.Find(model.GLChart1Id);
+                    data.GLChart1Id = model.GLChart1Id;
+                    data.GLChart3Id = null;
+                    data.Accode = gl?.AC1;
+                    data.Acname = gl?.Name;
+                }
+                else
+                {
+                    var gl = _context.GLChart3.Find(model.GLChart3Id);
+                    data.GLChart3Id = model.GLChart3Id;
+                    data.GLChart1Id = null;
+                    data.Accode = gl?.ACC;
+                    data.Acname = gl?.Name;
+                }
+
+                _context.SaveChanges();
+
+                await _audit.LogAsync("Update", "AcPara", model.Id.ToString(), $"Updated Account: {data.Acname}");
+
+                return Json(new { success = true, message = "Updated successfully!" });
             }
-            else if (model.Parent == "C")
+            catch (Exception ex)
             {
-                var gl = _context.GLChart3.Find(model.GLChart3Id);
-
-                data.GLChart3Id = model.GLChart3Id;
-                data.GLChart1Id = null;
-
-                data.Accode = gl?.ACC;
-                data.Acname = gl?.Name;
+                await _audit.LogAsync("Error", "AcPara", model.Id.ToString(), ex.Message);
+                return Json(new { success = false, message = "Update failed!" });
             }
-
-            _context.SaveChanges();
-
-            return Ok();
         }
 
-
+        
         [HttpPost]
         public IActionResult Delete(int id)
         {
             var data = _context.AcPara.Find(id);
-            if (data == null) return NotFound();
+            if (data == null)
+                return Json(new { success = false, message = "Not found!" });
 
             var used = _context.VoDet.Any(x => x.Acc == data.Accode);
             if (used)
-                return BadRequest("Account used in transactions");
+                return Json(new { success = false, message = "Account used in transactions" });
 
             _context.AcPara.Remove(data);
             _context.SaveChanges();
 
-            return Ok();
+            return Json(new { success = true, message = "Deleted successfully!" });
         }
-
         public IActionResult GetAccounts(string type)
         {
             if (type == "P")

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Nskg.Extensions;
 using Nskg.Models;
 using Nskg.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Nskg.Controllers
 {
@@ -84,7 +85,43 @@ namespace Nskg.Controllers
             return View(actype);
         }
 
-        // ✅ EDIT (POST)
+        //// ✅ EDIT (POST)
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> Edit(Actype model)
+        //{
+        //    try
+        //    {
+        //        if (!ModelState.IsValid)
+        //            return View(model);
+
+        //        _unitOfWork.Actype.Update(model);
+        //        await _unitOfWork.SaveAsync();
+
+        //        // 🔥 AUDIT LOG
+        //        await _audit.LogAsync(
+        //            "Update",
+        //            "AccountType",
+        //            model.COCODE.ToString(),
+        //            $"Updated Account Type: {model.ACNAME}"
+        //        );
+
+        //        TempData["InfoMessage"] = "✏️ Account Type updated successfully!";
+        //        return RedirectToAction("Index");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        await _audit.LogAsync(
+        //            "Error",
+        //            "AccountType",
+        //            model.COCODE.ToString(),
+        //            ex.Message
+        //        );
+
+        //        TempData["ErrorMessage"] = "❌ Failed to update Account Type!";
+        //        return View(model);
+        //    }
+        //}
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Actype model)
@@ -94,14 +131,16 @@ namespace Nskg.Controllers
                 if (!ModelState.IsValid)
                     return View(model);
 
+                // ✅ FIX
+                model.COCODE = User.GetCompanyId().ToString();
+
                 _unitOfWork.Actype.Update(model);
                 await _unitOfWork.SaveAsync();
 
-                // 🔥 AUDIT LOG
                 await _audit.LogAsync(
                     "Update",
                     "AccountType",
-                    model.COCODE.ToString(),
+                    model.COCODE,
                     $"Updated Account Type: {model.ACNAME}"
                 );
 
@@ -113,7 +152,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Error",
                     "AccountType",
-                    model.COCODE.ToString(),
+                    model.COCODE ?? "0",
                     ex.Message
                 );
 
@@ -121,7 +160,6 @@ namespace Nskg.Controllers
                 return View(model);
             }
         }
-
         // ✅ DELETE (AJAX)
         [HttpDelete]
         [ValidateAntiForgeryToken]
@@ -151,12 +189,24 @@ namespace Nskg.Controllers
             }
             catch (Exception ex)
             {
+                // Log the error
                 await _audit.LogAsync(
                     "Error",
                     "AccountType",
                     id,
                     ex.Message
                 );
+
+                // If this is a database update error due to foreign key constraint (related data exists),
+                // return a friendly message instead of the raw exception text.
+                var baseEx = ex.GetBaseException();
+                if (ex is DbUpdateException || (baseEx != null &&
+                    (baseEx.Message.Contains("REFERENCE", System.StringComparison.OrdinalIgnoreCase) ||
+                     baseEx.Message.Contains("foreign key", System.StringComparison.OrdinalIgnoreCase) ||
+                     baseEx.Message.Contains("constraint", System.StringComparison.OrdinalIgnoreCase))))
+                {
+                    return Json(new { success = false, message = "Cannot delete Account Type because related records exist. Remove related records first." });
+                }
 
                 return Json(new { success = false, message = ex.Message });
             }
