@@ -1,9 +1,6 @@
 ﻿@model List<AcPara>
 
-@* <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
- *@
+
 <h3 class="mb-3">Accounts Parameters</h3>
 
 <button class="btn btn-primary mb-3" onclick="openAdd()">+ Add Account</button>
@@ -30,7 +27,10 @@
                 <td>@item.Opening</td>
                 <td>
                     <button class="btn btn-sm btn-warning" onclick="edit('@item.Id')">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteItem('@item.Id')">Delete</button>
+                    <button class="btn btn-sm btn-danger"
+                            onclick="deleteItem(event,'@item.Id','@item.Acname',this)">
+                        Delete
+                    </button>
                 </td>
             </tr>
         }
@@ -127,8 +127,7 @@
                     $('#formModal').modal('show');
                 });
         }
-
-                function save() {
+                 function save() {
 
             let data = {
                 Id: parseInt($('#Id').val()) || 0,
@@ -139,26 +138,105 @@
                 GLChart3Id: $('#Parent').val() === 'C' ? parseInt($('#Accode').val()) : null
             };
 
-            let mode = $('#mode').val();
-            let url = mode === 'edit' ? '/AcPara/Edit' : '/AcPara/Create';
+            let url = $('#mode').val() === 'edit'
+                ? '/AcPara/Edit'
+                : '/AcPara/Create';
 
             fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
+            .then(res => res.json())
             .then(res => {
-                if (!res.ok) return res.text().then(err => { throw err });
-                location.reload();
-            })
-            .catch(err => alert(err));
-        }
 
-        function deleteItem(id) {
-        if (confirm("Delete this account?")) {
-        fetch('/AcPara/Delete?id=' + id, { method: 'POST' })
-        .then(() => location.reload());
+                if (res.success) {
+
+                    // 🔥 message store karo
+                    localStorage.setItem("successMessage", res.message);
+
+                    // 🔥 direct reload
+                    location.reload();
+
+                } else {
+                    toastr.error(res.message);
+                }
+
+            })
+            .catch(() => {
+                toastr.error("Server error!");
+            });
         }
+        
+                function deleteItem(event, id, name, btn) {
+
+            event.preventDefault();
+
+            let row = $(btn).closest('tr');
+
+            Swal.fire({
+                title: 'Are you sure?',
+                html: `You want to delete <b>"${name}"</b>?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                width: 360,
+                showLoaderOnConfirm: true,
+
+                preConfirm: async () => {
+                    try {
+
+                        const response = await fetch('/AcPara/Delete?id=' + id, {
+                            method: 'POST'
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok)
+                            throw new Error(result.message || "Delete failed");
+
+                        return result;
+
+                    } catch (error) {
+                        Swal.showValidationMessage(`Error: ${error}`);
+                    }
+                },
+
+                allowOutsideClick: () => !Swal.isLoading()
+
+            }).then((result) => {
+
+                if (result.isConfirmed && result.value) {
+
+                    if (result.value.success === false) {
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: result.value.message,
+                            timer: 2000,
+                            showConfirmButton: false,
+                            width: 320
+                        });
+
+                    } else {
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: 'Account deleted successfully!',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            width: 320
+                        });
+
+                        row.remove(); // no reload
+                    }
+                }
+            });
         }
 
                    $('#Parent').change(function () {
@@ -186,6 +264,20 @@
             let text = $("#Accode option:selected").text();
             let name = text.split('-')[1];
             $('#Acname').val(name);
+        });
+    </script>
+    <script>
+                $(document).ready(function () {
+
+            var msg = localStorage.getItem("successMessage");
+
+            if (msg) {
+                toastr.success(msg);
+
+                // ek baar show ho jaye phir delete
+                localStorage.removeItem("successMessage");
+            }
+
         });
     </script>
 }

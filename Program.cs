@@ -6,8 +6,11 @@ using Nskg.Repositories.Interfaces;
 using Nskg.Service;
 using Nskg.Service.Interfaces;
 using Nskg.Services;
+using System.Text; // 👈 ADD THIS
+
 
 var builder = WebApplication.CreateBuilder(args);
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 // DB Connection
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

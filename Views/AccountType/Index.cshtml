@@ -50,9 +50,10 @@
                                             <a asp-action="Edit" asp-route-id="@item.ACTYPE" class="btn btn-sm btn-primary">
                                                 <i class="fa fa-pencil"></i> Edit
                                             </a>
+                                          
                                             <button type="button"
                                                     class="btn btn-sm btn-danger"
-                                                    onclick="return confirmDelete(event, '@item.ACNAME', '/AccountType/Delete/@item.ACTYPE')">
+                                                    onclick="return confirmDelete(event, '@item.ACNAME', '/AccountType/Delete/@item.ACTYPE', this)">
                                                 <i class="fa fa-trash"></i> Delete
                                             </button>
                                         </div>
@@ -85,26 +86,83 @@
             });
         });
 
-            function confirmDelete(e, name, url) {
-            e.preventDefault();
 
-            if (!confirm('Are you sure you want to delete "' + name + '"?'))
-                return;
+                function confirmDelete(event, name, url, btn) {
 
-            fetch(url, {
-                method: "DELETE",
-                headers: {
-                    "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val()
+            event.preventDefault();
+
+            // 🔥 current row (for remove without reload)
+            let tableRow = $(btn).closest('tr');
+
+            Swal.fire({
+                title: 'Are you sure?',
+                html: `You want to delete <b>"${name}"</b>?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                width: 360,                     // ✅ SAME SIZE
+                showLoaderOnConfirm: true,      // ✅ LOADER
+
+                preConfirm: async () => {
+                    try {
+                        const token = $('input[name="__RequestVerificationToken"]').val();
+
+                        const response = await fetch(url, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': token
+                            }
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok)
+                            throw new Error(result.message || 'Delete failed');
+
+                        return result;
+
+                    } catch (error) {
+                        Swal.showValidationMessage(`Error: ${error.message}`);
+                    }
+                },
+
+                allowOutsideClick: () => !Swal.isLoading()
+
+            }).then((result) => {
+
+                if (result.isConfirmed && result.value?.success) {
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: result.value.message,
+                        showConfirmButton: false,
+                        timer: 1800,
+                        width: 320               // ✅ SAME SUCCESS SIZE
+                    });
+
+                    // ✅ NO reload → smooth UI
+                    tableRow.remove();
+
                 }
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) {
-                    location.reload();
+                else if (result.isConfirmed && !result.value?.success) {
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: result.value?.message || 'Delete failed!',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        width: 320               // ✅ SAME ERROR SIZE
+                    });
                 }
-            })
-            .catch(err => console.error(err));
+            });
+
+            return false;
         }
     </script>
 }

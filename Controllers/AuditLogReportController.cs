@@ -20,6 +20,9 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
         {
             _config = config;
             _env = env;
+
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
         }
 
         // GET: Display form
@@ -58,6 +61,7 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
             return dt;
         }
 
+
         [HttpGet]
         public IActionResult GeneratePDF(DateTime fromDate, DateTime toDate, int? companyId, int? financialYearId)
         {
@@ -65,55 +69,113 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
             {
                 DataTable dt = GetAuditLogs(fromDate, toDate, companyId, financialYearId);
 
-                if (dt.Rows.Count == 0)
+                if (dt == null || dt.Rows.Count == 0)
                 {
                     return Content("No data found for selected date range.");
                 }
 
                 string reportPath = Path.Combine(_env.WebRootPath, "Reports", "AuditLogrpt.rdlc");
 
-                // Check if file exists
                 if (!System.IO.File.Exists(reportPath))
                 {
-                    return Content($"Report file not found at: {reportPath}");
+                    return Content($"Report file not found: {reportPath}");
                 }
 
                 using (LocalReport report = new LocalReport())
                 {
                     report.ReportPath = reportPath;
+
                     report.DataSources.Clear();
+
+                    dt.TableName = "DSAuditLog";
                     report.DataSources.Add(new ReportDataSource("DSAuditLog", dt));
 
                     byte[] pdfBytes = report.Render("PDF");
 
-                    return File(pdfBytes, "application/pdf", "AuditLogReport.pdf");
+                    if (pdfBytes == null || pdfBytes.Length < 1000)
+                    {
+                        try
+                        {
+                            byte[] htmlBytes = report.Render("HTML5");
+                            if (htmlBytes != null && htmlBytes.Length > 0)
+                            {
+                                try
+                                {
+                                    var debugHtmlPath = Path.Combine(_env.WebRootPath, "Reports", "_last_audit_report_debug.html");
+                                    System.IO.File.WriteAllBytes(debugHtmlPath, htmlBytes);
+                                    return File(htmlBytes, "text/html");
+                                }
+                                catch
+                                {
+                                    return File(htmlBytes, "text/html");
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // ignore fallback errors
+                        }
+
+                        if (pdfBytes != null && pdfBytes.Length > 0)
+                        {
+                            try
+                            {
+                                var debugPath = Path.Combine(_env.WebRootPath, "Reports", "_last_audit_report_debug.pdf");
+                                System.IO.File.WriteAllBytes(debugPath, pdfBytes);
+                                return Content($"PDF generation failed or corrupted output. Debug file written to: {debugPath}");
+                            }
+                            catch
+                            {
+                                // ignore file write errors
+                            }
+                        }
+
+                        return Content("PDF generation failed or corrupted output. Try opening report as HTML (fallback) or verify RDLC dataset names and resources.");
+                    }
+
+                    return File(pdfBytes, "application/pdf", "AuditLogReport.pdf", enableRangeProcessing: true);
                 }
             }
             catch (Exception ex)
             {
-                // Detailed error
-                return Content($"Error: {ex.Message}\n\nStack Trace: {ex.StackTrace}");
+                return Content($"ERROR: {ex.Message}\n\nSTACK: {ex.StackTrace}");
             }
         }
 
+
         [HttpGet]
-        public IActionResult ViewReport(DateTime fromDate, DateTime toDate, int? companyId, int? financialYearId)
+        public IActionResult OnScreenReport(DateTime fromDate, DateTime toDate, int? companyId, int? financialYearId)
         {
             var dt = GetAuditLogs(fromDate, toDate, companyId, financialYearId);
 
-            ViewBag.FromDate = fromDate.ToString("yyyy-MM-dd");
-            ViewBag.ToDate = toDate.ToString("yyyy-MM-dd");
-            ViewBag.AuditLogs = dt;
-            ViewBag.Message = dt.Rows.Count == 0 ? "No data found for selected date range." : string.Empty;
+            if (dt == null || dt.Rows.Count == 0)
+            {
+                return Content("<h4 style='color:red;'>No data found</h4>", "text/html");
+            }
 
-            return View("Index");
+            string reportPath = Path.Combine(_env.WebRootPath, "Reports", "AuditLogrpt.rdlc");
+
+            using (LocalReport report = new LocalReport())
+            {
+                report.ReportPath = reportPath;
+
+                dt.TableName = "DSAuditLog";
+                report.DataSources.Clear();
+                report.DataSources.Add(new ReportDataSource("DSAuditLog", dt));
+
+                // HTML output for iframe
+                byte[] htmlBytes = report.Render("HTML5");
+
+                return File(htmlBytes, "text/html");
+            }
         }
 
         [HttpGet]
         public IActionResult ExportExcel(DateTime fromDate, DateTime toDate, int? companyId, int? financialYearId)
         {
             var dt = GetAuditLogs(fromDate, toDate, companyId, financialYearId);
-            if (dt.Rows.Count == 0)
+
+            if (dt == null || dt.Rows.Count == 0)
             {
                 return Content("No data found for selected date range.");
             }
@@ -124,29 +186,29 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
             return File(Encoding.UTF8.GetBytes(csv), "text/csv", fileName);
         }
 
-        private static string ConvertDataTableToCsv(DataTable dataTable)
+        private string ConvertDataTableToCsv(DataTable dt)
         {
+            if (dt == null || dt.Columns.Count == 0)
+                return string.Empty;
+
             var sb = new StringBuilder();
 
-            for (int i = 0; i < dataTable.Columns.Count; i++)
+            // header
+            for (int i = 0; i < dt.Columns.Count; i++)
             {
-                sb.Append(EscapeCsv(dataTable.Columns[i].ColumnName));
-                if (i < dataTable.Columns.Count - 1)
-                {
-                    sb.Append(',');
-                }
+                if (i > 0) sb.Append(',');
+                sb.Append(EscapeCsv(dt.Columns[i].ColumnName));
             }
             sb.AppendLine();
 
-            foreach (DataRow row in dataTable.Rows)
+            // rows
+            foreach (DataRow row in dt.Rows)
             {
-                for (int i = 0; i < dataTable.Columns.Count; i++)
+                for (int i = 0; i < dt.Columns.Count; i++)
                 {
-                    sb.Append(EscapeCsv(row[i]?.ToString() ?? string.Empty));
-                    if (i < dataTable.Columns.Count - 1)
-                    {
-                        sb.Append(',');
-                    }
+                    if (i > 0) sb.Append(',');
+                    var val = row[i] == DBNull.Value ? string.Empty : row[i].ToString();
+                    sb.Append(EscapeCsv(val));
                 }
                 sb.AppendLine();
             }
@@ -154,19 +216,17 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
             return sb.ToString();
         }
 
-        private static string EscapeCsv(string value)
+        private string EscapeCsv(string s)
         {
-            if (value.Contains('"'))
-            {
-                value = value.Replace("\"", "\"\"");
-            }
+            if (string.IsNullOrEmpty(s))
+                return string.Empty;
 
-            if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+            // If contains quote, comma, or newline, wrap in quotes and escape quotes by doubling them
+            if (s.Contains("\"") || s.Contains(",") || s.Contains("\n") || s.Contains("\r"))
             {
-                return $"\"{value}\"";
+                return "\"" + s.Replace("\"", "\"\"") + "\"";
             }
-
-            return value;
+            return s;
         }
     }
 }
