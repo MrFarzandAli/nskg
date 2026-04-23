@@ -1,0 +1,24 @@
+﻿EXEC sp_GetAuditLogs  
+    @FromDate = '2026-04-01',  
+    @ToDate = '2026-04-30',  
+    @CompanyId = NULL,  
+    @FinancialYearId = NULL;
+
+
+
+    CREATE PROCEDURE sp_GetAuditLogs  
+    @FromDate DATETIME,  
+    @ToDate DATETIME,  
+    @CompanyId INT = NULL,          -- optional  
+    @FinancialYearId INT = NULL     -- optional  
+AS  
+BEGIN  
+    SET NOCOUNT ON;  
+  
+    SELECT *  
+    FROM AuditLogs  
+    WHERE CreatedAt BETWEEN @FromDate AND @ToDate  
+      AND (@CompanyId IS NULL OR CompanyId = @CompanyId)  
+      AND (@FinancialYearId IS NULL OR FinancialYearId = @FinancialYearId)  
+    ORDER BY CreatedAt DESC;  
+END  

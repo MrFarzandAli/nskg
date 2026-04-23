@@ -7,7 +7,7 @@
 	<meta name="keywords" content="admin, estimates, bootstrap, business, corporate, creative, management, minimal, modern, accounts, invoice, html5, responsive, CRM, Projects">
 	<meta name="author" content="Dreamguys - Bootstrap Admin Template">
 	<title> @ViewData["Title"] - HRMS admin template</title>
-		
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 	<!-- Favicon -->
 	<link rel="shortcut icon" type="image/x-icon" href="~/assets/img/favicon.png">
 		
@@ -261,6 +261,8 @@
 								<a asp-controller="Voucher" asp-action="Index" asp-route-type="BR">Bank Receipt</a>
 								<a asp-controller="Voucher" asp-action="Index" asp-route-type="BP">Bank Payment</a>
 						        <a asp-controller="auditlogreport" asp-action="Index"><i class="la la-users"></i><span>Audit Log Report</span></a>
+								<a asp-controller="GenerlLedgerReport" asp-action="Index"><i class="la la-users"></i><span>General Ledger Report</span></a>
+
 
 							</li>						
 						}

@@ -1,0 +1,161 @@
+﻿@{
+ViewData["Title"] = "General Ledger Report";
+
+
+var fromDateValue = ViewBag.FromDate as string;
+var toDateValue = ViewBag.ToDate as string;
+var accodeValue = ViewBag.Accode as string;
+
+
+}
+
+<style>
+    .custom-card { border-radius: 10px; }
+    .heading-glow { font-weight: 600; }
+    .custom-btn { border-radius: 6px; }
+    iframe { border-radius: 8px; }
+</style>
+
+<div class="container mt-4">
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold">General Ledger Report</h3>
+</div>
+
+<!-- Filter Card -->
+<div class="card custom-card mb-4">
+
+    <div class="card-header">
+        <h5 class="mb-0 heading-glow">
+            <i class="fa fa-filter me-2"></i> Filter Report
+        </h5>
+    </div>
+   <div class="card-body">
+
+    <form method="get">
+
+        <div class="row g-3">
+
+            <!-- LEFT SIDE FILTERS -->
+            <div class="col-md-3">
+                <label class="form-label">Account Code</label>
+                <input type="text" class="form-control" name="accode" value="@accodeValue" required />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">From Date</label>
+                <input type="date" class="form-control" name="fromDate" value="@fromDateValue" required />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">To Date</label>
+                <input type="date" class="form-control" name="toDate" value="@toDateValue" required />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Company Id</label>
+                <input type="number" class="form-control" name="companyId" required />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Financial Year Id</label>
+                <input type="number" class="form-control" name="financialYearId" required />
+            </div>
+
+            <!-- BUTTON ROW (RIGHT SIDE CLEAN) -->
+
+            <div class="col-md-12 d-flex justify-content-end gap-2 mt-2">
+
+    <!-- EXCEL -->
+    <button type="submit"
+            class="btn btn-success btn-sm"
+            asp-action="ExportExcel">
+        <i class="fa fa-file-excel-o me-1"></i> Excel
+    </button>
+
+    <!-- PDF -->
+    <button type="submit"
+            class="btn btn-danger btn-sm"
+            asp-action="GeneratePDF"
+            formtarget="_blank">
+        <i class="fa fa-file-pdf-o me-1"></i> PDF
+    </button>
+
+    <!-- ON SCREEN -->
+    <button type="button"
+            class="btn btn-info btn-sm text-white"
+            onclick="loadOnScreenReport()">
+        <i class="fa fa-desktop me-1"></i> View
+    </button>
+
+</div>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+
+</div>
+
+<!-- 🔵 ON SCREEN REPORT -->
+<div id="reportCard" class="card shadow-sm" style="display:none;">
+
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">On Screen Report</h5>
+    </div>
+
+    <!-- LOADER -->
+    <div id="reportLoader" style="display:none; padding:20px; text-align:center;">
+        <div class="spinner-border text-primary"></div>
+        <div class="mt-2">Loading report...</div>
+    </div>
+
+    <!-- REPORT -->
+    <div class="card-body p-0">
+        <iframe id="reportFrame"
+                style="width:100%; height:650px; display:none;"></iframe>
+    </div>
+
+</div>
+
+</div>
+
+<script>
+    function loadOnScreenReport() {
+
+        var accode = $('input[name="accode"]').val();
+        var fromDate = $('input[name="fromDate"]').val();
+        var toDate = $('input[name="toDate"]').val();
+        var companyId = $('input[name="companyId"]').val();
+        var financialYearId = $('input[name="financialYearId"]').val();
+
+        if (!accode || !fromDate || !toDate || !companyId || !financialYearId) {
+            alert("Please fill all fields");
+            return;
+        }
+
+        $('#reportCard').show();
+        $('#reportLoader').show();
+        $('#reportFrame').hide();
+
+        var url = '/GenerlLedgerReport/OnScreenReport'
+            + '?accode=' + accode
+            + '&fromDate=' + fromDate
+            + '&toDate=' + toDate
+            + '&companyId=' + companyId
+            + '&financialYearId=' + financialYearId;
+
+        $('#reportFrame').off('load');
+
+        $('#reportFrame').attr('src', url);
+
+        $('#reportFrame').on('load', function () {
+            $('#reportLoader').hide();
+            $('#reportFrame').show();
+        });
+    }
+</script>
