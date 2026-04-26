@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nskg.Data;
 using Nskg.Extensions;
+using Nskg.Helper;
 using Nskg.Models;
 using Nskg.Models.ViewModels;
 using Nskg.Repositories.Interfaces;
+using System.Security.Principal;
 
 namespace Nskg.Controllers
 {
@@ -67,7 +69,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync("Error", "GLChart1", "0", ex.Message);
                 return Json(new { success = false, message = ex.Message });
             }
-        }
+        }       
 
         [HttpPost]
         public async Task<IActionResult> UpdateAccount(GLChart1 model)
@@ -151,6 +153,45 @@ namespace Nskg.Controllers
                 await _audit.LogAsync("Error", "GLChart3", "0", ex.Message);
                 return Json(new { success = false, message = ex.Message });
             }
+        }
+
+        [HttpPost]
+        public IActionResult CreateAjax(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return Json(new { success = false, message = "Name required" });
+            }
+
+            var customeracountId = _context.AcPara
+                   .Where(a => AccountCategories.Customer.Contains(a.ActypeCode)
+                               && a.Cocode == User.GetCompanyId().ToString()
+                               && a.Parent == "P").Select(x => x.Id).Max();
+
+            var glchart1 = _context.GLChart1.Find(customeracountId);
+
+            var customer = new GLChart3
+            {
+                GLChart1Id = glchart1.Id,
+                AC1 = glchart1.AC1,
+                AC3 = GenerateAC3(glchart1.Id),
+                ACC = glchart1.AC1 + GenerateAC3(glchart1.Id),
+                AcType = glchart1.AcType,
+                CType = glchart1.CType,
+                CHName = glchart1.Name,
+                CoCode = User.GetCompanyId().ToString(),
+                Name = name
+            };
+
+            _context.GLChart3.Add(customer);
+            _context.SaveChanges();
+
+            return Json(new
+            {
+                success = true,
+                id = customer.Id,
+                text = customer.Name
+            });
         }
 
         [HttpGet]

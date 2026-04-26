@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260425161439_AddBiltyTables")]
+    partial class AddBiltyTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -724,30 +727,12 @@ namespace Nskg.Migrations
                     b.Property<decimal?>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("Amount1")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal?>("AmtNet")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("BCode")
                         .HasMaxLength(3)
                         .HasColumnType("nvarchar(3)");
-
-                    b.Property<decimal?>("BilNo")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("BillTiNo")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Comm")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Comm2")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Comm3")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("CompanyId")
                         .HasColumnType("int");
@@ -756,34 +741,12 @@ namespace Nskg.Migrations
                         .HasMaxLength(9)
                         .HasColumnType("nvarchar(9)");
 
-                    b.Property<string>("CusName")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("DescCode")
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
-
-                    b.Property<decimal?>("Discount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<DateTime?>("DocDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DocNo")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("Fooder")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("FormulaCode")
-                        .HasMaxLength(2)
-                        .HasColumnType("nvarchar(2)");
-
-                    b.Property<decimal?>("Freight")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("FyId")
                         .HasColumnType("int");
@@ -796,26 +759,12 @@ namespace Nskg.Migrations
                         .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
 
-                    b.Property<DateTime?>("InvDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("InvNo")
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
-
                     b.Property<int>("IssHeadId")
                         .HasColumnType("int");
 
                     b.Property<string>("ItemCode")
                         .HasMaxLength(6)
                         .HasColumnType("nvarchar(6)");
-
-                    b.Property<decimal?>("PCommPer")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("PackingN")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<decimal?>("Packs")
                         .HasColumnType("decimal(18,2)");
@@ -846,18 +795,11 @@ namespace Nskg.Migrations
                     b.Property<decimal?>("STaxAmt")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("TotAmt")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("Unit")
                         .HasMaxLength(6)
                         .HasColumnType("nvarchar(6)");
 
                     b.Property<string>("UserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("VehicleNo")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -892,43 +834,13 @@ namespace Nskg.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("nvarchar(3)");
 
-                    b.Property<decimal?>("BilNo")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("BillTiNo")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("Cancel")
                         .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
 
-                    b.Property<string>("CartType")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("CartType2")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("CartType3")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<decimal?>("Cartage1")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Cartage2")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Cartage3")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("CoCode")
                         .HasMaxLength(2)
                         .HasColumnType("nvarchar(2)");
-
-                    b.Property<decimal?>("CommPer")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("CompanyId")
                         .HasColumnType("int");
@@ -949,21 +861,6 @@ namespace Nskg.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
 
-                    b.Property<int>("CustomerId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DCNO")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("DescYN")
-                        .HasMaxLength(1)
-                        .HasColumnType("nvarchar(1)");
-
-                    b.Property<string>("DescYN1")
-                        .HasMaxLength(1)
-                        .HasColumnType("nvarchar(1)");
-
                     b.Property<decimal?>("DisAmt")
                         .HasColumnType("decimal(18,2)");
 
@@ -978,23 +875,8 @@ namespace Nskg.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<DateTime?>("DueDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Fooder")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("FooderCode")
-                        .HasMaxLength(6)
-                        .HasColumnType("nvarchar(6)");
-
                     b.Property<int>("FyId")
                         .HasColumnType("int");
-
-                    b.Property<string>("IName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime?>("InvDate")
                         .HasColumnType("datetime2");
@@ -1002,34 +884,14 @@ namespace Nskg.Migrations
                     b.Property<long?>("InvNo")
                         .HasColumnType("bigint");
 
-                    b.Property<decimal?>("Labour")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("Lifter2")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal?>("MAmount")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("NTN")
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
 
                     b.Property<string>("Narration")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<decimal?>("NetAmt")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("OtherEx")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("PType")
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
-
-                    b.Property<decimal?>("PartyEx")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("Qty")
@@ -1052,49 +914,7 @@ namespace Nskg.Migrations
                     b.Property<decimal?>("STaxAmt")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("STaxNo")
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("SendTo")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("StationId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("T_T")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("TrName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("TrName2")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("TrName3")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Transporter")
-                        .HasMaxLength(6)
-                        .HasColumnType("nvarchar(6)");
-
-                    b.Property<string>("Transporter2")
-                        .HasMaxLength(6)
-                        .HasColumnType("nvarchar(6)");
-
-                    b.Property<string>("Transporter3")
-                        .HasMaxLength(6)
-                        .HasColumnType("nvarchar(6)");
-
                     b.Property<string>("UserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("VehicleNo")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -1102,69 +922,9 @@ namespace Nskg.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("nvarchar(3)");
 
-                    b.Property<decimal?>("WH_IT")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("WH_IT_Acc")
-                        .HasMaxLength(6)
-                        .HasColumnType("nvarchar(6)");
-
-                    b.Property<decimal?>("WH_IT_Amt")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("WH_IT_Rec")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("WH_ST")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("WH_ST_Acc")
-                        .HasMaxLength(6)
-                        .HasColumnType("nvarchar(6)");
-
-                    b.Property<decimal?>("WH_ST_Amt")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("WH_ST_Rec")
-                        .HasColumnType("datetime2");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("StationId");
 
                     b.ToTable("ISSHEAD");
-                });
-
-            modelBuilder.Entity("Nskg.Models.OpeningBalance", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Accode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Credit")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("Debit")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("FinancialYearId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("OpeningBalances");
                 });
 
             modelBuilder.Entity("Nskg.Models.Security.Form", b =>
@@ -1654,25 +1414,6 @@ namespace Nskg.Migrations
                         .IsRequired();
 
                     b.Navigation("IssHead");
-                });
-
-            modelBuilder.Entity("Nskg.Models.IssHead", b =>
-                {
-                    b.HasOne("Nskg.Models.GLChart3", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("Nskg.Models.GLChart3", "Station")
-                        .WithMany()
-                        .HasForeignKey("StationId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("Station");
                 });
 
             modelBuilder.Entity("Nskg.Models.VoDet", b =>
