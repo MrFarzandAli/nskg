@@ -5,6 +5,15 @@
     var message = ViewBag.Message as string;
     var fromDateValue = ViewBag.FromDate as string;
     var toDateValue = ViewBag.ToDate as string;
+    if (string.IsNullOrEmpty(fromDateValue))
+    {
+        fromDateValue = DateTime.Now.ToString("yyyy-MM-dd");
+    }
+
+    if (string.IsNullOrEmpty(toDateValue))
+    {
+        toDateValue = DateTime.Now.ToString("yyyy-MM-dd");
+    }
 }
 
 <style>

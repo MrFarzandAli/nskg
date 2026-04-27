@@ -2,29 +2,25 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Reporting.NETCore;
 using System.Data;
 using System.IO;
 using System.Reflection.Emit;
 using System.Text;
-using Nskg.Data; // <-- added for ApplicationDbContext
 
-namespace Nskg.Controllers  
+namespace Nskg.Controllers
 {
     [Authorize(Roles = "Admin")]
-    public class GenerlLedgerReportController : Controller
+    public class TrailBalanceReportController : Controller
     {
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
-        private readonly ApplicationDbContext _context; // <-- added
 
-        public GenerlLedgerReportController(IConfiguration config, IWebHostEnvironment env, ApplicationDbContext context)
+        public TrailBalanceReportController(IConfiguration config, IWebHostEnvironment env)
         {
             _config = config;
             _env = env;
-            _context = context; // <-- assign
 
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
@@ -40,29 +36,12 @@ namespace Nskg.Controllers
         }
         // GET: Display form
         [HttpGet]
-        //public IActionResult Index()
-        //{
-        //    return View();
-        //}
-        public IActionResult Index(string accode, string fromDate, string toDate)
+        public IActionResult Index()
         {
-            var accounts = _context.GLChart3
-                .Select(x => new
-                {
-                    Code = x.ACC,          // ya SCode agar wo use kar rahe ho
-                    Name = x.Name
-                })
-                .ToList();
-
-            ViewBag.AccountList = accounts;
-
-            ViewBag.Accode = accode;
-            ViewBag.FromDate = fromDate;
-            ViewBag.ToDate = toDate;
-
             return View();
         }
-        private DataTable GetGeneralLedger(string accode, DateTime fromDate, DateTime toDate, int companyId, int financialYearId)
+
+        private DataTable GetTrailBalance( DateTime fromDate, DateTime toDate, int companyId, int financialYearId)
         {
             DataTable dt = new DataTable();
 
@@ -70,12 +49,11 @@ namespace Nskg.Controllers
 
             using (SqlConnection con = new SqlConnection(connString))
             {
-                using (SqlCommand cmd = new SqlCommand("sp_GeneralLedger", con))
+                using (SqlCommand cmd = new SqlCommand("sp_TrialBalance", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
                     // Parameters
-                    cmd.Parameters.AddWithValue("@Accode", accode);
                     cmd.Parameters.AddWithValue("@FromDate", fromDate);
                     cmd.Parameters.AddWithValue("@ToDate", toDate);
                     cmd.Parameters.AddWithValue("@CompanyId", companyId);
@@ -94,20 +72,20 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult GeneratePDF(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult GeneratePDF(DateTime fromDate, DateTime toDate)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
             try
             {
-                DataTable dt = GetGeneralLedger( accode,  fromDate, toDate,  companyId,  financialYearId);
+                DataTable dt = GetTrailBalance(fromDate, toDate, companyId, financialYearId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
                     return Content("No data found for selected date range.");
                 }
 
-                string reportPath = Path.Combine(_env.WebRootPath, "Reports", "GeneralLedgerrpt.rdlc");
+                string reportPath = Path.Combine(_env.WebRootPath, "Reports", "TrialBalancerpt.rdlc");
 
                 if (!System.IO.File.Exists(reportPath))
                 {
@@ -117,13 +95,17 @@ namespace Nskg.Controllers
                 using (LocalReport report = new LocalReport())
                 {
                     report.ReportPath = reportPath;
-
                     report.DataSources.Clear();
 
-                    dt.TableName = "DSGeneralLedger";
-                    report.DataSources.Add(new ReportDataSource("DSGeneralLedger", dt));
+                    // Ensure dataset name matches the RDLC dataset name used by the report.
+                    dt.TableName = "DSTrailBalance";
+                    report.DataSources.Add(new ReportDataSource("DSTrailBalance", dt));
 
-                    byte[] pdfBytes = report.Render("PDF");
+                    // Use Render overload that provides warnings for better diagnostics
+                    string mimeType, encoding, fileNameExtension;
+                    string[] streams;
+                    Microsoft.Reporting.NETCore.Warning[] warnings;
+                    byte[] pdfBytes = report.Render("PDF", deviceInfo: null, out mimeType, out encoding, out fileNameExtension, out streams, out warnings);
 
                     if (pdfBytes == null || pdfBytes.Length < 1000)
                     {
@@ -166,37 +148,37 @@ namespace Nskg.Controllers
                         return Content("PDF generation failed or corrupted output. Try opening report as HTML (fallback) or verify RDLC dataset names and resources.");
                     }
 
-                    return File(pdfBytes, "application/pdf", "GeneralLedgerReport.pdf", enableRangeProcessing: true);
+                    return File(pdfBytes, "application/pdf", "TrailBalanceReport.pdf", enableRangeProcessing: true);
                 }
             }
             catch (Exception ex)
             {
                 return Content($"ERROR: {ex.Message}\n\nSTACK: {ex.StackTrace}");
             }
-        }
+            }
 
 
         [HttpGet]
-        public IActionResult OnScreenReport(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult OnScreenReport( DateTime fromDate, DateTime toDate)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
-            var dt = GetGeneralLedger(accode, fromDate, toDate, companyId, financialYearId);
+            var dt = GetTrailBalance( fromDate, toDate, companyId, financialYearId);
 
             if (dt == null || dt.Rows.Count == 0)
             {
                 return Content("<h4 style='color:red;'>No data found</h4>", "text/html");
             }
 
-            string reportPath = Path.Combine(_env.WebRootPath, "Reports", "GeneralLedgerrpt.rdlc");
+            string reportPath = Path.Combine(_env.WebRootPath, "Reports", "TrialBalancerpt.rdlc");
 
             using (LocalReport report = new LocalReport())
             {
                 report.ReportPath = reportPath;
 
-                dt.TableName = "DSGeneralLedger";
+                dt.TableName = "DSTrailBalance";
                 report.DataSources.Clear();
-                report.DataSources.Add(new ReportDataSource("DSGeneralLedger", dt));
+                report.DataSources.Add(new ReportDataSource("DSTrailBalance", dt));
 
                 // HTML output for iframe
                 byte[] htmlBytes = report.Render("HTML5");
@@ -206,11 +188,11 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult ExportExcel( DateTime fromDate, DateTime toDate)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
-            var dt = GetGeneralLedger(accode, fromDate, toDate, companyId, financialYearId);
+            var dt = GetTrailBalance( fromDate, toDate, companyId, financialYearId);
 
             if (dt == null || dt.Rows.Count == 0)
             {

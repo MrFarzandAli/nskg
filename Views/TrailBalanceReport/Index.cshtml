@@ -1,10 +1,9 @@
 ﻿@{
-ViewData["Title"] = "General Ledger Report";
+ViewData["Title"] = "Trail Balance Report";
 
 
 var fromDateValue = ViewBag.FromDate as string;
 var toDateValue = ViewBag.ToDate as string;
-var accodeValue = ViewBag.Accode as string;
 
     if (string.IsNullOrEmpty(fromDateValue))
     {
@@ -28,7 +27,7 @@ var accodeValue = ViewBag.Accode as string;
 
 <!-- Header -->
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="fw-bold">General Ledger Report</h3>
+    <h3 class="fw-bold">Trail Balance Report</h3>
 </div>
 
 <!-- Filter Card -->
@@ -46,19 +45,7 @@ var accodeValue = ViewBag.Accode as string;
         <div class="row g-3">
 
             <!-- LEFT SIDE FILTERS -->
-            <div class="col-md-3">
-                <label class="form-label">Account Code</label>
-<select class="form-control" name="accode" required>
-    <option value="">-- Select Account --</option>
-
-    @foreach (var item in ViewBag.AccountList)
-    {
-        <option value="@item.Code" 
-                selected="@(item.Code == accodeValue ? "selected" : null)">
-            @item.Code - @item.Name
-        </option>
-    }
-</select>            </div>
+           
 
             <div class="col-md-3">
                 <label class="form-label">From Date</label>
@@ -134,73 +121,22 @@ var accodeValue = ViewBag.Accode as string;
 </div>
 
 <script>
-    // function loadOnScreenReport() {
+   function loadOnScreenReport() {
 
-    //     var accode = $('input[name="accode"]').val();
-    //     var fromDate = $('input[name="fromDate"]').val();
-    //     var toDate = $('input[name="toDate"]').val();
-        
-
-    //     // if (!accode || !fromDate || !toDate ) {
-    //     //     alert("Please fill all fields");
-    //     //     return;
-    //     // }
-
-    //     $('#reportCard').show();
-    //     $('#reportLoader').show();
-    //     $('#reportFrame').hide();
-
-    //     var url = '/GenerlLedgerReport/OnScreenReport'
-    //         + '?accode=' + accode
-    //         + '&fromDate=' + fromDate
-    //         + '&toDate=' + toDate
-          
-
-    //     $('#reportFrame').off('load');
-
-    //     $('#reportFrame').attr('src', url);
-
-    //     $('#reportFrame').on('load', function () {
-    //         $('#reportLoader').hide();
-    //         $('#reportFrame').show();
-    //     });
-    // }
-    function loadOnScreenReport() {
-
-    var accode = $('select[name="accode"]').val();
     var fromDate = $('input[name="fromDate"]').val();
     var toDate = $('input[name="toDate"]').val();
 
-    // ✅ VALIDATION
-    if (!accode) {
-        alert("Please select Account Code");
+    if (!fromDate || !toDate) {
+        alert("Please fill all fields");
         return;
     }
 
-    if (!fromDate) {
-        alert("Please select From Date");
-        return;
-    }
-
-    if (!toDate) {
-        alert("Please select To Date");
-        return;
-    }
-
-    // Optional: Date validation (From > To)
-    if (fromDate > toDate) {
-        alert("From Date cannot be greater than To Date");
-        return;
-    }
-
-    // ✅ SHOW LOADER
     $('#reportCard').show();
     $('#reportLoader').show();
     $('#reportFrame').hide();
 
-    var url = '/GenerlLedgerReport/OnScreenReport'
-        + '?accode=' + accode
-        + '&fromDate=' + fromDate
+    var url = '/TrailBalanceReport/OnScreenReport'
+        + '?fromDate=' + fromDate
         + '&toDate=' + toDate;
 
     $('#reportFrame').off('load');

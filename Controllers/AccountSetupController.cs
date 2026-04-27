@@ -112,7 +112,7 @@ namespace Nskg.Controllers
                 var company = _context.Companies.FirstOrDefault(x => x.Id == model.SelectedCompanyId);
                 // ADD NEW CLAIMS
                 await _userManager.AddClaimAsync(user, new Claim("CompanyId", model.SelectedCompanyId.ToString()));
-                await _userManager.AddClaimAsync(user, new Claim("CompanyCode", company.Cocode));
+            //    await _userManager.AddClaimAsync(user, new Claim("CompanyCode", company.Cocode));
                 await _userManager.AddClaimAsync(user, new Claim("FinancialYearId", model.SelectedFinancialYearId.ToString()));
 
                 // 🔹 Refresh SignIn (VERY IMPORTANT)
