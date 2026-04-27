@@ -31,6 +31,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<AccountingService, AccountingService>();
+builder.Services.AddScoped<FinancialYearClosingService, FinancialYearClosingService>();
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 

@@ -1,0 +1,61 @@
+﻿@model List<Nskg.Models.FinancialYear>
+
+<h3>Financial Year Management</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Financial Year</th>
+            <th>Status</th>
+            <th>Select</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var fy in Model)
+        {
+            <tr>
+                <td>@fy.YearName</td>
+                <td>
+                    @if (fy.IsClosed)
+                    {
+                        <span class="badge bg-danger">Closed</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">Open</span>
+                    }
+                </td>
+                <td>
+                    <input type="radio" name="fyId" value="@fy.Id" />
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<button class="btn btn-danger" onclick="closeYear()">
+    Close Selected Financial Year
+</button>
+
+<form id="closeForm" method="post" asp-action="CloseYear">
+    <input type="hidden" id="fyId" name="fyId" />
+</form>
+
+<script>
+    function closeYear() {
+        let selected = document.querySelector('input[name="fyId"]:checked');
+
+        if (!selected) {
+            alert("Please select a financial year.");
+            return;
+        }
+
+        if (!confirm("Are you sure you want to close this financial year?")) {
+            return;
+        }
+
+        document.getElementById("fyId").value = selected.value;
+        document.getElementById("closeForm").submit();
+    }
+</script>

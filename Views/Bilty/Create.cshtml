@@ -1,0 +1,333 @@
+﻿@using Nskg.Models.ViewModels
+@model BiltyViewModel
+
+<form method="post">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-0">
+                <i class="fa fa-truck text-primary me-2"></i>
+                Bilty Entry
+            </h3>
+            <small class="text-muted">Create Transport Bilty / Goods Dispatch</small>
+        </div>
+
+        <div>
+            <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addRow()">
+                <i class="fa fa-plus"></i> Add Item
+            </button>
+
+            <button type="submit" class="btn btn-success btn-sm">
+                <i class="fa fa-save"></i> Save Bilty
+            </button>
+        </div>
+    </div>
+
+
+    <!-- MASTER SECTION -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+
+                <div class="col-md-2">
+                    <label>Bilty No</label>
+                    <input asp-for="Head.BillTiNo" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Bilty Date</label>
+                    <input asp-for="Head.DocDate" type="date" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>DC No</label>
+                    <input asp-for="Head.DocNo" readonly class="form-control form-control-sm bg-light" />
+                </div>
+
+                <div class="col-md-3">
+                    <label>Station</label>                    
+                    <select asp-for="Head.StationId" class="form-select form-select-sm"
+                            asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text"))">
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label>Party Name</label>
+
+                    <div class="input-group input-group-sm">
+                        <select asp-for="Head.CustomerId"
+                                id="CustomerId"
+                                class="form-select"
+                                asp-items="@(new SelectList(ViewBag.Customers, "Value", "Text"))">
+                        </select>
+
+                        <button type="button"
+                                class="btn btn-outline-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#customerModal">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label>Send To</label>
+                    <input asp-for="Head.SendTo" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-3">
+                    <label>Bill No</label>
+                    <input asp-for="Head.BilNo" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-6">
+                    <label>Remarks</label>
+                    <input asp-for="Head.Narration" class="form-control form-control-sm" />
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- DETAIL GRID -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white">
+            <h6 class="mb-0">
+                <i class="fa fa-list me-1 text-primary"></i>
+                Bilty Items
+            </h6>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover mb-0" id="tblItems">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>Item</th>
+                            <th width="120">Qty</th>
+                            <th width="120">Weight</th>
+                            <th width="80">Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tbodyItems">
+                        <tr id="noDataRow">
+                            <td colspan="4" class="text-center text-muted py-3">
+                                No Items Added
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- EXPENSE SECTION -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white">
+            <h6 class="mb-0">
+                <i class="fa fa-money me-1 text-success"></i>
+                Expense Details
+            </h6>
+        </div>
+
+        <div class="card-body">
+            <div class="row g-3">
+
+                <div class="col-md-2">
+                    <label>Freight</label>
+                    <input id="Cartage1" asp-for="Head.Cartage1" class="form-control form-control-sm calc-net" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Labour</label>
+                    <input id="Labour" asp-for="Head.Labour" class="form-control form-control-sm calc-net" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>T.T</label>
+                    <input id="T_T" asp-for="Head.T_T" class="form-control form-control-sm calc-net" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Lifter</label>
+                    <input id="Cartage3" asp-for="Head.Cartage3" class="form-control form-control-sm calc-net" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Local Freight</label>
+                    <input id="Cartage2" asp-for="Head.Cartage2" class="form-control form-control-sm calc-net" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Party Expense</label>
+                    <input asp-for="Head.PartyEx" class="form-control form-control-sm calc-net" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Lifter2</label>
+                    <input asp-for="Head.Lifter2" class="form-control form-control-sm calc-net" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Other</label>
+                    <input asp-for="Head.OtherEx" class="form-control form-control-sm calc-net" />
+                </div>
+
+                <div class="col-md-3">
+                    <label>Net Amount</label>
+                    <input asp-for="Head.NetAmt" readonly class="form-control form-control-sm bg-light" />
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</form>
+
+<div class="modal fade" id="customerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Add Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <label>Customer Name</label>
+                <input type="text" id="CustomerName" class="form-control" />
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+
+                <button type="button" class="btn btn-success" onclick="saveCustomer()">
+                    Save
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        
+                function saveCustomer() {
+
+            let name = $("#CustomerName").val();
+
+            if (name.trim() === "") {
+                alert("Customer name required");
+                return;
+            }
+
+            $.ajax({
+                url: '/GLChart/CreateAjax',
+                type: 'POST',
+                data: { name: name },
+                success: function (res) {
+
+                    if (res.success) {
+
+                        // add new option in dropdown
+                        let newOption = new Option(res.text, res.id, true, true);
+                        $('#CustomerId').append(newOption).trigger('change');
+
+                        // clear and close modal
+                        $("#CustomerName").val("");
+                        $("#customerModal").modal('hide');
+
+                    } else {
+                        alert(res.message);
+                    }
+                },
+                error: function () {
+                    alert("Error saving customer");
+                }
+            });
+        }
+        
+        let i = 0;
+
+        function addRow() {
+
+            const noData = document.getElementById("noDataRow");
+            if (noData) noData.remove();
+
+            let row = `
+            <tr>
+                <td>
+                    <input name="Details[${i}].IName" value="NOS"
+                           class="form-control form-control-sm"/>
+                </td>
+
+                <td>
+                    <input name="Details[${i}].Qty" type="number" step="0.01"
+                           class="form-control form-control-sm qty"/>
+                </td>
+
+                <td>
+                    <input name="Details[${i}].QtyPerPack" type="number" step="0.01"
+                           class="form-control form-control-sm qtyperpack"/>
+                </td>
+
+                <td class="text-center">
+                    <button type="button" class="btn btn-danger btn-sm"
+                            onclick="removeRow(this)">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+
+            $("#tbodyItems").append(row);
+            i++;
+        }
+
+        function removeRow(btn) {
+            $(btn).closest("tr").remove();
+
+            if ($("#tbodyItems tr").length === 0) {
+                $("#tbodyItems").html(`
+                    <tr id="noDataRow">
+                        <td colspan="4" class="text-center text-muted py-3">
+                            No Items Added
+                        </td>
+                    </tr>
+                `);
+            }
+        }
+
+        // ✅ NEW NET AMOUNT LOGIC
+        function calculateNetAmount() {
+
+            let cartage1 = parseFloat($("#Cartage1").val()) || 0;
+            let cartage2 = parseFloat($("#Cartage2").val()) || 0;
+            let cartage3 = parseFloat($("#Cartage3").val()) || 0;
+            let labour   = parseFloat($("#Labour").val()) || 0;
+            let tt       = parseFloat($("#T_T").val()) || 0;
+
+            let netAmt = cartage1 + cartage2 + cartage3 + labour + tt;
+
+            $("#Head_NetAmt").val(netAmt.toFixed(2));
+        }
+
+        // realtime update for ALL cost fields
+        $(document).on("input", "#Cartage1, #Cartage2, #Cartage3, #Labour, #T_T", function () {
+            calculateNetAmount();
+        });
+
+        $(document).ready(function () {
+            addRow();
+            calculateNetAmount();
+        });
+    </script>
+}

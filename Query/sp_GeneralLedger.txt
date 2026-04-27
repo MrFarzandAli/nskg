@@ -10,6 +10,10 @@ EXEC sp_GeneralLedger
     @CompanyId = 2,
     @FinancialYearId = 2;
 
+    ALTER TABLE OpeningBalance
+ADD CONSTRAINT UQ_OpeningBalance
+UNIQUE (CompanyId, FinancialYearId, Accode);
+
 ALTER PROCEDURE sp_GeneralLedger
 (
     @Accode NVARCHAR(20),
@@ -82,4 +86,116 @@ BEGIN
     FROM LedgerData
     ORDER BY SortOrder, Docdate, Id;
 
-END                                         
+END                      
+
+
+ALTER PROCEDURE sp_GeneralLedger 
+(
+    @Accode NVARCHAR(20),
+    @FromDate DATE,
+    @ToDate DATE,
+    @CompanyId INT,
+    @FinancialYearId INT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    ---------------------------------------------------
+    -- VARIABLES
+    ---------------------------------------------------
+    DECLARE @OBDebit DECIMAL(18,2) = 0;
+    DECLARE @OBCredit DECIMAL(18,2) = 0;
+
+    DECLARE @PrevDebit DECIMAL(18,2) = 0;
+    DECLARE @PrevCredit DECIMAL(18,2) = 0;
+
+    DECLARE @OpeningBalance DECIMAL(18,2) = 0;
+
+    ---------------------------------------------------
+    -- 1. GET STORED OPENING BALANCE
+    ---------------------------------------------------
+    SELECT
+        @OBDebit  = ISNULL(SUM(Debit), 0),
+        @OBCredit = ISNULL(SUM(Credit), 0)
+    FROM OpeningBalance
+    WHERE Accode = @Accode
+      AND CompanyId = @CompanyId
+      AND FinancialYearId = @FinancialYearId;
+
+    ---------------------------------------------------
+    -- 2. GET PREVIOUS TRANSACTIONS BEFORE FROM DATE
+    ---------------------------------------------------
+    SELECT
+        @PrevDebit  = ISNULL(SUM(Debit), 0),
+        @PrevCredit = ISNULL(SUM(Credit), 0)
+    FROM GLTrans
+    WHERE Accode = @Accode
+      AND Docdate < @FromDate
+      AND CompanyId = @CompanyId
+      AND FinancialYearId = @FinancialYearId;
+
+    ---------------------------------------------------
+    -- 3. FINAL OPENING BALANCE
+    ---------------------------------------------------
+    SET @OpeningBalance =
+          (@OBDebit - @OBCredit)
+        + (@PrevDebit - @PrevCredit);
+
+    ---------------------------------------------------
+    -- 4. LEDGER DATA
+    ---------------------------------------------------
+    ;WITH LedgerData AS
+    (
+        -----------------------------------------
+        -- Opening Balance Row
+        -----------------------------------------
+        SELECT 
+            0 AS SortOrder,
+            NULL AS Docdate,
+            '' AS DocNo,
+            'Opening Balance' AS Narration,
+            CASE WHEN @OpeningBalance > 0 THEN @OpeningBalance ELSE 0 END AS Debit,
+            CASE WHEN @OpeningBalance < 0 THEN ABS(@OpeningBalance) ELSE 0 END AS Credit,
+            @OpeningBalance AS Balance,
+            0 AS Id
+
+        UNION ALL
+
+        -----------------------------------------
+        -- Current Period Transactions
+        -----------------------------------------
+        SELECT 
+            1 AS SortOrder,
+            Docdate,
+            DocNo,
+            ISNULL(Narration,'') AS Narration,
+            Debit,
+            Credit,
+            @OpeningBalance 
+            + SUM(Debit - Credit) OVER (
+                ORDER BY Docdate, Id
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            ) AS Balance,
+            Id
+        FROM GLTrans
+        WHERE Accode = @Accode
+          AND Docdate BETWEEN @FromDate AND @ToDate
+          AND CompanyId = @CompanyId
+          AND FinancialYearId = @FinancialYearId
+    )
+
+    ---------------------------------------------------
+    -- FINAL OUTPUT
+    ---------------------------------------------------
+    SELECT 
+        Docdate,
+        DocNo,
+        Narration,
+        Debit,
+        Credit,
+        Balance
+    FROM LedgerData
+    ORDER BY SortOrder, Docdate, Id;
+
+END

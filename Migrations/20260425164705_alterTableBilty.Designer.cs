@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260425164705_alterTableBilty")]
+    partial class alterTableBilty
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -854,8 +857,8 @@ namespace Nskg.Migrations
                         .HasColumnType("nvarchar(6)");
 
                     b.Property<string>("UserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("VehicleNo")
                         .HasMaxLength(20)
@@ -948,9 +951,6 @@ namespace Nskg.Migrations
                     b.Property<string>("CusTel")
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
-
-                    b.Property<int>("CustomerId")
-                        .HasColumnType("int");
 
                     b.Property<string>("DCNO")
                         .HasMaxLength(100)
@@ -1060,9 +1060,6 @@ namespace Nskg.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("StationId")
-                        .HasColumnType("int");
-
                     b.Property<decimal?>("T_T")
                         .HasColumnType("decimal(18,2)");
 
@@ -1091,8 +1088,8 @@ namespace Nskg.Migrations
                         .HasColumnType("nvarchar(6)");
 
                     b.Property<string>("UserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("VehicleNo")
                         .HasMaxLength(20)
@@ -1130,41 +1127,7 @@ namespace Nskg.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("StationId");
-
                     b.ToTable("ISSHEAD");
-                });
-
-            modelBuilder.Entity("Nskg.Models.OpeningBalance", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Accode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Credit")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("Debit")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("FinancialYearId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("OpeningBalances");
                 });
 
             modelBuilder.Entity("Nskg.Models.Security.Form", b =>
@@ -1654,25 +1617,6 @@ namespace Nskg.Migrations
                         .IsRequired();
 
                     b.Navigation("IssHead");
-                });
-
-            modelBuilder.Entity("Nskg.Models.IssHead", b =>
-                {
-                    b.HasOne("Nskg.Models.GLChart3", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("Nskg.Models.GLChart3", "Station")
-                        .WithMany()
-                        .HasForeignKey("StationId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("Station");
                 });
 
             modelBuilder.Entity("Nskg.Models.VoDet", b =>
