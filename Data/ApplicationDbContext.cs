@@ -28,6 +28,8 @@ namespace Nskg.Data
         public DbSet<VoDet> VoDet { get; set; }
         public DbSet<IssHead> IssHead { get; set; }
         public DbSet<IssDetail> IssDetail { get; set; }
+        public DbSet<ChallanHead> ChallanHead { get; set; }
+        public DbSet<ChallanDet> ChallanDet { get; set; }
         public DbSet<GLTrans> GLTrans { get; set; }
         public DbSet<VoucherTypeSetting> VoucherTypeSettings { get; set; }
         public DbSet<OpeningBalance> OpeningBalances { get; set; }

@@ -34,8 +34,8 @@ namespace Nskg.Controllers
             }
             catch (Exception ex)
             {
-                _audit.LogAsync("Error", "Voucher", "0", ex.Message).Wait();
-                TempData["ErrorMessage"] = "❌ Failed to load vouchers!";
+                _audit.LogAsync("Error", "Bilty", "0", ex.Message).Wait();
+                TempData["ErrorMessage"] = "❌ Failed to load bilty!";
                 return View(new List<IssHead>());
             }
         }
@@ -285,7 +285,7 @@ namespace Nskg.Controllers
 
                 _context.SaveChanges();
 
-                _audit.LogAsync("Delete", "Voucher", id.ToString(),
+                _audit.LogAsync("Delete", "Bilty", id.ToString(),
                     $"Deleted: {v.DocNo}").Wait();
 
                 return Json(new { success = true, message = "Bilty deleted successfully!" });

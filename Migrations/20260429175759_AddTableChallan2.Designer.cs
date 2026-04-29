@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260429175759_AddTableChallan2")]
+    partial class AddTableChallan2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -678,9 +681,6 @@ namespace Nskg.Migrations
                     b.Property<string>("StationCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("StationId")
-                        .HasColumnType("int");
-
                     b.Property<decimal?>("TotBillTi")
                         .HasColumnType("decimal(18,2)");
 
@@ -701,9 +701,6 @@ namespace Nskg.Migrations
 
                     b.Property<string>("TransCode")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TransId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Transporter")
                         .HasColumnType("nvarchar(max)");
