@@ -18,6 +18,10 @@ namespace Nskg.Controllers
             _context = context;
             _audit = audit;   // ✅ ADD
         }
+        private string GetUser()
+        {
+            return User?.Identity?.Name ?? "System";
+        }
 
         public IActionResult Index()
         {
@@ -30,6 +34,7 @@ namespace Nskg.Controllers
                 .ToList();
 
             var data = _context.AcPara
+                .Where(x => !x.IsDeleted)   // 🔥 ADD THIS
                 .Include(x => x.Actype)
                 .Include(x => x.GLChart1)
                 .Include(x => x.GLChart3)
@@ -67,7 +72,10 @@ namespace Nskg.Controllers
 
                 if (_context.AcPara.Any(x => x.Accode == model.Accode))
                     return Json(new { success = false, message = "Account code already exists!" });
-
+                // 🔥 SET AUDIT FIELDS
+                model.CreatedOn = DateTime.Now;
+                model.CreatedBy = GetUser();
+                model.IsDeleted = false;
                 _context.AcPara.Add(model);
                 _context.SaveChanges();
 
@@ -120,7 +128,9 @@ namespace Nskg.Controllers
                     data.Accode = gl?.ACC;
                     data.Acname = gl?.Name;
                 }
-
+                // 🔥 AUDIT UPDATE
+                data.ModifiedOn = DateTime.Now;
+                data.ModifiedBy = GetUser();
                 _context.SaveChanges();
 
                 await _audit.LogAsync("Update", "AcPara", model.Id.ToString(), $"Updated Account: {data.Acname}");
@@ -145,8 +155,13 @@ namespace Nskg.Controllers
             var used = _context.VoDet.Any(x => x.Acc == data.Accode);
             if (used)
                 return Json(new { success = false, message = "Account used in transactions" });
+            // ✅ SOFT DELETE
+            data.IsDeleted = true;
+            data.ModifiedOn = DateTime.Now;
+            data.ModifiedBy = User?.Identity?.Name ?? "System";
 
-            _context.AcPara.Remove(data);
+            _context.AcPara.Update(data);
+            //  _context.AcPara.Remove(data);
             _context.SaveChanges();
 
             return Json(new { success = true, message = "Deleted successfully!" });

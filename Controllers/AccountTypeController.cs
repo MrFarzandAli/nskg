@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Nskg.Extensions;
 using Nskg.Models;
 using Nskg.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace Nskg.Controllers
 {
@@ -18,11 +19,17 @@ namespace Nskg.Controllers
             _unitOfWork = unitOfWork;
             _audit = audit; // ✅ ADD
         }
-
+        private string GetUser()
+        {
+            return User?.Identity?.Name ?? "System";
+        }
         // ✅ INDEX
+     
         public async Task<IActionResult> Index()
         {
-            var actypes = await _unitOfWork.Actype.GetAllAsync();
+            var actypes = (await _unitOfWork.Actype.GetAllAsync())
+                          .Where(x => !x.IsDeleted);
+
             return View(actypes);
         }
 
@@ -43,6 +50,10 @@ namespace Nskg.Controllers
                     return View(model);
 
                 model.COCODE = User.GetCompanyId().ToString();
+                // 🔥 SET AUDIT FIELDS
+                model.CreatedOn = DateTime.Now;
+                model.CreatedBy = GetUser();
+                model.IsDeleted = false;
                 await _unitOfWork.Actype.AddAsync(model);
                 await _unitOfWork.SaveAsync();
 
@@ -86,42 +97,7 @@ namespace Nskg.Controllers
         }
 
         //// ✅ EDIT (POST)
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Edit(Actype model)
-        //{
-        //    try
-        //    {
-        //        if (!ModelState.IsValid)
-        //            return View(model);
-
-        //        _unitOfWork.Actype.Update(model);
-        //        await _unitOfWork.SaveAsync();
-
-        //        // 🔥 AUDIT LOG
-        //        await _audit.LogAsync(
-        //            "Update",
-        //            "AccountType",
-        //            model.COCODE.ToString(),
-        //            $"Updated Account Type: {model.ACNAME}"
-        //        );
-
-        //        TempData["InfoMessage"] = "✏️ Account Type updated successfully!";
-        //        return RedirectToAction("Index");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        await _audit.LogAsync(
-        //            "Error",
-        //            "AccountType",
-        //            model.COCODE.ToString(),
-        //            ex.Message
-        //        );
-
-        //        TempData["ErrorMessage"] = "❌ Failed to update Account Type!";
-        //        return View(model);
-        //    }
-        //}
+       
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Actype model)
@@ -131,17 +107,30 @@ namespace Nskg.Controllers
                 if (!ModelState.IsValid)
                     return View(model);
 
-                // ✅ FIX
-                model.COCODE = User.GetCompanyId().ToString();
+                // 🔥 STEP 1: DB se existing record lao
+                var existing = await _unitOfWork.Actype.GetByIdAsync(model.ACTYPE); // 👈 apni PK use karo
 
-                _unitOfWork.Actype.Update(model);
+                if (existing == null)
+                    return NotFound();
+
+                // 🔥 STEP 2: sirf editable fields update karo
+                existing.ACNAME = model.ACNAME;
+                existing.COCODE = User.GetCompanyId().ToString();
+
+
+                // 🔥 STEP 3: audit fields
+                existing.ModifiedOn = DateTime.Now;
+                existing.ModifiedBy = GetUser();
+
+                // 🔥 STEP 4: update
+                _unitOfWork.Actype.Update(existing);
                 await _unitOfWork.SaveAsync();
 
                 await _audit.LogAsync(
                     "Update",
                     "AccountType",
-                    model.COCODE,
-                    $"Updated Account Type: {model.ACNAME}"
+                    existing.COCODE,
+                    $"Updated Account Type: {existing.ACNAME}"
                 );
 
                 TempData["InfoMessage"] = "✏️ Account Type updated successfully!";
@@ -173,8 +162,13 @@ namespace Nskg.Controllers
                 {
                     return Json(new { success = false, message = "Account Type not found!" });
                 }
+                // 🔥 SOFT DELETE INSTEAD OF HARD DELETE
+                actype.IsDeleted = true;
+                actype.ModifiedOn = DateTime.Now;
+                actype.ModifiedBy = GetUser();
+                //  _unitOfWork.Actype.Delete(actype);
+                _unitOfWork.Actype.Update(actype);
 
-                _unitOfWork.Actype.Delete(actype);
                 await _unitOfWork.SaveAsync();
 
                 // 🔥 AUDIT LOG

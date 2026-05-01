@@ -19,7 +19,15 @@ namespace Nskg.Models
         [Column("COCODE")]
         [StringLength(2)]
         public string? COCODE { get; set; }
+        // ✅ Soft Delete
+        public bool IsDeleted { get; set; }
 
+        // ✅ Audit Fields
+        public DateTime CreatedOn { get; set; }
+        public string? CreatedBy { get; set; }
+
+        public DateTime? ModifiedOn { get; set; }
+        public string? ModifiedBy { get; set; }
         public List<AcPara>? acParas { get; set; }
     }
 }

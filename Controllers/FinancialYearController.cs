@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nskg.Data;
@@ -14,44 +13,61 @@ namespace Nskg.Controllers
     public class FinancialYearController : Controller
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IAuditService _audit;   // ✅ ADD
+        private readonly IAuditService _audit;
         private readonly FinancialYearClosingService _financialYearClosingService;
         private readonly ApplicationDbContext _context;
 
-        public FinancialYearController(IUnitOfWork unitOfWork, IAuditService audit, FinancialYearClosingService financialYearClosingService, ApplicationDbContext context)
+        public FinancialYearController(
+            IUnitOfWork unitOfWork,
+            IAuditService audit,
+            FinancialYearClosingService financialYearClosingService,
+            ApplicationDbContext context)
         {
             _unitOfWork = unitOfWork;
-            _audit = audit;   // ✅ ADD
+            _audit = audit;
             _financialYearClosingService = financialYearClosingService;
             _context = context;
         }
 
+        private string GetUser()
+        {
+            return User?.Identity?.Name ?? "System";
+        }
+
         public async Task<IActionResult> Index()
         {
-            var years = await _unitOfWork.FinancialYearRepository.GetAllWithCompanyAsync();
+            var years = (await _unitOfWork.FinancialYearRepository.GetAllWithCompanyAsync())
+                        .Where(x => !x.IsDeleted);
+
             return View(years);
         }
 
         public async Task<IActionResult> Create()
         {
             ViewBag.Companies = new SelectList(
-                await _unitOfWork.Companies.GetAllAsync(), "Id", "Name");
+                (await _unitOfWork.Companies.GetAllAsync()).Where(x => !x.IsDeleted),
+                "Id", "Name");
 
             return View();
         }
 
         // ✅ CREATE
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(FinancialYear model)
         {
             try
             {
                 model.YearName = $"{model.StartDate:yyyy}-{model.EndDate:yyyy}";
 
+                // 🔥 AUDIT
+                model.CreatedOn = DateTime.Now;
+                model.CreatedBy = GetUser();
+                model.IsDeleted = false;
+
                 await _unitOfWork.FinancialYears.AddAsync(model);
                 await _unitOfWork.SaveAsync();
 
-                // 🔥 AUDIT LOG
                 await _audit.LogAsync(
                     "Create",
                     "FinancialYears",
@@ -64,13 +80,7 @@ namespace Nskg.Controllers
             }
             catch (Exception ex)
             {
-                // 🔥 ERROR LOG
-                await _audit.LogAsync(
-                    "Error",
-                    "FinancialYears",
-                    "0",
-                    ex.Message
-                );
+                await _audit.LogAsync("Error", "FinancialYears", "0", ex.Message);
 
                 TempData["ErrorMessage"] = "❌ Failed to create Financial Year!";
                 return View(model);
@@ -81,35 +91,50 @@ namespace Nskg.Controllers
         {
             var data = await _unitOfWork.FinancialYears.GetByIdAsync(id);
 
-            if (data == null)
+            if (data == null || data.IsDeleted)
             {
-                TempData["ErrorMessage"] = "FinancialYears not found!";
+                TempData["ErrorMessage"] = "Financial Year not found!";
                 return RedirectToAction("Index");
             }
 
             ViewBag.Companies = new SelectList(
-                await _unitOfWork.Companies.GetAllAsync(), "Id", "Name", data.CompanyId);
+                (await _unitOfWork.Companies.GetAllAsync()).Where(x => !x.IsDeleted),
+                "Id", "Name", data.CompanyId);
 
             return View(data);
         }
 
         // ✅ UPDATE
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(FinancialYear model)
         {
             try
             {
-                model.YearName = $"{model.StartDate:yyyy}-{model.EndDate:yyyy}";
+                var existing = await _unitOfWork.FinancialYears.GetByIdAsync(model.Id);
 
-                _unitOfWork.FinancialYears.Update(model);
+                if (existing == null)
+                    return NotFound();
+
+                // 🔥 UPDATE FIELDS
+                existing.CompanyId = model.CompanyId;
+                existing.StartDate = model.StartDate;
+                existing.EndDate = model.EndDate;
+                existing.YearName = $"{model.StartDate:yyyy}-{model.EndDate:yyyy}";
+                existing.IsClosed = model.IsClosed;
+
+                // 🔥 AUDIT
+                existing.ModifiedOn = DateTime.Now;
+                existing.ModifiedBy = GetUser();
+
+                _unitOfWork.FinancialYears.Update(existing);
                 await _unitOfWork.SaveAsync();
 
-                // 🔥 AUDIT LOG
                 await _audit.LogAsync(
                     "Update",
                     "FinancialYears",
                     model.Id.ToString(),
-                    $"Updated Financial Year: {model.YearName}"
+                    $"Updated Financial Year: {existing.YearName}"
                 );
 
                 TempData["InfoMessage"] = "✏️ Financial Year updated successfully!";
@@ -117,20 +142,14 @@ namespace Nskg.Controllers
             }
             catch (Exception ex)
             {
-                // 🔥 ERROR LOG
-                await _audit.LogAsync(
-                    "Error",
-                    "FinancialYears",
-                    model.Id.ToString(),
-                    ex.Message
-                );
+                await _audit.LogAsync("Error", "FinancialYears", model.Id.ToString(), ex.Message);
 
                 TempData["ErrorMessage"] = "❌ Failed to update Financial Year!";
                 return View(model);
             }
         }
 
-        // ✅ DELETE (AJAX)
+        // ✅ SOFT DELETE
         [HttpDelete]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
@@ -141,40 +160,39 @@ namespace Nskg.Controllers
 
                 if (data == null)
                 {
-                    return Json(new { success = false, message = "FinancialYears not found!" });
+                    return Json(new { success = false, message = "Financial Year not found!" });
                 }
 
-                _unitOfWork.FinancialYears.Delete(data);
+                // 🔥 SOFT DELETE
+                data.IsDeleted = true;
+                data.ModifiedOn = DateTime.Now;
+                data.ModifiedBy = GetUser();
+
+                _unitOfWork.FinancialYears.Update(data);
                 await _unitOfWork.SaveAsync();
 
-                // 🔥 AUDIT LOG
                 await _audit.LogAsync(
                     "Delete",
                     "FinancialYears",
                     id.ToString(),
-                    $"Deleted Financial Year: {data.YearName}"
+                    $"Soft Deleted Financial Year: {data.YearName}"
                 );
 
-                return Json(new { success = true, message = "FinancialYears deleted successfully!" });
+                return Json(new { success = true, message = "Financial Year deleted successfully!" });
             }
             catch (Exception ex)
             {
-                // 🔥 ERROR LOG
-                await _audit.LogAsync(
-                    "Error",
-                    "FinancialYears",
-                    id.ToString(),
-                    ex.Message
-                );
+                await _audit.LogAsync("Error", "FinancialYears", id.ToString(), ex.Message);
 
                 return Json(new { success = false, message = ex.Message });
             }
         }
 
+        // 🔥 CLOSE YEAR (No change needed, but safe check added)
         public IActionResult CloseYear()
         {
             var list = _context.FinancialYears
-                .Where(x => x.CompanyId == User.GetCompanyId())
+                .Where(x => x.CompanyId == User.GetCompanyId() && !x.IsDeleted)
                 .OrderByDescending(x => x.StartDate)
                 .ToList();
 
@@ -186,6 +204,9 @@ namespace Nskg.Controllers
         {
             var fy = await _unitOfWork.FinancialYears.GetByIdAsync(fyId);
 
+            if (fy == null || fy.IsDeleted)
+                throw new Exception("Financial year not found.");
+
             if (fy.IsClosed)
                 throw new Exception("Financial year already closed.");
 
@@ -193,12 +214,13 @@ namespace Nskg.Controllers
                 throw new Exception("Cannot close active financial year.");
 
             var nextYear = _context.FinancialYears
-    .FirstOrDefault(x => x.StartDate > fy.StartDate);
+                .FirstOrDefault(x => x.StartDate > fy.StartDate && !x.IsDeleted);
 
             if (nextYear == null)
-                throw new Exception("Next financial year is Not Exist.");
+                throw new Exception("Next financial year does not exist.");
 
-            var chart = _context.GLChart3.Where(x => x.AcType == "C").FirstOrDefault();
+            var chart = _context.GLChart3.FirstOrDefault(x => x.AcType == "C");
+
             await _financialYearClosingService.CloseFinancialYearAsync(
                 companyId: User.GetCompanyId(),
                 closingFinancialYearId: fyId,

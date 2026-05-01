@@ -1,4 +1,4 @@
-﻿@using Nskg.Models.ViewModels
+﻿@* @using Nskg.Models.ViewModels
 @model ChallanViewModel
 
 @section Styles {
@@ -293,8 +293,252 @@
         </div>
     </div>
 
-</form>
+</form> *@
+@using Nskg.Models.ViewModels
+@model ChallanViewModel
 
+@section Styles {
+    <style>
+        .form-inline-label {
+            min-width: 130px;
+            margin-bottom: 0;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .card {
+            border-radius: 10px;
+        }
+    </style>
+}
+
+<form method="post">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-0">
+                <i class="fa fa-truck text-primary me-2"></i>
+                Challan Entry
+            </h3>
+            <small class="text-muted">Goods Dispatch / Transport Challan</small>
+        </div>
+
+        <div>
+            <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addRow()">
+                <i class="fa fa-plus"></i> Add Bilty
+            </button>
+
+            <button type="submit" class="btn btn-success btn-sm">
+                <i class="fa fa-save"></i> Save Challan
+            </button>
+        </div>
+    </div>
+
+    <!-- MASTER -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+
+                <div class="col-md-2">
+                    <label>Challan No</label>
+                    <input asp-for="Head.ChalNo" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Date</label>
+                    <input asp-for="Head.DocDate" type="date" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Doc No</label>
+                    <input asp-for="Head.DocNo" readonly class="form-control form-control-sm bg-light" />
+                </div>
+
+                <div class="col-md-3">
+                    <label>Station</label>
+                    <select asp-for="Head.StationId" class="form-select form-select-sm"
+                            asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text"))"></select>
+                </div>
+
+                <div class="col-md-3">
+                    <label>Transporter</label>
+                    <select asp-for="Head.TransId" class="form-select form-select-sm"
+                            asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text"))"></select>
+                </div>
+
+                <div class="col-md-3">
+                    <label>Vehicle No</label>
+                    <input asp-for="Head.VehicleNo" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-3">
+                    <label>Party Name</label>
+                    <input asp-for="Head.Driver" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-6">
+                    <label>Remarks</label>
+                    <input asp-for="Head.Narration" class="form-control form-control-sm" />
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white">
+            <h6 class="mb-0">
+                <i class="fa fa-list text-primary me-1"></i>
+                Bilty Details
+            </h6>
+        </div>
+
+        <div class="card-body p-1">
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0" id="tblItems">
+
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>Bilty No</th>
+                            <th>Party Name</th>
+                            <th>Send To</th>
+                            <th width="100">Qty</th>
+                            <th width="120">Bilty Amt</th>
+                            <th width="120">Paid Amt</th>
+                            <th width="80">Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tbodyItems">
+                        <tr id="noDataRow">
+                            <td colspan="7" class="text-center text-muted py-3">
+                                No Records Added
+                            </td>
+                        </tr>
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- EXPENSE SECTION -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <label>B#/ Party</label>
+                    <input asp-for="Head.PExpCode" class="form-control form-control-sm" />
+                    <input asp-for="Head.PExpAmt" class="form-control form-control-sm mt-2 calc" placeholder="Amount" />
+                    <input asp-for="Head.PExpBilti" class="form-control form-control-sm mt-2" placeholder="Bilti" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>B#/ Party 2</label>
+                    <input asp-for="Head.PExpCode2" class="form-control form-control-sm" />
+                    <input asp-for="Head.PExpAmt2" class="form-control form-control-sm mt-2 calc" placeholder="Amount" />
+                    <input asp-for="Head.PExpBilti2" class="form-control form-control-sm mt-2" placeholder="Bilti" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>B#/ Party 3</label>
+                    <input asp-for="Head.PExpCode3" class="form-control form-control-sm" />
+                    <input asp-for="Head.PExpAmt3" class="form-control form-control-sm mt-2 calc" placeholder="Amount" />
+                    <input asp-for="Head.PExpBilti3" class="form-control form-control-sm mt-2" placeholder="Bilti" />
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- LOCAL + OTHER -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <label>Party Expense</label>
+                    <input asp-for="Head.PartyEx2" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Local Amount</label>
+                    <input asp-for="Head.LocalAmt2" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Other Expense</label>
+                    <input asp-for="Head.OtherEx2" class="form-control form-control-sm" />
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- TOTALS -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <label>Local Amount</label>
+                    <input asp-for="Head.LocalAmt" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Other Expense</label>
+                    <input asp-for="Head.TotOtherEx" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-4">
+                    <label>Total Bilty</label>
+                    <input asp-for="Head.TotBillTi" readonly class="form-control form-control-sm bg-light" />
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- FINAL -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <div class="row g-3">
+
+                <div class="col-md-2">
+                    <label>To Pay</label>
+                    <input asp-for="Head.TotToPaid" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Delivery Amt</label>
+                    <input asp-for="Head.DeliveryAmt" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-2">
+                    <label>Bilty Amt</label>
+                    <input asp-for="Head.BillTiAmt" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-3">
+                    <label>Lifter</label>
+                    <input asp-for="Head.TotLifter2" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-3">
+                    <label>Net Amt</label>
+                    <input asp-for="Head.NetAmt" readonly class="form-control form-control-sm bg-light" />
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</form>
 @section Scripts {
     <script>
 

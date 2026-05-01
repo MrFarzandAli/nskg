@@ -14,7 +14,14 @@ namespace Nskg.Models
         public string? Cocode { get; set; }   // Company Code
         public decimal? Opening { get; set; }
         public string? Parent { get; set; }   // 'P' or 'C'
+        public bool IsDeleted { get; set; }
 
+        // ✅ Audit Fields
+        public DateTime CreatedOn { get; set; }
+        public string? CreatedBy { get; set; }
+
+        public DateTime? ModifiedOn { get; set; }
+        public string? ModifiedBy { get; set; }
         public GLChart1? GLChart1 { get; set; }
         public GLChart3? GLChart3 { get; set; }
 

@@ -29,6 +29,7 @@
             <div class="card-body">
 
                 <form asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
 
                     <!-- 🔥 Hidden ID -->
                     <input type="hidden" asp-for="CatCode" />

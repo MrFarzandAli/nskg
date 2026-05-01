@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nskg.Extensions;
 using Nskg.Models;
 using Nskg.Models.ViewModels;
 using Nskg.Repositories.Interfaces;
-using Nskg.Extensions;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace Nskg.Controllers
 {
@@ -18,13 +19,19 @@ namespace Nskg.Controllers
             _unitOfWork = unitOfWork;
             _audit = audit; // ✅ ADD
         }
-
+        private string GetUser()
+        {
+            return User?.Identity?.Name ?? "System";
+        }
         // ✅ INDEX
         public async Task<IActionResult> Index()
         {
-            var accCats = await _unitOfWork.AccCat.GetAllAsync();
+            var accCats = (await _unitOfWork.AccCat.GetAllAsync())
+                                       .Where(x => !x.IsDeleted); 
+
             return View(accCats);
         }
+       
 
         // ✅ CREATE (GET)
         public IActionResult Create()
@@ -49,7 +56,9 @@ namespace Nskg.Controllers
                     Category = vm.Category,
                     CoCode = companyId.ToString()
                 };
-
+                model.CreatedOn = DateTime.Now;
+                model.CreatedBy = GetUser();
+                model.IsDeleted = false;
                 await _unitOfWork.AccCat.AddAsync(model);
                 await _unitOfWork.SaveAsync();
 
@@ -59,7 +68,7 @@ namespace Nskg.Controllers
                     "AccountCategory",
                     model.CatCode.ToString(),
                     $"Created Account Category: {model.Category}"
-                   
+
                 );
 
                 TempData["SuccessMessage"] = "✨ Account Category created successfully!";
@@ -79,7 +88,7 @@ namespace Nskg.Controllers
             }
         }
 
-       
+
 
         // ✅ EDIT (GET)
         public async Task<IActionResult> Edit(string id)
@@ -95,26 +104,39 @@ namespace Nskg.Controllers
             return View(accCat);
         }
 
-        // ✅ EDIT (POST)
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(AccCat model)
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return View(model);
+               
 
-                _unitOfWork.AccCat.Update(model);
+                // ✅ Step 1: existing record fetch karo
+                var existing = await _unitOfWork.AccCat.GetByIdAsync(model.CatCode);
+
+                if (existing == null)
+                {
+                    TempData["ErrorMessage"] = "Record not found!";
+                    return RedirectToAction("Index");
+                }
+
+                // ✅ Step 2: fields update karo
+                existing.Category = model.Category;
+
+                existing.ModifiedOn = DateTime.Now;
+                existing.ModifiedBy = GetUser();
+
+                // ✅ Step 3: update
+                _unitOfWork.AccCat.Update(existing);
                 await _unitOfWork.SaveAsync();
 
-                // 🔥 AUDIT LOG
                 await _audit.LogAsync(
                     "Update",
                     "AccountCategory",
-                    model.CatCode
-                    .ToString(),
-                    $"Updated Account Category: {model.Category}"
+                    existing.CatCode,
+                    $"Updated Account Category: {existing.Category}"
                 );
 
                 TempData["InfoMessage"] = "✏️ Account Category updated successfully!";
@@ -125,7 +147,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Error",
                     "AccountCategory",
-                    model.CatCode.ToString(),
+                    model.CatCode,
                     ex.Message
                 );
 
@@ -134,7 +156,8 @@ namespace Nskg.Controllers
             }
         }
 
-        // ✅ DELETE (AJAX - BEST PRACTICE)
+        //// ✅ DELETE (AJAX - BEST PRACTICE)
+       
         [HttpDelete]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
@@ -148,15 +171,20 @@ namespace Nskg.Controllers
                     return Json(new { success = false, message = "Account Category not found!" });
                 }
 
-                _unitOfWork.AccCat.Delete(accCat);
+                // ✅ Soft Delete
+                accCat.IsDeleted = true;
+                accCat.ModifiedOn = DateTime.Now;
+                accCat.ModifiedBy = GetUser();
+
+                // ❗ IMPORTANT: Update call karo, Delete nahi
+                _unitOfWork.AccCat.Update(accCat);
                 await _unitOfWork.SaveAsync();
 
-                // 🔥 AUDIT LOG
                 await _audit.LogAsync(
                     "Delete",
                     "AccountCategory",
                     id,
-                    $"Deleted Account Category: {accCat.Category}"
+                    $"Soft Deleted Account Category: {accCat.Category}"
                 );
 
                 return Json(new { success = true, message = "Account Category deleted successfully!" });
@@ -173,5 +201,7 @@ namespace Nskg.Controllers
                 return Json(new { success = false, message = ex.Message });
             }
         }
+
+
     }
 }
