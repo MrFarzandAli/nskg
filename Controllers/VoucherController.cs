@@ -27,15 +27,22 @@ namespace Nskg.Controllers
             _service = service;
             _audit = audit; // ✅ ADD
         }
+        private string GetUser()
+        {
+            return User?.Identity?.Name ?? "System";
+        }
 
         // LIST
         public IActionResult Index(string type)
         {
             try
             {
+                //var data = _context.VoHead
+                //    .Where(x => x.Votype == type)
+                //    .ToList();
                 var data = _context.VoHead
-                    .Where(x => x.Votype == type)
-                    .ToList();
+    .Where(x => x.Votype == type && !x.IsDeleted)
+    .ToList();
 
                 ViewBag.Type = type;
                 ViewBag.PageTitle = GetVoucherTitle(type) + " List"; // ✅ ADD THIS
@@ -145,7 +152,10 @@ namespace Nskg.Controllers
                 vm.Head.Ac1 = account?.AC1;
                 vm.Head.Ac3 = account?.AC3;
                 vm.Head.Haccode = account?.ACC;
-
+                // 🔥 SET AUDIT FIELDS
+                vm.Head.CreatedOn = DateTime.Now;
+                vm.Head.CreatedBy = GetUser();
+                vm.Head.IsDeleted = false;
                 _context.VoHead.Add(vm.Head);
                 _context.SaveChanges();
 
@@ -172,11 +182,13 @@ namespace Nskg.Controllers
                         d.Ctype = DetailAccount.CType;
                         d.EntryDate = vm.Head.EntryDate;
                         d.Userid = User.GetUserId();
-
+                        d.CreatedOn = DateTime.Now;
+                        d.CreatedBy = GetUser();
+                        d.IsDeleted = false;
                         _context.VoDet.Add(d);
                     }
                 }
-
+               
                 _context.SaveChanges();
                 _service.PostVoucher(vm.Head, vm.Details);
 
@@ -417,10 +429,16 @@ namespace Nskg.Controllers
                         d.Ctype = DetailAccount.CType;
                         d.EntryDate = vm.Head.EntryDate;
                         d.Userid = User.GetUserId();
+                        // 🔥 ADD THIS
+                        d.CreatedOn = DateTime.Now;   // new record hai
+                        d.CreatedBy = GetUser();
+                        d.IsDeleted = false;
                         _context.VoDet.Add(d);
                     }
                 }
-
+                // 🔥 AUDIT UPDATE
+                existing.ModifiedOn = DateTime.Now;
+                existing.ModifiedBy = GetUser();
                 _context.SaveChanges();
 
                 // =========================================
@@ -457,6 +475,41 @@ namespace Nskg.Controllers
         }
 
         // DELETE
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public IActionResult Delete(int id)
+        //{
+        //    try
+        //    {
+        //        var v = _context.VoHead
+        //            .Include(x => x.Details)
+        //            .FirstOrDefault(x => x.Id == id);
+
+        //        if (v == null)
+        //        {
+        //            return Json(new { success = false, message = "Voucher not found!" });
+        //        }
+
+        //        var gl = _context.GLTrans
+        //            .Where(x => x.RefId == v.Id);
+
+        //        _context.GLTrans.RemoveRange(gl);
+
+        //        _context.VoDet.RemoveRange(v.Details);
+        //        _context.VoHead.Remove(v);
+
+        //        _context.SaveChanges();
+
+        //        _audit.LogAsync("Delete", "Voucher", id.ToString(),
+        //            $"Deleted {v.Votype}: {v.Vono}").Wait();
+
+        //        return Json(new { success = true, message = "Voucher deleted successfully!" });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return Json(new { success = false, message = ex.Message });
+        //    }
+        //}
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Delete(int id)
@@ -472,18 +525,33 @@ namespace Nskg.Controllers
                     return Json(new { success = false, message = "Voucher not found!" });
                 }
 
+                // 🔥 GL REMOVE (same as before)
                 var gl = _context.GLTrans
                     .Where(x => x.RefId == v.Id);
 
                 _context.GLTrans.RemoveRange(gl);
 
-                _context.VoDet.RemoveRange(v.Details);
-                _context.VoHead.Remove(v);
+                // 🔥 SOFT DELETE DETAILS (INSTEAD OF RemoveRange)
+                foreach (var d in v.Details)
+                {
+                    d.IsDeleted = true;
+                    d.ModifiedOn = DateTime.Now;
+                    d.ModifiedBy = GetUser();
+
+                    _context.VoDet.Update(d);
+                }
+
+                // 🔥 SOFT DELETE HEAD
+                v.IsDeleted = true;
+                v.ModifiedOn = DateTime.Now;
+                v.ModifiedBy = GetUser();
+
+                _context.VoHead.Update(v);
 
                 _context.SaveChanges();
 
                 _audit.LogAsync("Delete", "Voucher", id.ToString(),
-                    $"Deleted {v.Votype}: {v.Vono}").Wait();
+                    $"Soft Deleted {v.Votype}: {v.Vono}").Wait();
 
                 return Json(new { success = true, message = "Voucher deleted successfully!" });
             }

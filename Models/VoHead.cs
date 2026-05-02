@@ -52,6 +52,15 @@
 
         public string Status { get; set; } = "Draft";
 
+        // ✅ Soft Delete
+        public bool IsDeleted { get; set; }
+
+        // ✅ Audit Fields
+        public DateTime CreatedOn { get; set; }
+        public string? CreatedBy { get; set; }
+
+        public DateTime? ModifiedOn { get; set; }
+        public string? ModifiedBy { get; set; }
         // 🔗 RELATIONS
         public List<VoDet>? Details { get; set; }
         public GLChart3? gl3 { get; set; }
