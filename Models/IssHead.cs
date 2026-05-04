@@ -186,7 +186,15 @@ namespace Nskg.Models
 
         [StringLength(1)]
         public string? DescYN1 { get; set; }
+        // ✅ Soft Delete
+        public bool IsDeleted { get; set; }
 
+        // ✅ Audit Fields
+        public DateTime CreatedOn { get; set; }
+        public string? CreatedBy { get; set; }
+
+        public DateTime? ModifiedOn { get; set; }
+        public string? ModifiedBy { get; set; }
         // Navigation Property
         public ICollection<IssDetail> Details { get; set; } = new List<IssDetail>();
 
