@@ -1,9 +1,17 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿//namespace Nskg.Models
+//{
+//    public class RoleFormPermission
+//    {
+//    }
+//}
+using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
 
-namespace Nskg.Models.Security
+namespace Nskg.Models
 {
     public class RoleFormPermission
     {
+        [Key]
         public int Id { get; set; }
         public string RoleId { get; set; }
         public int FormId { get; set; }

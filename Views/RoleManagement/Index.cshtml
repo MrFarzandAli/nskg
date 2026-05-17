@@ -1,0 +1,436 @@
+﻿@using Nskg.Models.ViewModels
+@model RoleManagementViewModel
+
+@{
+    ViewData["Title"] = "Role Management";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3 class="card-title mb-0">Role Management System</h3>
+        </div>
+        <div class="card-body">
+            
+            <!-- Success/Error Messages -->
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["Success"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            @if (TempData["Info"] != null)
+            {
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    @TempData["Info"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            
+            <!-- Tabs -->
+            <ul class="nav nav-tabs" id="roleManagementTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" id="addRole-tab" data-bs-toggle="tab" data-bs-target="#addRole" type="button" role="tab">
+                        <i class="fa fa-plus"></i> Add New Role
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="addForm-tab" data-bs-toggle="tab" data-bs-target="#addForm" type="button" role="tab">
+                        <i class="fa fa-window-maximize"></i> Add New Form
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="assignForms-tab" data-bs-toggle="tab" data-bs-target="#assignForms" type="button" role="tab">
+                        <i class="fa fa-lock"></i> Assign Forms to Role
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="assignRole-tab" data-bs-toggle="tab" data-bs-target="#assignRole" type="button" role="tab">
+                        <i class="fa fa-user-plus"></i> Assign Role to User
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="viewMappings-tab" data-bs-toggle="tab" data-bs-target="#viewMappings" type="button" role="tab">
+                        <i class="fa fa-eye"></i> View Mappings
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content mt-3">
+                
+                <!-- Tab 1: Add New Role -->
+                <div class="tab-pane fade show active" id="addRole" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0">Create New Role</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form asp-action="AddRole" method="post">
+                                        <div class="form-group mb-3">
+                                            <label for="NewRoleName">Role Name</label>
+                                            <input type="text" asp-for="NewRoleName" class="form-control"
+                                                   placeholder="Enter role name (e.g., Manager, Accountant)" required />
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fa fa-save"></i> Create Role
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Existing Roles</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr><th>Role Name</th><th>Actions</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var role in Model.Roles)
+                                                {
+                                                    <tr>
+                                                        <td>@role.Name</td>
+                                                        <td>
+                                                            <form asp-action="DeleteRole" method="post"
+                                                                  onsubmit="return confirm('Are you sure you want to delete role @role.Name?');">
+                                                                <input type="hidden" name="roleId" value="@role.Id" />
+                                                                <button type="submit" class="btn btn-danger btn-sm">
+                                                                    <i class="fa fa-trash"></i> Delete
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 2: Add New Form -->
+                <div class="tab-pane fade" id="addForm" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0">Create New Form</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form asp-action="AddForm" method="post">
+                                        <div class="form-group mb-3">
+                                            <label for="NewFormName">Form Name</label>
+                                            <input type="text" asp-for="NewFormName" class="form-control"
+                                                   placeholder="Enter form name (e.g., User Management)" required />
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <label for="NewController">Controller Name</label>
+                                            <input type="text" asp-for="NewController" class="form-control"
+                                                   placeholder="Enter controller name (e.g., UserManagement)" required />
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <label for="NewAction">Action Name</label>
+                                            <input type="text" asp-for="NewAction" class="form-control"
+                                                   placeholder="Enter action name (e.g., Index)" required />
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fa fa-save"></i> Create Form
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Existing Forms</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr><th>Form Name</th><th>Controller</th><th>Action</th><th>Actions</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var form in Model.Forms)
+                                                {
+                                                    <tr>
+                                                        <td>@form.Name</td>
+                                                        <td>@form.Controller</td>
+                                                        <td>@form.Action</td>
+                                                        <td>
+                                                            <form asp-action="DeleteForm" method="post"
+                                                                  onsubmit="return confirm('Are you sure you want to delete form @form.Name?');">
+                                                                <input type="hidden" name="formId" value="@form.Id" />
+                                                                <button type="submit" class="btn btn-danger btn-sm">
+                                                                    <i class="fa fa-trash"></i> Delete
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 3: Assign Forms to Role -->
+                <div class="tab-pane fade" id="assignForms" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">Assign Forms & Permissions to Role</h5>
+                        </div>
+                        <div class="card-body">
+                            <form asp-action="AssignFormsToRole" method="post" id="assignFormsForm">
+                                <div class="form-group mb-3">
+                                    <label for="SelectedRoleId">Select Role</label>
+                                    <select asp-for="SelectedRoleId" class="form-control" id="roleSelect">
+                                        <option value="">-- Select Role --</option>
+                                        @foreach (var role in Model.Roles)
+                                        {
+                                            <option value="@role.Id">@role.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                
+                                <div id="permissionsContainer">
+                                    @for (int i = 0; i < Model.FormsWithPermissions.Count; i++)
+                                    {
+                                        <div class="form-card mb-3 border p-3 rounded">
+                                            <input type="hidden" asp-for="@Model.FormsWithPermissions[i].FormId" />
+                                            <input type="hidden" asp-for="@Model.FormsWithPermissions[i].FormName" />
+                                            <input type="hidden" asp-for="@Model.FormsWithPermissions[i].Controller" />
+                                            <input type="hidden" asp-for="@Model.FormsWithPermissions[i].Action" />
+                                            
+                                            <h6>
+                                                <strong>@Model.FormsWithPermissions[i].FormName</strong>
+                                                <small class="text-muted">(@Model.FormsWithPermissions[i].Controller/@Model.FormsWithPermissions[i].Action)</small>
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               asp-for="@Model.FormsWithPermissions[i].CanView" />
+                                                        <label class="form-check-label">Can View</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               asp-for="@Model.FormsWithPermissions[i].CanCreate" />
+                                                        <label class="form-check-label">Can Create</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               asp-for="@Model.FormsWithPermissions[i].CanEdit" />
+                                                        <label class="form-check-label">Can Edit</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               asp-for="@Model.FormsWithPermissions[i].CanDelete" />
+                                                        <label class="form-check-label">Can Delete</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fa fa-save"></i> Assign Forms
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 4: Assign Role to User -->
+                <div class="tab-pane fade" id="assignRole" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">Assign Role to User</h5>
+                        </div>
+                        <div class="card-body">
+                            <form asp-action="AssignRoleToUser" method="post">
+                                <div class="form-group mb-3">
+                                    <label for="SelectedUserId">Select User</label>
+                                    <select asp-for="SelectedUserId" class="form-control">
+                                        <option value="">-- Select User --</option>
+                                        @foreach (var user in Model.Users)
+                                        {
+                                            <option value="@user.Id">@user.UserName</option>
+                                        }
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label>Select Roles (Multiple allowed)</label>
+                                    <div class="row">
+                                        @foreach (var role in Model.Roles)
+                                        {
+                                            <div class="col-md-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           name="SelectedRoleNames" value="@role.Name"
+                                                           id="role_@role.Id" />
+                                                    <label class="form-check-label" for="role_@role.Id">@role.Name</label>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa fa-user-plus"></i> Assign Role
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 5: View Mappings -->
+                <div class="tab-pane fade" id="viewMappings" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">User - Role Mapping</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <tr><th>User</th><th>Roles</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var user in Model.Users)
+                                                {
+                                                    <tr>
+                                                        <td>@user.UserName</td>
+                                                        <td>
+                                                            @if (Model.UserRolesMap.ContainsKey(user.Id) && Model.UserRolesMap[user.Id].Any())
+                                                            {
+                                                                foreach (var role in Model.UserRolesMap[user.Id])
+                                                                {
+                                                                    <span class="badge bg-primary me-1">@role</span>
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">No roles assigned</span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Role - Form Permissions</h5>
+                                </div>
+                                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                                    @foreach (var role in Model.Roles)
+                                    {
+                                        <div class="mb-3 border-bottom pb-2">
+                                            <h6><strong>@role.Name</strong></h6>
+                                            @if (Model.RoleFormsMap.ContainsKey(role.Id) && Model.RoleFormsMap[role.Id].Any())
+                                            {
+                                                <ul class="list-unstyled ms-2">
+                                                    @foreach (var perm in Model.RoleFormsMap[role.Id])
+                                                    {
+                                                        var form = Model.Forms.FirstOrDefault(f => f.Id == perm.FormId);
+                                                        if (form != null)
+                                                        {
+                                                            <li>
+                                                                <small>
+                                                                    ✓ @form.Name
+                                                                    @if (perm.CanView)
+                                                                    {
+                                                                        <span class="badge bg-info">View</span>
+                                                                    }
+                                                                    @if (perm.CanCreate)
+                                                                    {
+                                                                        <span class="badge bg-success">Create</span>
+                                                                    }
+                                                                    @if (perm.CanEdit)
+                                                                    {
+                                                                        <span class="badge bg-warning">Edit</span>
+                                                                    }
+                                                                    @if (perm.CanDelete)
+                                                                    {
+                                                                        <span class="badge bg-danger">Delete</span>
+                                                                    }
+                                                                </small>
+                                                            </li>
+                                                        }
+                                                    }
+                                                </ul>
+                                            }
+                                            else
+                                            {
+                                                <small class="text-muted ms-2">No forms assigned</small>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Load permissions when role is selected
+        $('#roleSelect').change(function() {
+            var roleId = $(this).val();
+            if (roleId) {
+                $.get('/RoleManagement/GetRolePermissions', { roleId: roleId }, function(data) {
+                    for (var i = 0; i < data.length; i++) {
+                        $('#FormsWithPermissions_' + i + '__CanView').prop('checked', data[i].canView);
+                        $('#FormsWithPermissions_' + i + '__CanCreate').prop('checked', data[i].canCreate);
+                        $('#FormsWithPermissions_' + i + '__CanEdit').prop('checked', data[i].canEdit);
+                        $('#FormsWithPermissions_' + i + '__CanDelete').prop('checked', data[i].canDelete);
+                    }
+                });
+            } else {
+                // Uncheck all if no role selected
+                $('input[type="checkbox"]', '#permissionsContainer').prop('checked', false);
+            }
+        });
+    </script>
+}

@@ -6,6 +6,7 @@ using Nskg.Repositories.Interfaces;
 using Nskg.Service;
 using Nskg.Service.Interfaces;
 using Nskg.Services;
+using Nskg.Services.Interfaces;
 using System.Text; // 👈 ADD THIS
 
 
@@ -32,6 +33,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<AccountingService, AccountingService>();
 builder.Services.AddScoped<FinancialYearClosingService, FinancialYearClosingService>();
+builder.Services.AddScoped<IRoleFormPermissionService, RoleFormPermissionService>();
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
