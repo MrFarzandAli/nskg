@@ -195,6 +195,7 @@
                     </div>
                 </div>
                 
+                
                 <!-- Tab 3: Assign Forms to Role -->
                 <div class="tab-pane fade" id="assignForms" role="tabpanel">
                     <div class="card">
@@ -213,7 +214,35 @@
                                         }
                                     </select>
                                 </div>
-                                
+                
+                                <!-- Select All Checkbox -->
+                                <div class="mb-3 p-2 bg-light rounded">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="selectAllForms" class="form-check-input" />
+                                        <label class="form-check-label fw-bold" for="selectAllForms">
+                                            <i class="fa fa-check-square-o"></i> Select All Forms
+                                        </label>
+                                        <span class="text-muted ms-2 small">(Check/uncheck all forms below)</span>
+                                    </div>
+                                    <hr class="my-2" />
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <small class="text-muted">Quick Select:</small>
+                                        </div>
+                                        <div class="col-md-9">
+                                            <button type="button" id="selectAllPermissions" class="btn btn-sm btn-outline-success me-1">
+                                                <i class="fa fa-check"></i> All Permissions
+                                            </button>
+                                            <button type="button" id="selectViewOnly" class="btn btn-sm btn-outline-info me-1">
+                                                <i class="fa fa-eye"></i> View Only
+                                            </button>
+                                            <button type="button" id="clearAllPermissions" class="btn btn-sm btn-outline-danger">
+                                                <i class="fa fa-times"></i> Clear All
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                
                                 <div id="permissionsContainer">
                                     @for (int i = 0; i < Model.FormsWithPermissions.Count; i++)
                                     {
@@ -222,45 +251,59 @@
                                             <input type="hidden" asp-for="@Model.FormsWithPermissions[i].FormName" />
                                             <input type="hidden" asp-for="@Model.FormsWithPermissions[i].Controller" />
                                             <input type="hidden" asp-for="@Model.FormsWithPermissions[i].Action" />
-                                            
-                                            <h6>
-                                                <strong>@Model.FormsWithPermissions[i].FormName</strong>
-                                                <small class="text-muted">(@Model.FormsWithPermissions[i].Controller/@Model.FormsWithPermissions[i].Action)</small>
-                                            </h6>
+                            
                                             <div class="row">
-                                                <div class="col-md-3">
+                                                <div class="col-md-4">
                                                     <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox"
-                                                               asp-for="@Model.FormsWithPermissions[i].CanView" />
-                                                        <label class="form-check-label">Can View</label>
+                                                        <input type="checkbox" class="form-check-input form-select-checkbox"
+                                                               data-form-index="@i" id="formSelect_@i" />
+                                                        <label class="form-check-label fw-bold" for="formSelect_@i">
+                                                            <strong>@Model.FormsWithPermissions[i].FormName</strong>
+                                                        </label>
+                                                        <small class="text-muted d-block">(@Model.FormsWithPermissions[i].Controller/@Model.FormsWithPermissions[i].Action)</small>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox"
-                                                               asp-for="@Model.FormsWithPermissions[i].CanCreate" />
-                                                        <label class="form-check-label">Can Create</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox"
-                                                               asp-for="@Model.FormsWithPermissions[i].CanEdit" />
-                                                        <label class="form-check-label">Can Edit</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox"
-                                                               asp-for="@Model.FormsWithPermissions[i].CanDelete" />
-                                                        <label class="form-check-label">Can Delete</label>
+                                                <div class="col-md-8">
+                                                    <div class="row">
+                                                        <div class="col-md-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input permission-checkbox"
+                                                                       type="checkbox" asp-for="@Model.FormsWithPermissions[i].CanView"
+                                                                       data-form-index="@i" data-perm-type="view" />
+                                                                <label class="form-check-label">Can View</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input permission-checkbox"
+                                                                       type="checkbox" asp-for="@Model.FormsWithPermissions[i].CanCreate"
+                                                                       data-form-index="@i" data-perm-type="create" />
+                                                                <label class="form-check-label">Can Create</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input permission-checkbox"
+                                                                       type="checkbox" asp-for="@Model.FormsWithPermissions[i].CanEdit"
+                                                                       data-form-index="@i" data-perm-type="edit" />
+                                                                <label class="form-check-label">Can Edit</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input permission-checkbox"
+                                                                       type="checkbox" asp-for="@Model.FormsWithPermissions[i].CanDelete"
+                                                                       data-form-index="@i" data-perm-type="delete" />
+                                                                <label class="form-check-label">Can Delete</label>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     }
                                 </div>
-                                
+                
                                 <button type="submit" class="btn btn-success">
                                     <i class="fa fa-save"></i> Assign Forms
                                 </button>
@@ -268,7 +311,9 @@
                         </div>
                     </div>
                 </div>
-                
+
+
+
                 <!-- Tab 4: Assign Role to User -->
                 <div class="tab-pane fade" id="assignRole" role="tabpanel">
                     <div class="card">
@@ -412,13 +457,98 @@
         </div>
     </div>
 </div>
-
 @section Scripts {
     <script>
+        // Simple validation - check if role is selected using correct selector
+        function isRoleSelected() {
+            // Try multiple selectors
+            var roleId = $('#roleSelect').val() || $('#SelectedRoleId').val();
+            
+            if (!roleId || roleId === '' || roleId === '-- Select Role --') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Role Selected!',
+                    text: 'Please select a role first before performing this action.',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'OK'
+                });
+                return false;
+            }
+            return true;
+        }
+        
+        // Select All Forms checkbox
+        $('#selectAllForms').off('change').on('change', function() {
+            var isChecked = $(this).is(':checked');
+            $('.form-select-checkbox').prop('checked', isChecked);
+            $('.permission-checkbox').prop('checked', isChecked);
+        });
+        
+        // Select All Permissions button
+        $('#selectAllPermissions').off('click').on('click', function() {
+            if (!isRoleSelected()) return;
+            $('.permission-checkbox').prop('checked', true);
+            $('.form-select-checkbox').prop('checked', true);
+            $('#selectAllForms').prop('checked', true);
+        });
+        
+        // View Only button
+        $('#selectViewOnly').off('click').on('click', function() {
+            if (!isRoleSelected()) return;
+            $('.permission-checkbox').prop('checked', false);
+            $('.permission-checkbox[data-perm-type="view"]').prop('checked', true);
+            updateFormSelectCheckboxes();
+        });
+        
+        // Clear All button
+        $('#clearAllPermissions').off('click').on('click', function() {
+            if (!isRoleSelected()) return;
+            $('.permission-checkbox').prop('checked', false);
+            $('.form-select-checkbox').prop('checked', false);
+            $('#selectAllForms').prop('checked', false);
+        });
+        
+        // Individual form select checkbox
+        $(document).off('change', '.form-select-checkbox').on('change', '.form-select-checkbox', function() {
+            var formIndex = $(this).data('form-index');
+            var isChecked = $(this).is(':checked');
+            $('.permission-checkbox[data-form-index="' + formIndex + '"]').prop('checked', isChecked);
+            updateMainSelectAll();
+        });
+        
+        // Individual permission checkbox
+        $(document).off('change', '.permission-checkbox').on('change', '.permission-checkbox', function() {
+            var formIndex = $(this).data('form-index');
+            var allPermsForForm = $('.permission-checkbox[data-form-index="' + formIndex + '"]');
+            var allChecked = allPermsForForm.length === allPermsForForm.filter(':checked').length;
+            $('.form-select-checkbox[data-form-index="' + formIndex + '"]').prop('checked', allChecked);
+            updateMainSelectAll();
+        });
+        
+        function updateMainSelectAll() {
+            var totalForms = $('.form-select-checkbox').length;
+            var checkedForms = $('.form-select-checkbox:checked').length;
+            $('#selectAllForms').prop('checked', totalForms > 0 && totalForms === checkedForms);
+        }
+        
+        function updateFormSelectCheckboxes() {
+            $('.permission-checkbox').each(function() {
+                var formIndex = $(this).data('form-index');
+                var allPermsForForm = $('.permission-checkbox[data-form-index="' + formIndex + '"]');
+                var allChecked = allPermsForForm.length === allPermsForForm.filter(':checked').length;
+                $('.form-select-checkbox[data-form-index="' + formIndex + '"]').prop('checked', allChecked);
+            });
+            updateMainSelectAll();
+        }
+        
         // Load permissions when role is selected
-        $('#roleSelect').change(function() {
+        $('#roleSelect').off('change').on('change', function() {
             var roleId = $(this).val();
-            if (roleId) {
+            
+            if (roleId && roleId !== '') {
+                // Enable all checkboxes
+                $('.permission-checkbox, .form-select-checkbox, #selectAllForms').prop('disabled', false);
+                
                 $.get('/RoleManagement/GetRolePermissions', { roleId: roleId }, function(data) {
                     for (var i = 0; i < data.length; i++) {
                         $('#FormsWithPermissions_' + i + '__CanView').prop('checked', data[i].canView);
@@ -426,11 +556,27 @@
                         $('#FormsWithPermissions_' + i + '__CanEdit').prop('checked', data[i].canEdit);
                         $('#FormsWithPermissions_' + i + '__CanDelete').prop('checked', data[i].canDelete);
                     }
+                    updateFormSelectCheckboxes();
                 });
             } else {
-                // Uncheck all if no role selected
-                $('input[type="checkbox"]', '#permissionsContainer').prop('checked', false);
+                // Disable all checkboxes
+                $('.permission-checkbox, .form-select-checkbox, #selectAllForms').prop('disabled', true);
+                $('.permission-checkbox').prop('checked', false);
+                $('.form-select-checkbox').prop('checked', false);
+                $('#selectAllForms').prop('checked', false);
             }
+        });
+        
+        // Initially disable checkboxes
+        $('.permission-checkbox, .form-select-checkbox, #selectAllForms').prop('disabled', true);
+        
+        // Form submit validation
+        $('#assignFormsForm').off('submit').on('submit', function(e) {
+            if (!isRoleSelected()) {
+                e.preventDefault();
+                return false;
+            }
+            return true;
         });
     </script>
 }
