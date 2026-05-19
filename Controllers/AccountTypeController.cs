@@ -28,7 +28,7 @@ namespace Nskg.Controllers
         public async Task<IActionResult> Index()
         {
             var actypes = (await _unitOfWork.Actype.GetAllAsync())
-                          .Where(x => !x.IsDeleted);
+                          .Where(x => x.IsDeleted == false);
 
             return View(actypes);
         }
@@ -152,7 +152,7 @@ namespace Nskg.Controllers
         // ✅ DELETE (AJAX)
         [HttpDelete]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(int id)
         {
             try
             {
@@ -175,7 +175,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Delete",
                     "AccountType",
-                    id,
+                    id.ToString(),
                     $"Deleted Account Type: {actype.ACNAME}"
                 );
 
@@ -187,7 +187,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Error",
                     "AccountType",
-                    id,
+                    id.ToString(),
                     ex.Message
                 );
 

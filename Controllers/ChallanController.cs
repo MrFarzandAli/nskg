@@ -44,6 +44,8 @@ namespace Nskg.Controllers
         {
             LoadDropdowns();
 
+           
+
             return View(new ChallanViewModel
             {
                 Head = new ChallanHead
@@ -62,16 +64,36 @@ namespace Nskg.Controllers
         {
             try
             {
-                // Remove empty detail rows
-                model.Details = model.Details?
-                    .Where(x => !string.IsNullOrWhiteSpace(x.IName)
-                             && x.Qty > 0)
-                    .ToList() ?? new List<ChallanDetailVM>();
 
-               
+                foreach (var key in Request.Form.Keys)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Form Key: {key} = {Request.Form[key]}");
+                }
+                System.Diagnostics.Debug.WriteLine($"Details Count: {model.Details?.Count ?? 0}");
+
+                foreach (var d in model.Details ?? new List<ChallanDetailVM>())
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"BillTiNo={d.BillTiNo}, CusName={d.CusName}, Qty={d.Qty}");
+                }
+                // Initialize as the view-model type (fixed)
+                model.Details ??= new List<ChallanDetailVM>();
+
+                // Remove empty rows
+                model.Details = model.Details
+                    .Where(x =>
+                        x.BillTiNo != null ||
+                        !string.IsNullOrWhiteSpace(x.CusName) ||
+                        !string.IsNullOrWhiteSpace(x.SendTo) ||
+                        (x.Qty ?? 0) > 0 ||
+                        (x.BillTiAmt ?? 0) > 0 ||
+                        (x.PaidAmt ?? 0) > 0)
+                    .ToList();
+
+                // Check if details exist
                 if (!model.Details.Any())
                 {
-                    ModelState.AddModelError("", "At least one challan item is required.");
+                    ModelState.AddModelError("", "At least one Bilty detail is required.");
                 }
 
                 if (!ModelState.IsValid)
@@ -82,55 +104,106 @@ namespace Nskg.Controllers
 
                 using var transaction = _context.Database.BeginTransaction();
 
-                //var DetailAccount = _context.GLChart3.FirstOrDefault(x => x.Id == model.Head.CustomerId);
-                //var FooderlAccount = _context.GLChart3.FirstOrDefault(x => x.Id == model.Head.CustomerId);
-                //var SalesAccount = _context.AcPara.Where(a => AccountCategories.Sales.Contains(a.ActypeCode)
-                //   && a.Cocode == User.GetCompanyId().ToString()
-                //   && a.Parent == "P").Select(a => a.Accode).Distinct().FirstOrDefault();
+                // =========================
+                // FILL HEAD AUTO VALUES
+                // =========================
+                model.Head.DocNo ??= GenerateDocNo();
+                model.Head.CompanyId = User.GetCompanyId();
+                model.Head.FyId = User.GetFinancialYearId();
+                model.Head.CoCode = User.GetCompanyCode();
 
-                //// Security / consistency fields
-                //model.Head.DocNo = GenerateDocNo();
-                //model.Head.CompanyId = User.GetCompanyId();
-                //model.Head.CoCode = User.GetCompanyCode();
-                //model.Head.UserId = User.GetUserId();
-                //model.Head.FyId = User.GetFinancialYearId();
-                //model.Head.CusName = DetailAccount.Name;
-                //model.Head.CusCode = DetailAccount.ACC;
-                //model.Head.Fooder = FooderlAccount.Name;
-                //model.Head.FooderCode = FooderlAccount.ACC;
-                //model.Head.Qty = model.Details.Sum(x => x.Qty);
-                //model.Head.AccCode = SalesAccount;
+                model.Head.TotPaid = model.Details.Sum(x => x.PaidAmt ?? 0);
 
-                //// Save Head
-                //_context.ChallanHead.Add(model.Head);
-                //_context.SaveChanges();
+                model.Head.TotBillTi =
+                     (model.Head.BillTiAmt ?? 0)
+                     + model.Details.Sum(x => x.BillTiAmt ?? 0);
 
-                
-                //// Save Details                
-                //foreach (var detail in model.Details)
-                //{
-                //    var challanDetail = new ChallanDet
-                //    {
-                //        DocNo = model.Head.DocNo,
-                //        DocDate = model.Head.DocDate,
-                //        ChallanHeadId = model.Head.Id,
-                //        CompanyId = model.Head.CompanyId,
-                //        UserId = model.Head.UserId,
-                //        FyId = model.Head.FyId,
-                //        CusName = DetailAccount.Name,
-                //        CusCode = DetailAccount.ACC,
-                //        IName = detail.IName,
-                //        Qty = detail.Qty,
-                //        QtyPerPack = detail.QtyPerPack,
-                //        AccCode = SalesAccount
-                //    };
+                model.Head.NetAmt =
+                    (model.Head.TotToPaid ?? 0)
+                    - (
+                        (model.Head.PExpAmt ?? 0) +
+                        (model.Head.PExpAmt2 ?? 0) +
+                        (model.Head.PExpAmt3 ?? 0) +
+                        (model.Head.LocalAmt ?? 0) +
+                        (model.Head.TotOtherEx ?? 0) +
+                        (model.Head.DeliveryAmt ?? 0) +
+                        (model.Head.TotLifter2 ?? 0)
+                      );
 
-                //    _context.ChallanDet.Add(challanDetail);
-                //}
+                // =========================
+                // LOOKUP MASTER DATA
+                // =========================
+                var station = _context.GLChart3
+                    .FirstOrDefault(x => x.Id == model.Head.StationId);
 
-                //_context.SaveChanges();
+                var transporter = _context.GLChart3
+                    .FirstOrDefault(x => x.Id == model.Head.TransId);
 
-                //transaction.Commit();
+                model.Head.Station = station?.Name;
+                model.Head.StationCode = station?.ACC;
+
+                model.Head.Transporter = transporter?.Name;
+                model.Head.TransCode = transporter?.ACC;
+
+                // =========================
+                // SAVE HEAD
+                // =========================
+                _context.ChallanHead.Add(model.Head);
+                _context.SaveChanges();
+
+                // =========================
+                // SAVE DETAILS
+                // Map ViewModel -> Entity before adding to DbContext (fixed)
+                // =========================
+                foreach (var item in model.Details)
+                {                   
+                    var det = new ChallanDet
+                    {
+                        ChallanHeadId = model.Head.Id,
+                        DocNo = model.Head.DocNo,
+                        DocDate = model.Head.DocDate,
+                        CompanyId = model.Head.CompanyId,
+                        FyId = model.Head.FyId,
+                        CoCode = model.Head.CoCode,
+
+                        Transporter = model.Head.TransCode,
+                        VehicleNo = model.Head.VehicleNo,
+                        TrName = model.Head.Transporter,
+
+                        // Map fields from the view-model
+                        CusName = item.CusName,
+                        SendTo = item.SendTo,
+                        BillTiNo = item.BillTiNo,
+                        BillTiAmt = item.BillTiAmt,
+                        PaidAmt = item.PaidAmt,
+                        // Qty in entity is int? while VM uses decimal? - convert safely
+                        Qty = item.Qty.HasValue ? (int?)Convert.ToInt32(item.Qty.Value) : null
+                    };
+
+                    _context.ChallanDet.Add(det);
+
+                    // =========================
+                    // UPDATE ORIGINAL BILTY TABLE
+                    // Mark as used (Descyn = "Y")
+                    // =========================
+                    if (!string.IsNullOrWhiteSpace(item.DCNo))
+                    {
+                        // Find the original bilty record
+                        var originalBilty = _context.IssHead // Replace with your actual table name
+                            .FirstOrDefault(b => b.DocNo == item.DCNo && b.BillTiNo.ToString() == item.BillTiNo);
+
+                        if (originalBilty != null)
+                        {
+                            originalBilty.DescYN = "Y";  // Mark as used
+                            originalBilty.ChallanId = model.Head.Id; // Optional: store reference
+                            _context.Entry(originalBilty).State = EntityState.Modified;
+                        }
+                    }
+                }
+
+                _context.SaveChanges();
+
+                transaction.Commit();
 
                 _audit.LogAsync(
                     "Create",
@@ -139,13 +212,18 @@ namespace Nskg.Controllers
                     $"Challan Created: {model.Head.DocNo}"
                 ).Wait();
 
-                TempData["SuccessMessage"] = "✅ Challan saved successfully.";
+                TempData["SuccessMessage"] = "✅ Challan Update successfully.";
 
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                _audit.LogAsync("Error", "Challan Create", "0", ex.Message).Wait();
+                _audit.LogAsync(
+                    "Error",
+                    "Challan Create",
+                    "0",
+                    ex.ToString()
+                ).Wait();
 
                 TempData["ErrorMessage"] = "❌ Failed to save challan.";
 
@@ -154,111 +232,176 @@ namespace Nskg.Controllers
             }
         }
 
-        //public IActionResult Edit(int id)
-        //{
-        //    LoadDropdowns();
+        public IActionResult Edit(int id)
+        {
+            LoadDropdowns();
 
-        //    var head = _context.ChallanHead
-        //        .FirstOrDefault(x => x.Id == id);
+            var head = _context.ChallanHead
+                .FirstOrDefault(x => x.Id == id);
 
-        //    if (head == null)
-        //        return NotFound();
+            if (head == null)
+                return NotFound();
 
-        //    var details = _context.ChallanDet
-        //        .Where(x => x.ChallanHeadId == id)
-        //        .Select(x => new ChallanDetailVM
-        //        {
-        //            IName = x.IName ?? "",
-        //            Qty = x.Qty ?? 0,
-        //            QtyPerPack = x.QtyPerPack ?? 0
-        //        })
-        //        .ToList();
+            var details = _context.ChallanDet
+                 .Where(x => x.ChallanHeadId == id)
+                 .Select(x => new ChallanDetailVM
+                 {
+                     CusName = x.CusName,
+                     SendTo = x.SendTo,
+                     BillTiNo = x.BillTiNo,
+                     BillTiAmt = x.BillTiAmt,
+                     PaidAmt = x.PaidAmt,
+                     Qty = x.Qty
+                 })
+                 .ToList();
 
-        //    var model = new ChallanViewModel
-        //    {
-        //        Head = head,
-        //        Details = details ?? new List<ChallanDetailVM>()
-        //    };
+            var model = new ChallanViewModel
+            {
+                Head = head,
+                Details = details ?? new List<ChallanDetailVM>()
+            };
 
-        //    return View(model);
-        //}
+            return View(model);
+        }
 
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public IActionResult Edit(ChallanViewModel model)
-        //{
-        //    try
-        //    {
-        //        if (!ModelState.IsValid)
-        //        {
-        //            LoadDropdowns();
-        //            return View(model);
-        //        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Edit(ChallanViewModel model)
+        {
+            try
+            {
+                model.Details ??= new List<ChallanDetailVM>();
 
-        //        using var transaction = _context.Database.BeginTransaction();
+                // Remove empty rows
+                model.Details = model.Details
+                    .Where(x =>
+                        x.BillTiNo != null ||
+                        !string.IsNullOrWhiteSpace(x.CusName) ||
+                        (x.Qty ?? 0) > 0 ||
+                        (x.BillTiAmt ?? 0) > 0)
+                    .ToList();
 
-        //        var head = _context.ChallanHead
-        //            .Include(x => x.Details)
-        //            .FirstOrDefault(x => x.Id == model.Head.Id);
+                if (!ModelState.IsValid)
+                {
+                    LoadDropdowns();
+                    return View(model);
+                }
 
-        //        if (head == null)
-        //            return NotFound();
+                using var transaction = _context.Database.BeginTransaction();
 
-        //        // MASTER
-        //        head.BillTiNo = model.Head.BillTiNo;
-        //        head.BilNo = model.Head.BilNo;
-        //        head.DocDate = model.Head.DocDate;
-        //        head.StationId = model.Head.StationId;
-        //        head.CustomerId = model.Head.CustomerId;
-        //        head.Narration = model.Head.Narration;
-        //        head.SendTo = model.Head.SendTo;
+                var head = _context.ChallanHead
+                    .Include(x => x.Details)
+                    .FirstOrDefault(x => x.Id == model.Head.Id);
 
-        //        head.Cartage1 = model.Head.Cartage1;
-        //        head.Cartage2 = model.Head.Cartage2;
-        //        head.Cartage3 = model.Head.Cartage3;
-        //        head.Labour = model.Head.Labour;
-        //        head.T_T = model.Head.T_T;
+                if (head == null)
+                    return NotFound();
 
-        //        head.PartyEx = model.Head.PartyEx;
-        //        head.Lifter2 = model.Head.Lifter2;
-        //        head.OtherEx = model.Head.OtherEx;
+                // =========================
+                // UPDATE HEAD
+                // =========================
+                head.ChalNo = model.Head.ChalNo;
+                head.DocDate = model.Head.DocDate;
+                head.StationId = model.Head.StationId;
+                head.TransId = model.Head.TransId;
+                head.VehicleNo = model.Head.VehicleNo;
+                head.Driver = model.Head.Driver;
+                head.Narration = model.Head.Narration;
 
-        //        // IMPORTANT FIX
-        //        head.NetAmt = (model.Head.Cartage1 ?? 0)
-        //                    + (model.Head.Cartage2 ?? 0)
-        //                    + (model.Head.Cartage3 ?? 0)
-        //                    + (model.Head.Labour ?? 0)
-        //                    + (model.Head.T_T ?? 0);
+                head.PartyStationCode = model.Head.PartyStationCode;
 
-        //        // DELETE OLD DETAILS
-        //        _context.ChallanDet.RemoveRange(head.Details);
-        //        _context.SaveChanges();
+                head.PExpCode = model.Head.PExpCode;
+                head.PExpCode2 = model.Head.PExpCode2;
+                head.PExpCode3 = model.Head.PExpCode3;
 
-        //        // INSERT NEW DETAILS
-        //        foreach (var d in model.Details ?? new List<ChallanDetailVM>())
-        //        {
-        //            _context.ChallanDet.Add(new ChallanDet
-        //            {
-        //                ChallanHeadId = head.Id,
-        //                IName = d.IName,
-        //                Qty = d.Qty,
-        //                QtyPerPack = d.QtyPerPack
-        //            });
-        //        }
+                head.PExpAmt = model.Head.PExpAmt;
+                head.PExpAmt2 = model.Head.PExpAmt2;
+                head.PExpAmt3 = model.Head.PExpAmt3;
 
-        //        _context.SaveChanges();
-        //        transaction.Commit();
+                head.PExpBilti = model.Head.PExpBilti;
+                head.PExpBilti2 = model.Head.PExpBilti2;
+                head.PExpBilti3 = model.Head.PExpBilti3;
 
-        //        TempData["SuccessMessage"] = "Updated successfully!";
-        //        return RedirectToAction("Index");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        TempData["ErrorMessage"] = ex.Message;
-        //        LoadDropdowns();
-        //        return View(model);
-        //    }
-        //}
+                head.PartyEx2 = model.Head.PartyEx2;
+                head.LocalAmt2 = model.Head.LocalAmt2;
+                head.OtherEx2 = model.Head.OtherEx2;
+
+                head.LocalAmt = model.Head.LocalAmt;
+                head.TotOtherEx = model.Head.TotOtherEx;
+
+                head.TotToPaid = model.Head.TotToPaid;
+                head.DeliveryAmt = model.Head.DeliveryAmt;
+                head.BillTiAmt = model.Head.BillTiAmt;
+                head.TotLifter2 = model.Head.TotLifter2;
+
+                // =========================
+                // RECALCULATE TOTALS
+                // =========================
+                head.TotBillTi =
+                    (head.BillTiAmt ?? 0) +
+                    model.Details.Sum(x => x.BillTiAmt ?? 0);
+
+                head.NetAmt =
+                    (head.TotToPaid ?? 0)
+                    - (
+                        (head.PExpAmt ?? 0) +
+                        (head.PExpAmt2 ?? 0) +
+                        (head.PExpAmt3 ?? 0) +
+                        (head.LocalAmt ?? 0) +
+                        (head.TotOtherEx ?? 0) +
+                        (head.DeliveryAmt ?? 0) +
+                        (head.TotLifter2 ?? 0)
+                    );
+
+                // =========================
+                // DELETE OLD DETAILS
+                // =========================
+                _context.ChallanDet.RemoveRange(head.Details);
+                _context.SaveChanges();
+
+                // =========================
+                // INSERT NEW DETAILS
+                // =========================
+                foreach (var d in model.Details)
+                {
+                    _context.ChallanDet.Add(new ChallanDet
+                    {
+                        ChallanHeadId = head.Id,
+                        FyId = head.FyId,
+                        CompanyId = head.CompanyId,
+                        DocNo = head.DocNo,
+                        DocDate = head.DocDate,
+                        CoCode = head.CoCode,
+
+                        BillTiNo = d.BillTiNo,
+                        CusName = d.CusName,
+                        SendTo = d.SendTo,
+                        Qty = Convert.ToInt32(d.Qty),
+                        BillTiAmt = d.BillTiAmt,
+                        PaidAmt = d.PaidAmt,
+
+                        VehicleNo = head.VehicleNo,
+                        Transporter = head.Transporter,
+                        TrName = head.Driver
+                    });
+                }
+
+                _context.SaveChanges();
+
+                transaction.Commit();
+
+                TempData["SuccessMessage"] = "✅ Challan updated successfully.";
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+
+                LoadDropdowns();
+                return View(model);
+            }
+        }
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -300,7 +443,7 @@ namespace Nskg.Controllers
         {
             try
             {
-               
+
 
                 var transporterlist = _context.AcPara
     .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
@@ -360,6 +503,91 @@ namespace Nskg.Controllers
                 });
 
                 ViewBag.Stations = stationAccounts;
+
+                //party station 
+                var PartyStationList = _context.AcPara
+                    .Where(a => AccountCategories.Party_Station.Contains(a.ActypeCode)
+                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
+
+                var PartyStationAccounts = _context.GLChart3
+                    .Where(g =>
+                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.AcType != "S" &&
+                        PartyStationList.Contains(g.AC1)
+                    )
+                    .Select(g => new SelectListItem
+                    {
+                        Value = g.Id.ToString(),
+                        Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                    })
+                    .OrderBy(x => x.Text)
+                    .ToList();
+
+                PartyStationAccounts.Insert(0, new SelectListItem
+                {
+                    Value = "",
+                    Text = "-- Select Party Station Account --"
+                });
+
+                ViewBag.PartyStations = PartyStationAccounts;
+
+                //party Exp
+                var PartyExpList = _context.AcPara
+                    .Where(a => AccountCategories.Too_PayParty.Contains(a.ActypeCode)
+                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
+
+                var PartyExpAccounts = _context.GLChart3
+                    .Where(g =>
+                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.AcType != "S" &&
+                        PartyExpList.Contains(g.AC1)
+                    )
+                    .Select(g => new SelectListItem
+                    {
+                        Value = g.Id.ToString(),
+                        Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                    })
+                    .OrderBy(x => x.Text)
+                    .ToList();
+
+                PartyExpAccounts.Insert(0, new SelectListItem
+                {
+                    Value = "",
+                    Text = "-- Select Party Exp Account --"
+                });
+
+                ViewBag.PartyExps = PartyExpAccounts;
+
+
+                //Load bilty
+                ViewBag.BiltyList = _context.IssHead
+    .Where(x => x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN))
+    .Select(x => new
+    {
+        x.Id,
+        x.DocNo,
+        x.DocDate,
+        x.BillTiNo,
+        x.BilNo,
+        x.CusName,
+        x.SendTo,
+        x.Qty,
+        x.PType,
+        x.NetAmt,
+        x.Labour,
+        x.Cartage2,
+        x.Cartage3,
+        x.PartyEx,
+        x.Lifter2,
+        x.OtherEx
+    })
+    .ToList();
             }
             catch (Exception ex)
             {

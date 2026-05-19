@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512185246_alterTypesInChallandet")]
+    partial class alterTypesInChallandet
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1363,9 +1366,6 @@ namespace Nskg.Migrations
                     b.Property<decimal?>("Cartage3")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int?>("ChallanId")
-                        .HasColumnType("int");
-
                     b.Property<string>("CoCode")
                         .HasMaxLength(2)
                         .HasColumnType("nvarchar(2)");
@@ -1572,8 +1572,6 @@ namespace Nskg.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ChallanId");
 
                     b.HasIndex("CustomerId");
 
@@ -2145,10 +2143,6 @@ namespace Nskg.Migrations
 
             modelBuilder.Entity("Nskg.Models.IssHead", b =>
                 {
-                    b.HasOne("Nskg.Models.ChallanHead", "Challan")
-                        .WithMany()
-                        .HasForeignKey("ChallanId");
-
                     b.HasOne("Nskg.Models.GLChart3", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -2160,8 +2154,6 @@ namespace Nskg.Migrations
                         .HasForeignKey("StationId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
-
-                    b.Navigation("Challan");
 
                     b.Navigation("Customer");
 

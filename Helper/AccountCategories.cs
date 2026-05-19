@@ -10,5 +10,7 @@
         public static readonly string[] Bank = { "B" };
         public static readonly string[] Cash = { "C" };
         public static readonly string[] Sales = { "S" };
+        public static readonly string[] Party_Station = { "PS" };
+        public static readonly string[] Too_PayParty = { "TP" };
     }
 }

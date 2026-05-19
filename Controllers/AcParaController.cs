@@ -25,7 +25,7 @@ namespace Nskg.Controllers
 
         public IActionResult Index()
         {
-            ViewBag.AccountType = _context.Actype
+            ViewBag.AccountType = _context.Actype.Where(x => !x.IsDeleted)
                 .Select(x => new
                 {
                     x.ACTYPE,

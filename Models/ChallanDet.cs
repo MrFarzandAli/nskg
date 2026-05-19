@@ -96,8 +96,8 @@
         public decimal? Labour { get; set; }
         public decimal? TT { get; set; }
 
-        public decimal? BilNo { get; set; }
-        public decimal? BillTiNo { get; set; }
+        public string? BilNo { get; set; }
+        public string? BillTiNo { get; set; }
         public decimal? BillTiAmt { get; set; }
 
         public decimal? PaidAmt { get; set; }

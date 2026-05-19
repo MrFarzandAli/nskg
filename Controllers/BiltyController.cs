@@ -100,6 +100,7 @@ namespace Nskg.Controllers
                 model.Head.FooderCode = FooderlAccount.ACC;
                 model.Head.Qty = model.Details.Sum(x => x.Qty);
                 model.Head.AccCode = SalesAccount;
+                model.Head.PType = "Paid";
 
                 // Save Head
                 _context.IssHead.Add(model.Head);

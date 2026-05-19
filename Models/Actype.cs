@@ -8,8 +8,10 @@ namespace Nskg.Models
     public class Actype
     {
         [Key] // assuming ACTYPE is primary key (confirm if needed)
+        public int Id { get; set; }
+
         [Column("ACTYPE")]
-        [StringLength(1)]
+        [StringLength(2)]
         public string ACTYPE { get; set; }
 
         [Column("ACNAME")]

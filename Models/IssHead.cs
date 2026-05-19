@@ -187,11 +187,14 @@ namespace Nskg.Models
         [StringLength(1)]
         public string? DescYN1 { get; set; }
 
+        public int? ChallanId { get; set; }
+
         // Navigation Property
         public ICollection<IssDetail> Details { get; set; } = new List<IssDetail>();
 
         public GLChart3? Station { get; set; }
         public GLChart3? Customer { get; set; }
+        public ChallanHead? Challan { get; set; }
 
     }
 }
