@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260503203430_AddAuditFieldsTovility")]
+    partial class AddAuditFieldsTovility
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -240,7 +243,7 @@ namespace Nskg.Migrations
 
                     b.Property<string>("ActypeCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(2)")
+                        .HasColumnType("nvarchar(1)")
                         .HasColumnName("ACTYPE");
 
                     b.Property<string>("Cocode")
@@ -325,23 +328,16 @@ namespace Nskg.Migrations
 
             modelBuilder.Entity("Nskg.Models.Actype", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("ACTYPE")
+                        .HasMaxLength(1)
+                        .HasColumnType("nvarchar(1)")
+                        .HasColumnName("ACTYPE");
 
                     b.Property<string>("ACNAME")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)")
                         .HasColumnName("ACNAME");
-
-                    b.Property<string>("ACTYPE")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("nvarchar(2)")
-                        .HasColumnName("ACTYPE");
 
                     b.Property<string>("COCODE")
                         .HasMaxLength(2)
@@ -363,7 +359,7 @@ namespace Nskg.Migrations
                     b.Property<DateTime?>("ModifiedOn")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("Id");
+                    b.HasKey("ACTYPE");
 
                     b.ToTable("ACTYPE");
                 });
@@ -427,8 +423,8 @@ namespace Nskg.Migrations
                     b.Property<string>("BCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("BilNo")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal?>("BilNo")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("BillTiAmt")
                         .HasColumnType("decimal(18,2)");
@@ -436,8 +432,8 @@ namespace Nskg.Migrations
                     b.Property<DateTime?>("BillTiDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("BillTiNo")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal?>("BillTiNo")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("CartType")
                         .HasColumnType("nvarchar(max)");
@@ -1378,9 +1374,6 @@ namespace Nskg.Migrations
                     b.Property<decimal?>("Cartage3")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int?>("ChallanId")
-                        .HasColumnType("int");
-
                     b.Property<string>("CoCode")
                         .HasMaxLength(2)
                         .HasColumnType("nvarchar(2)");
@@ -1602,8 +1595,6 @@ namespace Nskg.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ChallanId");
 
                     b.HasIndex("CustomerId");
 
@@ -2108,7 +2099,6 @@ namespace Nskg.Migrations
                     b.HasOne("Nskg.Models.Actype", "Actype")
                         .WithMany("acParas")
                         .HasForeignKey("ActypeCode")
-                        .HasPrincipalKey("ACTYPE")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2175,10 +2165,6 @@ namespace Nskg.Migrations
 
             modelBuilder.Entity("Nskg.Models.IssHead", b =>
                 {
-                    b.HasOne("Nskg.Models.ChallanHead", "Challan")
-                        .WithMany()
-                        .HasForeignKey("ChallanId");
-
                     b.HasOne("Nskg.Models.GLChart3", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -2190,8 +2176,6 @@ namespace Nskg.Migrations
                         .HasForeignKey("StationId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
-
-                    b.Navigation("Challan");
 
                     b.Navigation("Customer");
 

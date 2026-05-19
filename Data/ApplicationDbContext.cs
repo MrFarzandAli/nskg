@@ -14,8 +14,11 @@ namespace Nskg.Data
         {
         }
 
-        public DbSet<Form> Forms { get; set; }
-        public DbSet<RoleFormPermission> RoleFormPermissions { get; set; }
+        //public DbSet<Models.Form> Forms { get; set; }
+        //public DbSet<Models.RoleFormPermission> RoleFormPermissions { get; set; }
+        // 🔥 ADD THESE - Map to existing tables
+        public DbSet<Nskg.Models.Security.Form> Forms { get; set; }                    // ← ADD THIS
+        public DbSet<Nskg.Models.Security.RoleFormPermission> RoleFormPermissions { get; set; }  // ← ADD THIS
         public DbSet<Company> Companies { get; set; }
         public DbSet<FinancialYear> FinancialYears { get; set; }
         public DbSet<UserCompany> UserCompanies { get; set; }

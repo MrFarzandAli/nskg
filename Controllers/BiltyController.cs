@@ -23,12 +23,17 @@ namespace Nskg.Controllers
             _service = service;
             _audit = audit; // ✅ ADD
         }
+        private string GetUser()
+        {
+            return User?.Identity?.Name ?? "System";
+        }
         public IActionResult Index()
         {
             try
             {
                 var data = _context.IssHead
-                    .ToList();
+               .Where(x => !x.IsDeleted)
+               .ToList();
 
                 return View(data);
             }
@@ -100,6 +105,10 @@ namespace Nskg.Controllers
                 model.Head.FooderCode = FooderlAccount.ACC;
                 model.Head.Qty = model.Details.Sum(x => x.Qty);
                 model.Head.AccCode = SalesAccount;
+                // 🔥 AUDIT (HEAD)
+                model.Head.CreatedOn = DateTime.Now;
+                model.Head.CreatedBy = GetUser();
+                model.Head.IsDeleted = false;
                 model.Head.PType = "Paid";
 
                 // Save Head
@@ -123,7 +132,10 @@ namespace Nskg.Controllers
                         IName = detail.IName,
                         Qty = detail.Qty,
                         QtyPerPack = detail.QtyPerPack,
-                        AccCode = SalesAccount
+                        AccCode = SalesAccount,
+                        CreatedOn = DateTime.Now,
+                        CreatedBy = GetUser(),
+                        IsDeleted = false
                     };
 
                     _context.IssDetail.Add(issDetail);
@@ -230,9 +242,18 @@ namespace Nskg.Controllers
                             + (model.Head.Cartage3 ?? 0)
                             + (model.Head.Labour ?? 0)
                             + (model.Head.T_T ?? 0);
-
+                head.ModifiedOn = DateTime.Now;
+                head.ModifiedBy = GetUser();
                 // DELETE OLD DETAILS
-                _context.IssDetail.RemoveRange(head.Details);
+                // _context.IssDetail.RemoveRange(head.Details);
+                foreach (var d in head.Details)
+                {
+                    d.IsDeleted = true;
+                    d.ModifiedOn = DateTime.Now;
+                    d.ModifiedBy = GetUser();
+
+                    _context.IssDetail.Update(d);
+                }
                 _context.SaveChanges();
 
                 // INSERT NEW DETAILS
@@ -243,7 +264,10 @@ namespace Nskg.Controllers
                         IssHeadId = head.Id,
                         IName = d.IName,
                         Qty = d.Qty,
-                        QtyPerPack = d.QtyPerPack
+                        QtyPerPack = d.QtyPerPack,
+                        CreatedOn = DateTime.Now,
+                        CreatedBy = GetUser(),
+                        IsDeleted = false
                     });
                 }
 
@@ -261,6 +285,41 @@ namespace Nskg.Controllers
             }
         }
 
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public IActionResult Delete(int id)
+        //{
+        //    try
+        //    {
+        //        var v = _context.IssHead
+        //            .Include(x => x.Details)
+        //            .FirstOrDefault(x => x.Id == id);
+
+        //        if (v == null)
+        //        {
+        //            return Json(new { success = false, message = "Bilty not found!" });
+        //        }
+
+        //        var gl = _context.GLTrans
+        //            .Where(x => x.RefId == v.Id);
+
+        //        _context.GLTrans.RemoveRange(gl);
+
+        //        _context.IssDetail.RemoveRange(v.Details);
+        //        _context.IssHead.Remove(v);
+
+        //        _context.SaveChanges();
+
+        //        _audit.LogAsync("Delete", "Bilty", id.ToString(),
+        //            $"Deleted: {v.DocNo}").Wait();
+
+        //        return Json(new { success = true, message = "Bilty deleted successfully!" });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return Json(new { success = false, message = ex.Message });
+        //    }
+        //}
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Delete(int id)
@@ -276,27 +335,43 @@ namespace Nskg.Controllers
                     return Json(new { success = false, message = "Bilty not found!" });
                 }
 
+                // 🔥 GL REMOVE (same as before)
                 var gl = _context.GLTrans
                     .Where(x => x.RefId == v.Id);
 
                 _context.GLTrans.RemoveRange(gl);
 
-                _context.IssDetail.RemoveRange(v.Details);
-                _context.IssHead.Remove(v);
+                // 🔥 SOFT DELETE DETAILS
+                foreach (var d in v.Details)
+                {
+                    d.IsDeleted = true;
+                    d.ModifiedOn = DateTime.Now;
+                    d.ModifiedBy = GetUser();
+
+                    _context.IssDetail.Update(d);
+                }
+
+                // 🔥 SOFT DELETE HEAD
+                v.IsDeleted = true;
+                v.ModifiedOn = DateTime.Now;
+                v.ModifiedBy = GetUser();
+
+                _context.IssHead.Update(v);
 
                 _context.SaveChanges();
 
                 _audit.LogAsync("Delete", "Bilty", id.ToString(),
-                    $"Deleted: {v.DocNo}").Wait();
+                    $"Soft Deleted: {v.DocNo}").Wait();
 
                 return Json(new { success = true, message = "Bilty deleted successfully!" });
             }
             catch (Exception ex)
             {
+                _audit.LogAsync("Error", "Bilty", id.ToString(), ex.Message).Wait();
+
                 return Json(new { success = false, message = ex.Message });
             }
         }
-
         private void LoadDropdowns()
         {
             try

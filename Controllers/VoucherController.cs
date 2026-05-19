@@ -407,9 +407,16 @@ namespace Nskg.Controllers
                 // =========================================
                 // 🔥 STEP 3: REPLACE DETAILS
                 // =========================================
-                _context.VoDet.RemoveRange(existing.Details);
+                //  _context.VoDet.RemoveRange(existing.Details);
+                foreach (var d in existing.Details)
+                {
+                    d.IsDeleted = true;
+                    d.ModifiedOn = DateTime.Now;
+                    d.ModifiedBy = GetUser();
 
-               
+                    _context.VoDet.Update(d);
+                }
+
                 foreach (var d in vm.Details)
                 {
                     var DetailAccount = _context.GLChart3.FirstOrDefault(x => x.Id == d.gl3Id);
