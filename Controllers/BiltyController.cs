@@ -73,13 +73,16 @@ namespace Nskg.Controllers
                              && x.Qty > 0)
                     .ToList() ?? new List<BiltyDetailVM>();
 
-               
+                // 🔥 CLEAR ModelState errors before validation
+                ModelState.Clear();
+
                 if (!model.Details.Any())
                 {
                     ModelState.AddModelError("", "At least one bilty item is required.");
                 }
 
-                if (!ModelState.IsValid)
+                // Re-validate the model after clearing and filtering
+                if (!TryValidateModel(model))
                 {
                     LoadDropdowns();
                     return View(model);
@@ -99,13 +102,12 @@ namespace Nskg.Controllers
                 model.Head.CoCode = User.GetCompanyCode();
                 model.Head.UserId = User.GetUserId();
                 model.Head.FyId = User.GetFinancialYearId();
-                model.Head.CusName = DetailAccount.Name;
-                model.Head.CusCode = DetailAccount.ACC;
-                model.Head.Fooder = FooderlAccount.Name;
-                model.Head.FooderCode = FooderlAccount.ACC;
+                model.Head.CusName = DetailAccount?.Name;
+                model.Head.CusCode = DetailAccount?.ACC;
+                model.Head.Fooder = FooderlAccount?.Name;
+                model.Head.FooderCode = FooderlAccount?.ACC;
                 model.Head.Qty = model.Details.Sum(x => x.Qty);
                 model.Head.AccCode = SalesAccount;
-                // 🔥 AUDIT (HEAD)
                 model.Head.CreatedOn = DateTime.Now;
                 model.Head.CreatedBy = GetUser();
                 model.Head.IsDeleted = false;
@@ -115,7 +117,6 @@ namespace Nskg.Controllers
                 _context.IssHead.Add(model.Head);
                 _context.SaveChanges();
 
-                
                 // Save Details                
                 foreach (var detail in model.Details)
                 {
@@ -127,8 +128,8 @@ namespace Nskg.Controllers
                         CompanyId = model.Head.CompanyId,
                         UserId = model.Head.UserId,
                         FyId = model.Head.FyId,
-                        CusName = DetailAccount.Name,
-                        CusCode = DetailAccount.ACC,
+                        CusName = DetailAccount?.Name,
+                        CusCode = DetailAccount?.ACC,
                         IName = detail.IName,
                         Qty = detail.Qty,
                         QtyPerPack = detail.QtyPerPack,
@@ -166,7 +167,6 @@ namespace Nskg.Controllers
                 return View(model);
             }
         }
-
         public IActionResult Edit(int id)
         {
             LoadDropdowns();
@@ -178,7 +178,8 @@ namespace Nskg.Controllers
                 return NotFound();
 
             var details = _context.IssDetail
-                .Where(x => x.IssHeadId == id)
+                .Where(x => x.IssHeadId == id
+                   && !x.IsDeleted)  // Filter active details
                 .Select(x => new BiltyDetailVM
                 {
                     IName = x.IName ?? "",
@@ -202,7 +203,23 @@ namespace Nskg.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
+
+                // Remove empty detail rows
+                model.Details = model.Details?
+                    .Where(x => !string.IsNullOrWhiteSpace(x.IName)
+                             && x.Qty > 0)
+                    .ToList() ?? new List<BiltyDetailVM>();
+
+                // 🔥 CLEAR ModelState errors before validation
+                ModelState.Clear();
+
+                if (!model.Details.Any())
+                {
+                    ModelState.AddModelError("", "At least one bilty item is required.");
+                }
+
+                // Re-validate the model after clearing and filtering
+                if (!TryValidateModel(model))
                 {
                     LoadDropdowns();
                     return View(model);
@@ -211,7 +228,7 @@ namespace Nskg.Controllers
                 using var transaction = _context.Database.BeginTransaction();
 
                 var head = _context.IssHead
-                    .Include(x => x.Details)
+                       .Include(x => x.Details.Where(d => !d.IsDeleted))  // Filter active details
                     .FirstOrDefault(x => x.Id == model.Head.Id);
 
                 if (head == null)

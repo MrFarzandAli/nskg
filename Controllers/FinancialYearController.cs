@@ -202,22 +202,43 @@ namespace Nskg.Controllers
         [HttpPost]
         public async Task<IActionResult> CloseYear(int fyId)
         {
+            var list = _context.FinancialYears
+              .Where(x => x.CompanyId == User.GetCompanyId() && !x.IsDeleted)
+              .OrderByDescending(x => x.StartDate)
+              .ToList();
+
             var fy = await _unitOfWork.FinancialYears.GetByIdAsync(fyId);
 
             if (fy == null || fy.IsDeleted)
-                throw new Exception("Financial year not found.");
+            {
+                TempData["ErrorMessage"] = "❌ Financial year already closed!";
+                return View(list);
+                //            throw new Exception("Financial year not found.");
+            }
 
             if (fy.IsClosed)
-                throw new Exception("Financial year already closed.");
+            {
+                //throw new Exception("Financial year already closed.");
+                TempData["ErrorMessage"] = "❌ Financial year already closed!";
+                return View(list);
+            }
 
             if (fy.Id == User.GetFinancialYearId())
-                throw new Exception("Cannot close active financial year.");
+            {
+                TempData["ErrorMessage"] = "Cannot close active financial year.";
+                return View(list);
+            }
+                //throw new Exception("Cannot close active financial year.");
 
             var nextYear = _context.FinancialYears
                 .FirstOrDefault(x => x.StartDate > fy.StartDate && !x.IsDeleted);
 
             if (nextYear == null)
-                throw new Exception("Next financial year does not exist.");
+            {
+                TempData["ErrorMessage"] = "Next financial year does not exist.";
+                return View(list);
+            }
+                //throw new Exception("Next financial year does not exist.");
 
             var chart = _context.GLChart3.FirstOrDefault(x => x.AcType == "C");
 
@@ -229,7 +250,7 @@ namespace Nskg.Controllers
 
             TempData["Success"] = "Financial Year Closed Successfully.";
 
-            return RedirectToAction("Index");
+            return View(list);
         }
     }
 }

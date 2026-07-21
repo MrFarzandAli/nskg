@@ -33,6 +33,8 @@ namespace Nskg.Data
         public DbSet<IssDetail> IssDetail { get; set; }
         public DbSet<ChallanHead> ChallanHead { get; set; }
         public DbSet<ChallanDet> ChallanDet { get; set; }
+        public DbSet<CommHead> CommHead { get; set; }
+        public DbSet<CommDetail> CommDetail { get; set; }
         public DbSet<GLTrans> GLTrans { get; set; }
         public DbSet<VoucherTypeSetting> VoucherTypeSettings { get; set; }
         public DbSet<OpeningBalance> OpeningBalances { get; set; }
@@ -88,6 +90,13 @@ namespace Nskg.Data
                 .WithMany()
                 .HasForeignKey(x => x.StationId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            // Global query filters for soft delete
+            builder.Entity<IssHead>().HasQueryFilter(i => !i.IsDeleted);
+            builder.Entity<ChallanHead>().HasQueryFilter(c => !c.IsDeleted);
+            builder.Entity<CommHead>().HasQueryFilter(c => !c.IsDeleted);
+            // Treat ChallanDet rows with DescYn == "Y" as soft-deleted
+           // builder.Entity<ChallanDet>().HasQueryFilter(d => d.DescYn != "Y");
         }
     }
 

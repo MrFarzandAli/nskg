@@ -3,6 +3,7 @@
     public static class AccountCategories
     {
         public static readonly string[] Customer = { "M" };
+        public static readonly string[] Advance = { "A" };
         public static readonly string[] Party = { "M", "D", "N" };
         public static readonly string[] Station = { "N" };
         public static readonly string[] Transporter = { "D" };

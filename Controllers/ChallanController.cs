@@ -65,11 +65,11 @@ namespace Nskg.Controllers
             try
             {
 
-                foreach (var key in Request.Form.Keys)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Form Key: {key} = {Request.Form[key]}");
-                }
-                System.Diagnostics.Debug.WriteLine($"Details Count: {model.Details?.Count ?? 0}");
+                //foreach (var key in Request.Form.Keys)
+                //{
+                //    System.Diagnostics.Debug.WriteLine($"Form Key: {key} = {Request.Form[key]}");
+                //}
+                //System.Diagnostics.Debug.WriteLine($"Details Count: {model.Details?.Count ?? 0}");
 
                 foreach (var d in model.Details ?? new List<ChallanDetailVM>())
                 {
@@ -90,10 +90,16 @@ namespace Nskg.Controllers
                         (x.PaidAmt ?? 0) > 0)
                     .ToList();
 
-                // Check if details exist
-                if (!model.Details.Any())
+                // Allow saving even when there are no detail rows.
+                // Remove any ModelState entries that belong to the Details collection so
+                // validation for missing/malformed detail items does not block saving the head.
+                var detailKeys = ModelState.Keys
+                    .Where(k => !string.IsNullOrEmpty(k) && (k.StartsWith("Details") || k.Contains("Details[")))
+                    .ToList();
+
+                foreach (var key in detailKeys)
                 {
-                    ModelState.AddModelError("", "At least one Bilty detail is required.");
+                    ModelState.Remove(key);
                 }
 
                 if (!ModelState.IsValid)
@@ -248,6 +254,7 @@ namespace Nskg.Controllers
                  {
                      CusName = x.CusName,
                      SendTo = x.SendTo,
+                     DCNo = x.DCNo,
                      BillTiNo = x.BillTiNo,
                      BillTiAmt = x.BillTiAmt,
                      PaidAmt = x.PaidAmt,
@@ -274,11 +281,10 @@ namespace Nskg.Controllers
 
                 // Remove empty rows
                 model.Details = model.Details
-                    .Where(x =>
-                        x.BillTiNo != null ||
-                        !string.IsNullOrWhiteSpace(x.CusName) ||
-                        (x.Qty ?? 0) > 0 ||
-                        (x.BillTiAmt ?? 0) > 0)
+                    .Where(x => !string.IsNullOrWhiteSpace(x.BillTiNo) ||
+                               !string.IsNullOrWhiteSpace(x.CusName) ||
+                               (x.Qty ?? 0) > 0 ||
+                               (x.BillTiAmt ?? 0) > 0)
                     .ToList();
 
                 if (!ModelState.IsValid)
@@ -306,64 +312,79 @@ namespace Nskg.Controllers
                 head.VehicleNo = model.Head.VehicleNo;
                 head.Driver = model.Head.Driver;
                 head.Narration = model.Head.Narration;
-
                 head.PartyStationCode = model.Head.PartyStationCode;
-
                 head.PExpCode = model.Head.PExpCode;
                 head.PExpCode2 = model.Head.PExpCode2;
                 head.PExpCode3 = model.Head.PExpCode3;
-
                 head.PExpAmt = model.Head.PExpAmt;
                 head.PExpAmt2 = model.Head.PExpAmt2;
                 head.PExpAmt3 = model.Head.PExpAmt3;
-
                 head.PExpBilti = model.Head.PExpBilti;
                 head.PExpBilti2 = model.Head.PExpBilti2;
                 head.PExpBilti3 = model.Head.PExpBilti3;
-
                 head.PartyEx2 = model.Head.PartyEx2;
                 head.LocalAmt2 = model.Head.LocalAmt2;
                 head.OtherEx2 = model.Head.OtherEx2;
-
                 head.LocalAmt = model.Head.LocalAmt;
                 head.TotOtherEx = model.Head.TotOtherEx;
-
                 head.TotToPaid = model.Head.TotToPaid;
                 head.DeliveryAmt = model.Head.DeliveryAmt;
                 head.BillTiAmt = model.Head.BillTiAmt;
                 head.TotLifter2 = model.Head.TotLifter2;
+                head.TotPaid = model.Details.Sum(x => x.PaidAmt ?? 0);
 
                 // =========================
                 // RECALCULATE TOTALS
                 // =========================
-                head.TotBillTi =
-                    (head.BillTiAmt ?? 0) +
-                    model.Details.Sum(x => x.BillTiAmt ?? 0);
+                head.TotBillTi = (head.BillTiAmt ?? 0) + model.Details.Sum(x => x.BillTiAmt ?? 0);
 
-                head.NetAmt =
-                    (head.TotToPaid ?? 0)
-                    - (
-                        (head.PExpAmt ?? 0) +
-                        (head.PExpAmt2 ?? 0) +
-                        (head.PExpAmt3 ?? 0) +
-                        (head.LocalAmt ?? 0) +
-                        (head.TotOtherEx ?? 0) +
-                        (head.DeliveryAmt ?? 0) +
-                        (head.TotLifter2 ?? 0)
-                    );
+                head.NetAmt = (head.TotToPaid ?? 0) - (
+                    (head.PExpAmt ?? 0) +
+                    (head.PExpAmt2 ?? 0) +
+                    (head.PExpAmt3 ?? 0) +
+                    (head.LocalAmt ?? 0) +
+                    (head.TotOtherEx ?? 0) +
+                    (head.DeliveryAmt ?? 0) +
+                    (head.TotLifter2 ?? 0)
+                );
 
                 // =========================
-                // DELETE OLD DETAILS
+                // GET CURRENT DC NUMBERS
+                // =========================
+                var currentDcNos = model.Details
+                    .Where(x => !string.IsNullOrWhiteSpace(x.DCNo))
+                    .Select(x => x.DCNo.Trim())
+                    .ToList();
+
+                // =========================
+                // UNLINK REMOVED BILTIES
+                // =========================
+                var linkedBilties = _context.IssHead
+                    .Where(i => i.ChallanId == head.Id)
+                    .ToList();
+
+                foreach (var bilty in linkedBilties)
+                {
+                    if (!currentDcNos.Contains(bilty.DocNo))
+                    {
+                        bilty.DescYN = "N";
+                        bilty.ChallanId = null;
+                        _context.Entry(bilty).State = EntityState.Modified;
+                    }
+                }
+
+                // =========================
+                // REMOVE OLD DETAILS
                 // =========================
                 _context.ChallanDet.RemoveRange(head.Details);
                 _context.SaveChanges();
 
                 // =========================
-                // INSERT NEW DETAILS
+                // ADD NEW DETAILS
                 // =========================
-                foreach (var d in model.Details)
+                foreach (var detail in model.Details)
                 {
-                    _context.ChallanDet.Add(new ChallanDet
+                    var challanDet = new ChallanDet
                     {
                         ChallanHeadId = head.Id,
                         FyId = head.FyId,
@@ -371,32 +392,50 @@ namespace Nskg.Controllers
                         DocNo = head.DocNo,
                         DocDate = head.DocDate,
                         CoCode = head.CoCode,
-
-                        BillTiNo = d.BillTiNo,
-                        CusName = d.CusName,
-                        SendTo = d.SendTo,
-                        Qty = Convert.ToInt32(d.Qty),
-                        BillTiAmt = d.BillTiAmt,
-                        PaidAmt = d.PaidAmt,
-
+                        BillTiNo = detail.BillTiNo,
+                        CusName = detail.CusName,
+                        SendTo = detail.SendTo,
+                        Qty = detail.Qty.HasValue ? Convert.ToInt32(detail.Qty.Value) : (int?)null,
+                        BillTiAmt = detail.BillTiAmt,
+                        PaidAmt = detail.PaidAmt,
                         VehicleNo = head.VehicleNo,
                         Transporter = head.Transporter,
-                        TrName = head.Driver
-                    });
+                        TrName = head.Driver,
+                        DCNo = detail.DCNo
+                    };
+
+                    _context.ChallanDet.Add(challanDet);
+
+                    // =========================
+                    // LINK BILTY TO CHALLAN
+                    // =========================
+                    if (!string.IsNullOrWhiteSpace(detail.DCNo))
+                    {
+                        var bilty = _context.IssHead
+                            .FirstOrDefault(b => b.DocNo == detail.DCNo);
+
+                        if (bilty != null)
+                        {
+                            bilty.DescYN = "Y";
+                            bilty.ChallanId = head.Id;
+                            _context.Entry(bilty).State = EntityState.Modified;
+                        }
+                    }
                 }
 
                 _context.SaveChanges();
-
                 transaction.Commit();
 
-                TempData["SuccessMessage"] = "✅ Challan updated successfully.";
+                _audit.LogAsync("Edit", "Challan", head.Id.ToString(),
+                    $"Challan Updated: {head.DocNo}").Wait();
 
+                TempData["SuccessMessage"] = "✅ Challan updated successfully.";
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = ex.Message;
-
+                _audit.LogAsync("Error", "Challan Edit", model.Head.Id.ToString(), ex.Message).Wait();
+                TempData["ErrorMessage"] = $"❌ Error: {ex.Message}";
                 LoadDropdowns();
                 return View(model);
             }
@@ -418,14 +457,33 @@ namespace Nskg.Controllers
                     return Json(new { success = false, message = "Challan not found!" });
                 }
 
+                // Remove related GL transactions as before
                 var gl = _context.GLTrans
                     .Where(x => x.RefId == v.Id);
 
                 _context.GLTrans.RemoveRange(gl);
 
-                _context.ChallanDet.RemoveRange(v.Details);
-                _context.ChallanHead.Remove(v);
+                // Soft-delete: mark head.IsDeleted and mark each detail DescYn = "Y"
+                v.IsDeleted = true;
+                v.ModifiedOn = DateTime.Now;
+                v.ModifiedBy = User?.Identity?.Name;
 
+                //foreach (var det in v.Details)
+                //{
+                //    det.DescYn = "Y"; // mark detail as deleted
+                //}
+
+                // Also, for any IssHead rows that were linked, clear ChallanId? This keeps history but marks bilty command as used.
+                var iss = _context.IssHead.Where(i => i.ChallanId == v.Id).ToList();
+                foreach (var item in iss)
+                {
+                    // When challan deleted we may want to unmark original bilty as unused
+                    item.DescYN = "N";
+                    item.ChallanId = null;
+                    _context.Entry(item).State = EntityState.Modified;
+                }
+
+                _context.Entry(v).State = EntityState.Modified;
                 _context.SaveChanges();
 
                 _audit.LogAsync("Delete", "challan", id.ToString(),

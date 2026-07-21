@@ -1,7 +1,7 @@
 ﻿@using Nskg.Models.ViewModels
 @model BiltyViewModel
 
-<form method="post">
+<form id="myForm" asp-action="Create" method="post">
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -18,7 +18,7 @@
                 <i class="fa fa-plus"></i> Add Item
             </button>
 
-            <button type="submit" class="btn btn-success btn-sm">
+            <button type="submit" id="btnSave" class="btn btn-success btn-sm">
                 <i class="fa fa-save"></i> Save Bilty
             </button>
         </div>
@@ -32,12 +32,12 @@
 
                 <div class="col-md-2">
                     <label>Bilty No</label>
-                    <input asp-for="Head.BillTiNo" class="form-control form-control-sm" />
+                    <input asp-for="Head.BillTiNo" id="BiltyNo" class="form-control form-control-sm" tabindex="1" />
                 </div>
 
                 <div class="col-md-2">
                     <label>Bilty Date</label>
-                    <input asp-for="Head.DocDate" type="date" class="form-control form-control-sm" />
+                    <input asp-for="Head.DocDate" id="BiltyDate" type="date" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
                 <div class="col-md-2">
@@ -46,8 +46,8 @@
                 </div>
 
                 <div class="col-md-3">
-                    <label>Station</label>                    
-                    <select asp-for="Head.StationId" class="form-select form-select-sm"
+                    <label>Station</label>
+                    <select asp-for="Head.StationId" id="Station" class="form-select form-select-sm" tabindex="3"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text"))">
                     </select>
                 </div>
@@ -58,7 +58,7 @@
                     <div class="input-group input-group-sm">
                         <select asp-for="Head.CustomerId"
                                 id="CustomerId"
-                                class="form-select"
+                                class="form-select" tabindex="4"
                                 asp-items="@(new SelectList(ViewBag.Customers, "Value", "Text"))">
                         </select>
 
@@ -73,17 +73,17 @@
 
                 <div class="col-md-3">
                     <label>Send To</label>
-                    <input asp-for="Head.SendTo" class="form-control form-control-sm" />
+                    <input asp-for="Head.SendTo" id="SendTo" class="form-control form-control-sm" tabindex="5" />
                 </div>
 
                 <div class="col-md-3">
                     <label>Bill No</label>
-                    <input asp-for="Head.BilNo" class="form-control form-control-sm" />
+                    <input asp-for="Head.BilNo" id="BillNo" class="form-control form-control-sm" tabindex="6" />
                 </div>
 
                 <div class="col-md-6">
                     <label>Remarks</label>
-                    <input asp-for="Head.Narration" class="form-control form-control-sm" />
+                    <input asp-for="Head.Narration" id="Remarks" class="form-control form-control-sm" tabindex="7" />
                 </div>
 
             </div>
@@ -141,42 +141,42 @@
 
                 <div class="col-md-2">
                     <label>Freight</label>
-                    <input id="Cartage1" asp-for="Head.Cartage1" class="form-control form-control-sm calc-net" />
+                    <input id="Cartage1" asp-for="Head.Cartage1" class="form-control form-control-sm calc-net" tabindex="100" />
                 </div>
 
                 <div class="col-md-2">
                     <label>Labour</label>
-                    <input id="Labour" asp-for="Head.Labour" class="form-control form-control-sm calc-net" />
+                    <input id="Labour" asp-for="Head.Labour" class="form-control form-control-sm calc-net" tabindex="101" />
                 </div>
 
                 <div class="col-md-2">
                     <label>T.T</label>
-                    <input id="T_T" asp-for="Head.T_T" class="form-control form-control-sm calc-net" />
+                    <input id="T_T" asp-for="Head.T_T" class="form-control form-control-sm calc-net" tabindex="102" />
                 </div>
 
                 <div class="col-md-2">
                     <label>Lifter</label>
-                    <input id="Cartage3" asp-for="Head.Cartage3" class="form-control form-control-sm calc-net" />
+                    <input id="Cartage3" asp-for="Head.Cartage3" class="form-control form-control-sm calc-net" tabindex="103" />
                 </div>
 
                 <div class="col-md-2">
                     <label>Local Freight</label>
-                    <input id="Cartage2" asp-for="Head.Cartage2" class="form-control form-control-sm calc-net" />
+                    <input id="Cartage2" asp-for="Head.Cartage2" class="form-control form-control-sm calc-net" tabindex="104" />
                 </div>
 
                 <div class="col-md-2">
                     <label>Party Expense</label>
-                    <input asp-for="Head.PartyEx" class="form-control form-control-sm calc-net" />
+                    <input id="PartyEx" asp-for="Head.PartyEx" class="form-control form-control-sm calc-net" tabindex="105" />
                 </div>
 
                 <div class="col-md-2">
                     <label>Lifter2</label>
-                    <input asp-for="Head.Lifter2" class="form-control form-control-sm calc-net" />
+                    <input id="Lifter2" asp-for="Head.Lifter2" class="form-control form-control-sm calc-net" tabindex="106" />
                 </div>
 
                 <div class="col-md-2">
                     <label>Other</label>
-                    <input asp-for="Head.OtherEx" class="form-control form-control-sm calc-net" />
+                    <input id="OtherEx" asp-for="Head.OtherEx" class="form-control form-control-sm calc-net" tabindex="107" />
                 </div>
 
                 <div class="col-md-3">
@@ -220,9 +220,114 @@
 
 @section Scripts {
     <script>
-        
-                function saveCustomer() {
+        // Highlight active field
+        function highlightField(element) {
+            // Remove highlight from all fields and buttons
+            $('.form-control, .form-select, .btn').removeClass('active-field');
+            // Add highlight to current element
+            $(element).addClass('active-field');
+        }
 
+        // Focus on Bilty No when page loads
+        $(document).ready(function() {
+            $('#BiltyNo').focus();
+            highlightField('#BiltyNo');
+            addRow();
+            calculateNetAmount();
+        });
+
+        // Handle Enter key navigation
+        $(document).on('keydown', '.form-control, .form-select', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+
+                var currentElement = $(this);
+                var currentId = currentElement.attr('id');
+                var currentTabIndex = parseInt(currentElement.attr('tabindex')) || 0;
+
+                // Check if it's a Qty field
+                if (currentElement.hasClass('qty')) {
+                    var currentRow = currentElement.closest('tr');
+                    var qtyValue = currentElement.val();
+                    var weightField = currentRow.find('.qtyperpack');
+
+                    // If Qty is empty or null, go to Freight
+                    if (!qtyValue || qtyValue.trim() === '') {
+                        $('#Cartage1').focus();
+                        highlightField('#Cartage1');
+                        return;
+                    }
+
+                    // If Qty has value, go to Weight field in same row
+                    if (weightField.length) {
+                        weightField.focus();
+                        highlightField(weightField);
+                    }
+                    return;
+                }
+
+                // Check if it's a Weight field
+                if (currentElement.hasClass('qtyperpack')) {
+                    var currentRow = currentElement.closest('tr');
+                    var qtyField = currentRow.find('.qty');
+                    var weightValue = currentElement.val();
+
+                    // If Weight is empty or null, go to Freight
+                    if (!weightValue || weightValue.trim() === '') {
+                        $('#Cartage1').focus();
+                        highlightField('#Cartage1');
+                        return;
+                    }
+
+                    // If Weight has value, add new row and focus on its Qty
+                    addRow();
+                    var newRow = $('#tbodyItems tr:last-child');
+                    setTimeout(function() {
+                        var newQty = newRow.find('.qty');
+                        newQty.focus();
+                        highlightField(newQty);
+                    }, 50);
+                    return;
+                }
+
+                // Check if it's an expense field (tabindex 100+)
+                if (currentTabIndex >= 100) {
+                    var nextExpense = $('[tabindex="' + (currentTabIndex + 1) + '"]');
+                    if (nextExpense.length) {
+                        nextExpense.focus();
+                        highlightField(nextExpense);
+                    } else {
+                        // After last expense, go to Save button
+                        $('#btnSave').focus();
+                        highlightField('#btnSave');
+                    }
+                    return;
+                }
+
+                // Navigation for master fields (tabindex 1-7)
+                var nextTabIndex = currentTabIndex + 1;
+                var nextField = $('[tabindex="' + nextTabIndex + '"]');
+
+                if (nextField.length) {
+                    nextField.focus();
+                    highlightField(nextField);
+                } else {
+                    // After remarks (tabindex 7), go to first item Qty
+                    var firstQty = $('#tbodyItems .qty:first');
+                    if (firstQty.length) {
+                        firstQty.focus();
+                        highlightField(firstQty);
+                    }
+                }
+            }
+        });
+
+        // Also highlight on focus
+        $(document).on('focus', '.form-control, .form-select', function() {
+            highlightField(this);
+        });
+
+        function saveCustomer() {
             let name = $("#CustomerName").val();
 
             if (name.trim() === "") {
@@ -235,17 +340,11 @@
                 type: 'POST',
                 data: { name: name },
                 success: function (res) {
-
                     if (res.success) {
-
-                        // add new option in dropdown
                         let newOption = new Option(res.text, res.id, true, true);
                         $('#CustomerId').append(newOption).trigger('change');
-
-                        // clear and close modal
                         $("#CustomerName").val("");
                         $("#customerModal").modal('hide');
-
                     } else {
                         alert(res.message);
                     }
@@ -255,11 +354,10 @@
                 }
             });
         }
-        
+
         let i = 0;
 
         function addRow() {
-
             const noData = document.getElementById("noDataRow");
             if (noData) noData.remove();
 
@@ -267,17 +365,17 @@
             <tr>
                 <td>
                     <input name="Details[${i}].IName" value="NOS"
-                           class="form-control form-control-sm"/>
+                           class="form-control form-control-sm" readonly />
                 </td>
 
                 <td>
                     <input name="Details[${i}].Qty" type="number" step="0.01"
-                           class="form-control form-control-sm qty"/>
+                           class="form-control form-control-sm qty" />
                 </td>
 
                 <td>
                     <input name="Details[${i}].QtyPerPack" type="number" step="0.01"
-                           class="form-control form-control-sm qtyperpack"/>
+                           class="form-control form-control-sm qtyperpack" />
                 </td>
 
                 <td class="text-center">
@@ -293,7 +391,23 @@
         }
 
         function removeRow(btn) {
-            $(btn).closest("tr").remove();
+            var row = $(btn).closest("tr");
+            var isFirstRow = row.is(':first-child');
+
+            row.remove();
+
+            // If it was the first row, focus on the new first row's Qty
+            if (isFirstRow) {
+                var newFirstQty = $('#tbodyItems .qty:first');
+                if (newFirstQty.length) {
+                    newFirstQty.focus();
+                    highlightField(newFirstQty);
+                } else {
+                    // No rows left, go to Freight
+                    $('#Cartage1').focus();
+                    highlightField('#Cartage1');
+                }
+            }
 
             if ($("#tbodyItems tr").length === 0) {
                 $("#tbodyItems").html(`
@@ -325,9 +439,48 @@
             calculateNetAmount();
         });
 
-        $(document).ready(function () {
-            addRow();
-            calculateNetAmount();
+        // Ctrl+S to save
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                document.getElementById('btnSave').click();
+            }
         });
     </script>
 }
+
+<style>
+    /* Highlight style for form controls */
+    .active-field {
+        border: 2px solid #0d6efd !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+        background-color: #f0f7ff !important;
+        transition: all 0.2s ease;
+    }
+
+    /* Highlight style for buttons (Save button) */
+    .btn.active-field {
+        border: 2px solid #0d6efd !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.3) !important;
+        transform: scale(1.02);
+        transition: all 0.2s ease;
+    }
+
+    /* Specific style for success buttons */
+    .btn-success.active-field {
+        border: 2px solid #0d6efd !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.3) !important;
+        background-color: #157347 !important;
+        transform: scale(1.02);
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    /* Smooth transitions */
+    .form-control, .form-select, .btn {
+        transition: all 0.2s ease;
+    }
+</style>

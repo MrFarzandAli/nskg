@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@using System.Linq
+@inject Nskg.Repositories.Interfaces.IUnitOfWork UnitOfWork
+<!DOCTYPE html>
 	<html lang="en" data-layout="vertical" data-topbar="light" data-sidebar="dark" data-sidebar-size="lg" data-sidebar-image="none">
 	<head>
 		<meta charset="utf-8">
@@ -6,7 +8,7 @@
 		<meta name="description" content="Smarthr - Bootstrap Admin Template">
 		<meta name="keywords" content="admin, estimates, bootstrap, business, corporate, creative, management, minimal, modern, accounts, invoice, html5, responsive, CRM, Projects">
 		<meta name="author" content="Dreamguys - Bootstrap Admin Template">
-		<title> @ViewData["Title"] - HRMS admin template</title>
+		<title> @ViewData["Title"] </title>
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 		<!-- Favicon -->
 		<link rel="shortcut icon" type="image/x-icon" href="~/assets/img/favicon.png">
@@ -66,10 +68,28 @@
 					</span>
 				</a>
 				
-				<!-- Header Title -->
-				<div class="page-title-box">
-					<h3>NSKG</h3>
-				</div>
+		<!-- Header Title -->
+		@{
+			var companyName = "NSKG";
+			try
+			{
+				var companies = await UnitOfWork.Companies.GetAllAsync();
+				var company = companies.FirstOrDefault(c => !c.IsDeleted && c.IsActive)
+							  ?? companies.FirstOrDefault(c => !c.IsDeleted)
+							  ?? companies.FirstOrDefault();
+				if (company != null && !string.IsNullOrWhiteSpace(company.Name))
+				{
+					companyName = company.Name;
+				}
+			}
+			catch
+			{
+				// ignore and fallback to default
+			}
+		}
+		<div class="page-title-box">
+			<h3>@companyName</h3>
+		</div>
 				<!-- /Header Title -->
 				
 				<a id="mobile_btn" class="mobile_btn" href="#sidebar"><i class="fa-solid fa-bars"></i></a>
@@ -77,22 +97,9 @@
 				<!-- Header Menu -->
 				<ul class="nav user-menu">
 				
-					<!-- Search -->
-				@* 	<li class="nav-item">
-						<div class="top-nav-search">
-							<a href="javascript:void(0);" class="responsive-search">
-								<i class="fa-solid fa-magnifying-glass"></i>
-							</a>
-							<form action="search.html">
-								<input class="form-control" type="text" placeholder="Search here">
-								<button class="btn" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
-							</form>
-						</div>
-					</li> *@
-					<!-- /Search -->
-				
+							
 					<!-- Notifications -->
-					<li class="nav-item dropdown">
+@* 					<li class="nav-item dropdown">
 						<a href="#" class="dropdown-toggle nav-link" data-bs-toggle="dropdown">
 							<i class="fa-regular fa-bell"></i> <span class="badge rounded-pill">3</span>
 						</a>
@@ -174,7 +181,7 @@
 								<a href="activities.html">View all Notifications</a>
 							</div>
 						</div>
-					</li>
+					</li> *@
 					<!-- /Notifications -->		
 
 					<li class="nav-item dropdown has-arrow main-drop">
@@ -185,8 +192,7 @@
 							</span>
 							<span>Admin</span>
 						</a>
-						<div class="dropdown-menu">
-							<a class="dropdown-item" href="profile.html">My Profile</a>
+						<div class="dropdown-menu">					
 							<form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
 								<button type="submit" class="dropdown-item">Logout</button>
 							</form>
@@ -208,70 +214,115 @@
 				<!-- /Mobile Menu -->
 				
 			</div>
-			<!-- /Header -->
-			<!-- Sidebar -->
+			<!-- /Header -->	
+
+			@* Helpers to mark active menu items and open submenus based on current route *@
+			@{
+				var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+				var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+
+				Func<string, string, bool> isActive = (controller, action) =>
+					string.Equals(controller, currentController, StringComparison.OrdinalIgnoreCase)
+					&& (string.IsNullOrEmpty(action) || string.Equals(action, currentAction, StringComparison.OrdinalIgnoreCase));
+
+				Func<string[], bool> isControllerIn = (controllers) =>
+				{
+					foreach (var c in controllers)
+					{
+						if (string.Equals(c, currentController, StringComparison.OrdinalIgnoreCase)) return true;
+					}
+					return false;
+				};
+
+				Func<string, string, string, bool> isActiveWithRoute = (controller, action, routeType) =>
+				{
+					if (!string.Equals(controller, currentController, StringComparison.OrdinalIgnoreCase)) return false;
+					if (!string.IsNullOrEmpty(action) && !string.Equals(action, currentAction, StringComparison.OrdinalIgnoreCase)) return false;
+					if (string.IsNullOrEmpty(routeType)) return true;
+					var q = Context.Request.Query["type"].ToString();
+					return string.Equals(q, routeType, StringComparison.OrdinalIgnoreCase);
+				};
+			}
+
+<!-- Sidebar -->
 			<div class="sidebar" id="sidebar">
 				<div class="sidebar-inner slimscroll">
 					<div id="sidebar-menu" class="sidebar-menu">
-						<nav class="greedys sidebar-horizantal">
-							<ul class="list-inline-item list-unstyled links">
-								<li class="menu-title">
-									<span>Main</span>
-								</li>
-								<li class="submenu">
-									<a href="#"><i class="la la-dashboard"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
-									<ul>
-										<li><a asp-controller="Home" asp-action="Index">Admin Dashboard</a></li>
-									</ul>
-								</li>							
-								<li class="menu-title">
-									<span>Employees</span>
-								</li>   								
-								<li>
-									<a href="clients.html"><i class="la la-users"></i> <span>Clients</span></a>
-								</li>							
-							</ul>
-						</nav>
-						<ul class="sidebar-vertical">
-							<li class="menu-title">
-								<span>Main</span>
-							</li>
-							<li class="submenu">
-								<a href="#"><i class="la la-dashboard"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
-								<ul>
-									<li><a class="active" asp-controller="Home" asp-action="Index">Admin Dashboard</a></li>
-								</ul>
-							</li>
-							<li class="menu-title">
-								<span>Employees</span>
-							</li>
-							@if (User.IsInRole("Admin"))
-							{
-								<li>
-																								
-									<a asp-controller="Company" asp-action="Index"><i class="la la-users"></i><span>Companies</span></a>
-									<a asp-controller="FinancialYear" asp-action="Index"><i class="la la-users"></i><span>Financial Years</span></a>
-									<a asp-controller="Security" asp-action="Index"><i class="la la-users"></i><span>Security</span></a>
-									<a asp-controller="AccountCategory" asp-action="Index"><i class="la la-users"></i><span>Account Category</span></a>
-									<a asp-controller="AccountType" asp-action="Index"><i class="la la-users"></i><span>Account Type</span></a>
-									<a asp-controller="glchart" asp-action="Index"><i class="la la-users"></i><span>Chart Of Account</span></a>
-									<a asp-controller="acpara" asp-action="Index"><i class="la la-users"></i><span>Account Parameter</span></a>
-									<a asp-controller="Voucher" asp-action="Index" asp-route-type="JV">Journal Voucher</a>
-									<a asp-controller="Voucher" asp-action="Index" asp-route-type="CR">Cash Receipt</a>
-									<a asp-controller="Voucher" asp-action="Index" asp-route-type="CP">Cash Payment</a>
-									<a asp-controller="Voucher" asp-action="Index" asp-route-type="BR">Bank Receipt</a>
-									<a asp-controller="Voucher" asp-action="Index" asp-route-type="BP">Bank Payment</a>
-									<a asp-controller="auditlogreport" asp-action="Index"><i class="la la-users"></i><span>Audit Log Report</span></a>
-									<a asp-controller="GenerlLedgerReport" asp-action="Index"><i class="la la-users"></i><span>General Ledger Report</span></a>
-							        <a asp-controller="TrailBalanceReportController" asp-action="Index"><i class="la la-users"></i><span>Trail Balance Report</span></a>
-									<a asp-controller="Bilty" asp-action="Index"><i class="la la-users"></i><span>Bilty</span></a>
-									<a asp-controller="Challan" asp-action="Index"><i class="la la-users"></i><span>Challan</span></a>
-									<a asp-controller="RoleManagement" asp-action="Index"><i class="la la-users"></i><span>Role Management</span></a>
-
-								</li>						
-							}
+					<ul class="sidebar-vertical">
+						<li class="submenu@(isControllerIn(new[] { "Home", "Dashboard" }) ? " active" : "")">
+						<a class="@(isControllerIn(new[] { "Home", "Dashboard" }) ? "active" : "")" href="#"><i class="la la-dashboard"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
+						<ul @(isControllerIn(new[] { "Home", "Dashboard" }) ? "style=\"display:block;\"" : "")>
+							<li><a class="@(isActive("Home","Index") ? "active" : "")" asp-controller="Home" asp-action="Index">Admin Dashboard</a></li>
+							<li><a class="@(isActive("Dashboard","Financial") ? "active" : "")" asp-controller="Dashboard" asp-action="Financial">Financial Dashboard</a></li>
 						</ul>
-						
+						</li>
+				@if (User.IsInRole("Admin"))
+				{
+					
+						var adminControllers = new[] { "Company", "FinancialYear", "Security", "auditlogreport" };
+						var showAdmin = isControllerIn(adminControllers);
+					
+					<li class="submenu@(showAdmin ? " active" : "")">
+						<a href="#" class="@(showAdmin ? "active" : "")"><i class="la la-cogs"></i> <span> Administration</span> <span class="menu-arrow"></span></a>
+						<ul @(showAdmin ? "style=\"display:block;\"" : "")>
+							<li><a class="@(isActive("Company","Index") ? "active" : "")" asp-controller="Company" asp-action="Index">Companies</a></li>
+							<li><a class="@(isActive("FinancialYear","Index") ? "active" : "")" asp-controller="FinancialYear" asp-action="Index">Financial Years</a></li>
+							<li><a class="@(isActive("FinancialYear","CloseYear") ? "active" : "")" asp-controller="FinancialYear" asp-action="CloseYear">Financial Years Closing</a></li>
+							<li><a class="@(isActive("Security","Index") ? "active" : "")" asp-controller="Security" asp-action="Index">Security</a></li>
+							<li><a class="@(isActive("auditlogreport","Index") ? "active" : "")" asp-controller="auditlogreport" asp-action="Index">Audit Log Report</a></li>
+						</ul>
+					</li>
+					
+						var accountsControllers = new[] { "AccountCategory", "AccountType", "glchart", "acpara" };
+						var showAccounts = isControllerIn(accountsControllers);
+					
+					<li class="submenu@(showAccounts ? " active" : "")">
+						<a href="#" class="@(showAccounts ? "active" : "")"><i class="la la-sitemap"></i> <span> Accounts Setup</span> <span class="menu-arrow"></span></a>
+						<ul @(showAccounts ? "style=\"display:block;\"" : "")>
+							<li><a class="@(isActive("AccountCategory","Index") ? "active" : "")" asp-controller="AccountCategory" asp-action="Index">Account Category</a></li>
+							<li><a class="@(isActive("AccountType","Index") ? "active" : "")" asp-controller="AccountType" asp-action="Index">Account Type</a></li>
+							<li><a class="@(isActive("glchart","Index") ? "active" : "")" asp-controller="glchart" asp-action="Index">Chart Of Accounts</a></li>
+							<li><a class="@(isActive("acpara","Index") ? "active" : "")" asp-controller="acpara" asp-action="Index">Account Parameters</a></li>
+						</ul>
+					</li>
+					
+						var txControllers = new[] { "Voucher" };
+						var showTx = isControllerIn(txControllers);
+					
+					<li class="submenu@(showTx ? " active" : "")">
+						<a href="#" class="@(showTx ? "active" : "")"><i class="la la-exchange"></i> <span> Transactions</span> <span class="menu-arrow"></span></a>
+						<ul @(showTx ? "style=\"display:block;\"" : "")>
+							<li><a class="@(isActiveWithRoute("Voucher","Index","JV") ? "active" : "")" asp-controller="Voucher" asp-action="Index" asp-route-type="JV">Journal Voucher</a></li>
+							<li><a class="@(isActiveWithRoute("Voucher","Index","CR") ? "active" : "")" asp-controller="Voucher" asp-action="Index" asp-route-type="CR">Cash Receipt</a></li>
+							<li><a class="@(isActiveWithRoute("Voucher","Index","CP") ? "active" : "")" asp-controller="Voucher" asp-action="Index" asp-route-type="CP">Cash Payment</a></li>
+							<li><a class="@(isActiveWithRoute("Voucher","Index","BR") ? "active" : "")" asp-controller="Voucher" asp-action="Index" asp-route-type="BR">Bank Receipt</a></li>
+							<li><a class="@(isActiveWithRoute("Voucher","Index","BP") ? "active" : "")" asp-controller="Voucher" asp-action="Index" asp-route-type="BP">Bank Payment</a></li>
+						</ul>
+					</li>
+						var operationsControllers = new[] { "Bilty", "Challan", "CommBook" };
+						var showOperations = isControllerIn(operationsControllers);
+
+						<li class="submenu@(showOperations ? " active" : "")">
+						<a href="#" class="@(showOperations ? "active" : "")"><i class="la la-truck"></i> <span> Operations</span> <span class="menu-arrow"></span></a>
+						<ul @(showOperations ? "style=\"display:block;\"" : "")>
+							<li><a class="@(isActive("Bilty","Index") ? "active" : "")"  asp-controller="Bilty" asp-action="Index">Bilty</a></li>
+							<li><a class="@(isActive("Challan","Index") ? "active" : "")" asp-controller="Challan" asp-action="Index">Challan</a></li>
+							<li><a class="@(isActive("CommBook","Index") ? "active" : "")" asp-controller="CommBook" asp-action="Index">Commission Book</a></li>		
+						</ul>
+					</li>
+
+						var reportsControllers = new[] { "GenerlLedgerReport", "GenerlLedgerReport" };
+						var showReports = isControllerIn(reportsControllers);
+
+					<li class="submenu@(showReports ? " active" : "")">
+						<a href="#" class="@(showReports ? "active" : "")"><i class="la la-bar-chart"></i> <span> Reports</span> <span class="menu-arrow"></span></a>
+						<ul @(showReports ? "style=\"display:block;\"" : "")>						
+							<li><a class="@(isActive("GenerlLedgerReport","Index") ? "active" : "")" asp-controller="GenerlLedgerReport" asp-action="Index">General Ledger Report</a></li>
+							<li><a class="@(isActive("TrailBalanceReport","Index") ? "active" : "")" asp-controller="TrailBalanceReport" asp-action="Index">Trail Balance Report</a></li>
+						</ul>
+					</li>	
+			}
+			</ul>
 					</div>
 				</div>
 			</div>
@@ -792,9 +843,9 @@
 		</div>
 		<!-- /Main Wrapper -->
 		
-		<div class="settings-icon">
+	@* 	<div class="settings-icon">
 			<span data-bs-toggle="offcanvas" data-bs-target="#theme-settings-offcanvas" aria-controls="theme-settings-offcanvas"><i class="las la-cog"></i></span>
-		</div>
+		</div> *@
 		<div class="offcanvas offcanvas-end border-0 " tabindex="-1" id="theme-settings-offcanvas">
 			<div class="sidebar-headerset">
 				<div class="sidebar-headersets">

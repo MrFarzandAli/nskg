@@ -16,6 +16,7 @@ namespace Nskg.Repositories
 
 
         public IFinancialYearRepository FinancialYearRepository { get; private set; }
+        public ICompanyRepository companyRepository { get; private set; }
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -27,6 +28,7 @@ namespace Nskg.Repositories
             AccCat = new GenericRepository<AccCat>(_context);
 
             FinancialYearRepository = new FinancialYearRepository(_context);
+            companyRepository = new CompanyRepository(_context);
         }
 
         public async Task<int> SaveAsync()

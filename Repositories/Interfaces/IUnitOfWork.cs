@@ -12,7 +12,8 @@ namespace Nskg.Repositories.Interfaces
 
 
         IFinancialYearRepository FinancialYearRepository { get; }
-        
+        ICompanyRepository companyRepository{ get; }
+
 
         Task<int> SaveAsync();
     }

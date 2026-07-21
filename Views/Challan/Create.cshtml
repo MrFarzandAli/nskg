@@ -18,6 +18,44 @@
             margin-right: 6px;
             color: #0d6efd;
         }
+
+        /* Highlight style for form controls */
+        .active-field {
+            border: 2px solid #0d6efd !important;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+            background-color: #f0f7ff !important;
+            transition: all 0.2s ease;
+        }
+
+        .btn.active-field {
+            border: 2px solid #0d6efd !important;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.3) !important;
+            transform: scale(1.02);
+            transition: all 0.2s ease;
+        }
+
+        .btn-success.active-field {
+            border: 2px solid #0d6efd !important;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.3) !important;
+            background-color: #157347 !important;
+            transform: scale(1.02);
+        }
+
+        .btn-outline-primary.active-field {
+            border: 2px solid #0d6efd !important;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.3) !important;
+            background-color: #e7f1ff !important;
+            transform: scale(1.02);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        .form-control, .form-select, .btn {
+            transition: all 0.2s ease;
+        }
     </style>
 }
 
@@ -38,14 +76,16 @@
             <button type="button"
                     class="btn btn-outline-primary btn-sm me-2"
                     data-bs-toggle="modal"
-                    data-bs-target="#biltyModal">
+                    data-bs-target="#biltyModal"
+                    id="addBiltyBtn"
+                    tabindex="8">
                 <i class="fa fa-plus"></i> Add Bilty
             </button>
-            <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addEmptyRow()">
+            <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addEmptyRow()" id="addEmptyRowBtn">
                 <i class="fa fa-plus"></i> Add Empty Row
             </button>
 
-            <button type="submit" class="btn btn-success btn-sm" onclick="return validateBeforeSubmit()">
+            <button type="submit" class="btn btn-success btn-sm" onclick="return validateBeforeSubmit()" id="btnSave">
                 <i class="fa fa-save"></i> Save Challan
             </button>
         </div>
@@ -57,12 +97,12 @@
             <div class="row g-3">
                 <div class="col-md-2">
                     <label><i class="fa fa-hashtag"></i>Challan No</label>
-                    <input asp-for="Head.ChalNo" class="form-control form-control-sm" />
+                    <input asp-for="Head.ChalNo" id="ChalNo" class="form-control form-control-sm" tabindex="1" />
                 </div>
 
                 <div class="col-md-2">
                     <label><i class="fa fa-calendar"></i>Date</label>
-                    <input asp-for="Head.DocDate" type="date" class="form-control form-control-sm" />
+                    <input asp-for="Head.DocDate" type="date" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
                 <div class="col-md-2">
@@ -72,29 +112,29 @@
 
                 <div class="col-md-3">
                     <label><i class="fa fa-map-marker"></i>Station</label>
-                    <select asp-for="Head.StationId" class="form-select form-select-sm"
+                    <select asp-for="Head.StationId" class="form-select form-select-sm" tabindex="3"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text"))"></select>
                 </div>
 
                 <div class="col-md-3">
                     <label><i class="fa fa-truck"></i>Transporter</label>
-                    <select asp-for="Head.TransId" class="form-select form-select-sm"
+                    <select asp-for="Head.TransId" class="form-select form-select-sm" tabindex="4"
                             asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text"))"></select>
                 </div>
 
                 <div class="col-md-3">
                     <label><i class="fa fa-car"></i>Vehicle No</label>
-                    <input asp-for="Head.VehicleNo" class="form-control form-control-sm" />
+                    <input asp-for="Head.VehicleNo" class="form-control form-control-sm" tabindex="5" />
                 </div>
 
                 <div class="col-md-3">
                     <label><i class="fa fa-user"></i>Party Name</label>
-                    <input asp-for="Head.Driver" class="form-control form-control-sm" />
+                    <input asp-for="Head.Driver" class="form-control form-control-sm" tabindex="6" />
                 </div>
 
                 <div class="col-md-6">
                     <label><i class="fa fa-comment"></i>Remarks</label>
-                    <input asp-for="Head.Narration" class="form-control form-control-sm" />
+                    <input asp-for="Head.Narration" class="form-control form-control-sm" tabindex="7" />
                 </div>
             </div>
         </div>
@@ -124,6 +164,9 @@
                         </tr>
                     </thead>
                     <tbody id="tbodyItems">
+                        <tr id="noDataRow">
+                            <td colspan="7" class="text-center text-muted py-3">No Records Added</td>
+                        </tr>
                         <!-- Rows will be added dynamically -->
                     </tbody>
                 </table>
@@ -135,28 +178,31 @@
     <div class="card shadow-sm border-0 mb-3">
         <div class="card-body">
             <div class="row g-3">
+                <label>B#/ Party</label>
+                <select asp-for="Head.PartyStationCode" id="PartyStationCode" class="form-select form-select-sm" tabindex="100"
+                        asp-items="@(new SelectList(ViewBag.PartyStations, "Value", "Text"))"></select>
                 <div class="col-md-4">
                     <label>B#/ Party</label>
-                    <select asp-for="Head.PExpCode" class="form-select form-select-sm expense-select"
+                    <select asp-for="Head.PExpCode" id="PExpCode" class="form-select form-select-sm expense-select" tabindex="101"
                             asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
-                    <input asp-for="Head.PExpAmt" class="form-control form-control-sm mt-2 calc" placeholder="Amount" />
-                    <input asp-for="Head.PExpBilti" class="form-control form-control-sm mt-2" placeholder="Bilti" />
+                    <input asp-for="Head.PExpAmt" class="form-control form-control-sm mt-2 calc" placeholder="Amount" tabindex="102" />
+                    <input asp-for="Head.PExpBilti" class="form-control form-control-sm mt-2" placeholder="Bilti" tabindex="103" />
                 </div>
 
                 <div class="col-md-4">
                     <label>B#/ Party 2</label>
-                    <select asp-for="Head.PExpCode2" class="form-select form-select-sm expense-select"
+                    <select asp-for="Head.PExpCode2" class="form-select form-select-sm expense-select" tabindex="104"
                             asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
-                    <input asp-for="Head.PExpAmt2" class="form-control form-control-sm mt-2 calc" placeholder="Amount" />
-                    <input asp-for="Head.PExpBilti2" class="form-control form-control-sm mt-2" placeholder="Bilti" />
+                    <input asp-for="Head.PExpAmt2" class="form-control form-control-sm mt-2 calc" placeholder="Amount" tabindex="105" />
+                    <input asp-for="Head.PExpBilti2" class="form-control form-control-sm mt-2" placeholder="Bilti" tabindex="106" />
                 </div>
 
                 <div class="col-md-4">
                     <label>B#/ Party 3</label>
-                    <select asp-for="Head.PExpCode3" class="form-select form-select-sm expense-select"
+                    <select asp-for="Head.PExpCode3" class="form-select form-select-sm expense-select" tabindex="107"
                             asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
-                    <input asp-for="Head.PExpAmt3" class="form-control form-control-sm mt-2 calc" placeholder="Amount" />
-                    <input asp-for="Head.PExpBilti3" class="form-control form-control-sm mt-2" placeholder="Bilti" />
+                    <input asp-for="Head.PExpAmt3" class="form-control form-control-sm mt-2 calc" placeholder="Amount" tabindex="108" />
+                    <input asp-for="Head.PExpBilti3" class="form-control form-control-sm mt-2" placeholder="Bilti" tabindex="109" />
                 </div>
             </div>
         </div>
@@ -168,17 +214,17 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label>Party Expense</label>
-                    <input asp-for="Head.PartyEx2" class="form-control form-control-sm" />
+                    <input asp-for="Head.PartyEx2" class="form-control form-control-sm" tabindex="110" />
                 </div>
 
                 <div class="col-md-4">
                     <label>Local Amount</label>
-                    <input asp-for="Head.LocalAmt2" class="form-control form-control-sm" />
+                    <input asp-for="Head.LocalAmt2" class="form-control form-control-sm" tabindex="111" />
                 </div>
 
                 <div class="col-md-4">
                     <label>Other Expense</label>
-                    <input asp-for="Head.OtherEx2" class="form-control form-control-sm" />
+                    <input asp-for="Head.OtherEx2" class="form-control form-control-sm" tabindex="112" />
                 </div>
             </div>
         </div>
@@ -190,12 +236,12 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label><i class="fa fa-building"></i> Local Amount</label>
-                    <input asp-for="Head.LocalAmt" class="form-control form-control-sm" />
+                    <input asp-for="Head.LocalAmt" class="form-control form-control-sm" tabindex="113" />
                 </div>
 
                 <div class="col-md-4">
                     <label><i class="fa fa-ellipsis-h"></i> Other Expense</label>
-                    <input asp-for="Head.TotOtherEx" class="form-control form-control-sm" />
+                    <input asp-for="Head.TotOtherEx" class="form-control form-control-sm" tabindex="114" />
                 </div>
 
                 <div class="col-md-4">
@@ -212,22 +258,22 @@
             <div class="row g-3">
                 <div class="col-md-2">
                     <label><i class="fa fa-hand-holding-usd"></i> To Pay</label>
-                    <input asp-for="Head.TotToPaid" class="form-control form-control-sm" />
+                    <input asp-for="Head.TotToPaid" class="form-control form-control-sm" tabindex="115" />
                 </div>
 
                 <div class="col-md-2">
                     <label><i class="fa fa-truck-loading"></i> Delivery</label>
-                    <input asp-for="Head.DeliveryAmt" class="form-control form-control-sm" />
+                    <input asp-for="Head.DeliveryAmt" class="form-control form-control-sm" tabindex="116" />
                 </div>
 
                 <div class="col-md-2">
                     <label><i class="fa fa-money-bill"></i> Bilty Amt</label>
-                    <input asp-for="Head.BillTiAmt" class="form-control form-control-sm" />
+                    <input asp-for="Head.BillTiAmt" class="form-control form-control-sm" tabindex="117" />
                 </div>
 
                 <div class="col-md-3">
                     <label><i class="fa fa-user-cog"></i> Lifter</label>
-                    <input asp-for="Head.TotLifter2" class="form-control form-control-sm" />
+                    <input asp-for="Head.TotLifter2" class="form-control form-control-sm" tabindex="118" />
                 </div>
 
                 <div class="col-md-3">
@@ -303,6 +349,142 @@
 
 @section Scripts {
     <script>
+        // ============================================
+        // ENTER KEY NAVIGATION - ADDED
+        // ============================================
+
+        // Flag to prevent focus from shifting back to Add Bilty button
+        var isModalClosing = false;
+        var focusTarget = null;
+
+        // Highlight active field
+        function highlightField(element) {
+            $('.form-control, .form-select, .btn').removeClass('active-field');
+            $(element).addClass('active-field');
+        }
+
+        // Focus on first field when page loads
+        $(document).ready(function() {
+            // Focus on Challan No
+            $('#ChalNo').focus();
+            highlightField('#ChalNo');
+            calculateTotals();
+
+            // Handle modal hidden event to focus on PExpCode
+            $('#biltyModal').on('hidden.bs.modal', function() {
+                if (focusTarget) {
+                    setTimeout(function() {
+                        $(focusTarget).focus();
+                        highlightField(focusTarget);
+                        focusTarget = null;
+                        isModalClosing = false;
+                    }, 150);
+                }
+            });
+
+            // Prevent focus from going back to Add Bilty button
+            $('#biltyModal').on('shown.bs.modal', function() {
+                // Focus on first checkbox in modal
+                var firstCheckbox = $('.bilty-check:first');
+                if (firstCheckbox.length) {
+                    firstCheckbox.focus();
+                }
+            });
+        });
+
+        // Handle Enter key navigation
+        $(document).on('keydown', '.form-control, .form-select', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+
+                var currentElement = $(this);
+                var currentTabIndex = parseInt(currentElement.attr('tabindex')) || 0;
+
+                // Check if it's a detail row field
+                if (currentElement.closest('tr').length > 0 && currentElement.closest('#tbodyItems').length > 0) {
+                    var currentRow = currentElement.closest('tr');
+                    var allFields = currentRow.find('input, select');
+                    var currentFieldIndex = allFields.index(this);
+
+                    // Move to next field in same row
+                    if (currentFieldIndex < allFields.length - 1) {
+                        var nextField = allFields.eq(currentFieldIndex + 1);
+                        if (nextField.length) {
+                            nextField.focus();
+                            highlightField(nextField);
+                            return;
+                        }
+                    } else {
+                        // Last field in row, move to next row or Add Bilty button
+                        var nextRow = currentRow.next('tr');
+                        if (nextRow.length > 0 && !nextRow.attr('id') === 'noDataRow') {
+                            var firstField = nextRow.find('input:first');
+                            if (firstField.length) {
+                                firstField.focus();
+                                highlightField(firstField);
+                                return;
+                            }
+                        } else {
+                            // No next row, go to Add Bilty button
+                            $('#addBiltyBtn').focus();
+                            highlightField('#addBiltyBtn');
+                            return;
+                        }
+                    }
+                    return;
+                }
+
+                // If current element is Add Bilty button, open modal
+                if (currentElement.attr('id') === 'addBiltyBtn') {
+                    // Set flag when opening modal
+                    isModalClosing = true;
+                    focusTarget = '#PExpCode';
+                    // Open modal
+                    var modal = new bootstrap.Modal(document.getElementById('biltyModal'));
+                    modal.show();
+                    return;
+                }
+
+                // Check if it's an expense field (tabindex 100+)
+                if (currentTabIndex >= 100) {
+                    var nextExpense = $('[tabindex="' + (currentTabIndex + 1) + '"]');
+                    if (nextExpense.length) {
+                        nextExpense.focus();
+                        highlightField(nextExpense);
+                    } else {
+                        $('#btnSave').focus();
+                        highlightField('#btnSave');
+                    }
+                    return;
+                }
+
+                // Navigation for master fields (tabindex 1-7)
+                var nextTabIndex = currentTabIndex + 1;
+                var nextField = $('[tabindex="' + nextTabIndex + '"]');
+
+                if (nextField.length) {
+                    nextField.focus();
+                    highlightField(nextField);
+                } else {
+                    // After remarks (tabindex 7), go to Add Bilty button
+                    $('#addBiltyBtn').focus();
+                    highlightField('#addBiltyBtn');
+                }
+            }
+        });
+
+        // Also highlight on focus
+        $(document).on('focus', '.form-control, .form-select, .btn', function() {
+            // Don't highlight if modal is closing
+            if (!isModalClosing) {
+                highlightField(this);
+            }
+        });
+
+        // ============================================
+        // END ENTER KEY NAVIGATION
+        // ============================================
+
         let rowCounter = 0;
 
         // Function to get next row index and increment
@@ -329,47 +511,57 @@
         // Function to add empty row
         function addEmptyRow() {
             const tbody = $("#tbodyItems");
-            
+
             // Remove no data row if exists
             const noDataRow = document.getElementById("noDataRow");
             if (noDataRow) noDataRow.remove();
-            
+
             const currentIndex = getNextRowIndex();
-            
+
+            // Calculate tabindex for new row
+            var rowCount = $("#tbodyItems tr").length;
+            var baseTabIndex = 9 + (rowCount * 10);
+
             const row = `
                 <tr data-row-index="${currentIndex}">
                     <td>
                         <input type="text"
                                name="Details[${currentIndex}].BillTiNo"
-                               class="form-control form-control-sm billti-no" />
+                               class="form-control form-control-sm billti-no"
+                               tabindex="${baseTabIndex}" />
                     </td>
                     <td>
                         <input type="text"
                                name="Details[${currentIndex}].CusName"
-                               class="form-control form-control-sm cus-name" />
+                               class="form-control form-control-sm cus-name"
+                               tabindex="${baseTabIndex + 1}" />
                     </td>
                     <td>
                         <input type="text"
                                name="Details[${currentIndex}].SendTo"
-                               class="form-control form-control-sm send-to" />
+                               class="form-control form-control-sm send-to"
+                               tabindex="${baseTabIndex + 2}" />
                     </td>
                     <td>
                         <input type="number"
                                name="Details[${currentIndex}].Qty"
                                class="form-control form-control-sm qty"
-                               step="any" />
+                               step="any"
+                               tabindex="${baseTabIndex + 3}" />
                     </td>
                     <td>
                         <input type="number"
                                name="Details[${currentIndex}].BillTiAmt"
                                class="form-control form-control-sm biltyamt"
-                               step="any" />
+                               step="any"
+                               tabindex="${baseTabIndex + 4}" />
                     </td>
                     <td>
                         <input type="number"
                                name="Details[${currentIndex}].PaidAmt"
                                class="form-control form-control-sm paidamt"
-                               step="any" />
+                               step="any"
+                               tabindex="${baseTabIndex + 5}" />
                     </td>
                     <td class="text-center">
                         <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
@@ -378,7 +570,7 @@
                     </td>
                 </tr>
             `;
-            
+
             tbody.append(row);
             calculateTotals();
         }
@@ -389,7 +581,7 @@
             // Reindex all rows after deletion to maintain sequential order
             reindexRows();
             calculateTotals();
-            
+
             // Check if no rows exist, show message
             if ($("#tbodyItems tr").length === 0) {
                 showNoDataMessage();
@@ -414,72 +606,81 @@
             // Remove no data row if exists
             const noDataRow = document.getElementById("noDataRow");
             if (noDataRow) noDataRow.remove();
-            
+
             const tbody = $("#tbodyItems");
             let hasSelected = false;
             let selectedCount = 0;
-            
+
             $(".bilty-check:checked").each(function() {
                 hasSelected = true;
                 const currentIndex = getNextRowIndex();
                 const $checkbox = $(this);
-                
+
                 const ptype = ($checkbox.data("ptype") || "").trim();
                 const netAmt = parseFloat($checkbox.data("netamt")) || 0;
                 const paidAmt = ptype === "Paid" ? netAmt : 0;
-                
+
                 const billtiAmt =
                     (parseFloat($checkbox.data("labour")) || 0) +
                     (parseFloat($checkbox.data("cartage2")) || 0) +
                     (parseFloat($checkbox.data("cartage3")) || 0);
-                
+
                 const billTiNoValue = $checkbox.data("billtino") || "";
                 const cusName = $checkbox.data("cusname") || "";
                 const sendTo = $checkbox.data("sendto") || "";
                 const qty = $checkbox.data("qty") || 0;
                 const docNo = $checkbox.data("docno") || "";
                 const bilNo = $checkbox.data("bilno") || "";
-                
+
+                // Calculate tabindex for new row
+                var rowCount = $("#tbodyItems tr").length;
+                var baseTabIndex = 9 + (rowCount * 10);
+
                 const row = `
                     <tr data-row-index="${currentIndex}">
                         <td>
                             <input type="text"
                                    name="Details[${currentIndex}].BillTiNo"
                                    value="${escapeHtml(billTiNoValue)}"
-                                   class="form-control form-control-sm billti-no" />
+                                   class="form-control form-control-sm billti-no"
+                                   tabindex="${baseTabIndex}" />
                         </td>
                         <td>
                             <input type="text"
                                    name="Details[${currentIndex}].CusName"
                                    value="${escapeHtml(cusName)}"
-                                   class="form-control form-control-sm cus-name" />
+                                   class="form-control form-control-sm cus-name"
+                                   tabindex="${baseTabIndex + 1}" />
                         </td>
                         <td>
                             <input type="text"
                                    name="Details[${currentIndex}].SendTo"
                                    value="${escapeHtml(sendTo)}"
-                                   class="form-control form-control-sm send-to" />
+                                   class="form-control form-control-sm send-to"
+                                   tabindex="${baseTabIndex + 2}" />
                         </td>
                         <td>
                             <input type="number"
                                    name="Details[${currentIndex}].Qty"
                                    value="${qty}"
                                    class="form-control form-control-sm qty"
-                                    />
+                                   tabindex="${baseTabIndex + 3}" />
                         </td>
                         <td>
                             <input type="number"
                                    name="Details[${currentIndex}].BillTiAmt"
                                    value="${billtiAmt.toFixed(2)}"
                                    class="form-control form-control-sm biltyamt"
-                                   step="any" />
+                                   step="any"
+                                   tabindex="${baseTabIndex + 4}" />
                         </td>
                         <td>
                             <input type="number"
                                    name="Details[${currentIndex}].PaidAmt"
                                    value="${paidAmt.toFixed(2)}"
                                    class="form-control form-control-sm paidamt"
-                                   step="any" />
+                                   step="any"
+                                   tabindex="${baseTabIndex + 5}" />
                         </td>
                         <td class="text-center">
                             <input type="hidden" name="Details[${currentIndex}].DCNo" value="${escapeHtml(docNo)}" />
@@ -490,29 +691,32 @@
                         </td>
                     </tr>
                 `;
-                
+
                 tbody.append(row);
                 selectedCount++;
             });
-            
+
             if (!hasSelected) {
                 alert("Please select at least one bilty.");
                 return;
             }
-            
+
             // Clear checkboxes
             $(".bilty-check").prop("checked", false);
-            
-            // Close modal
+
+            // Set focus target before closing modal
+            focusTarget = '#PartyStationCode';
+
+            // Close modal - this will trigger the hidden.bs.modal event
             const modal = bootstrap.Modal.getInstance(document.getElementById('biltyModal'));
             if (modal) modal.hide();
-            
+
             // Reindex all rows to ensure sequential order
             reindexRows();
-            
+
             // Recalculate totals
             calculateTotals();
-            
+
             console.log(`Added ${selectedCount} rows. Total rows: ${$("#tbodyItems tr").length}`);
         }
 
@@ -527,21 +731,21 @@
                 .replace(/'/g, '&#39;');
         }
 
-        // Calculate totals function
+        // Calculate totals function - COMPLETELY UNCHANGED
         function calculateTotals() {
             let detailBiltyTotal = 0;
-            
+
             $(".biltyamt").each(function() {
                 let val = parseFloat($(this).val());
                 if (!isNaN(val)) {
                     detailBiltyTotal += val;
                 }
             });
-            
+
             let headBillTiAmt = parseVal("#Head_BillTiAmt");
             let totalBilty = headBillTiAmt + detailBiltyTotal;
             $("#Head_TotBillTi").val(totalBilty.toFixed(2));
-            
+
             let toPay = parseVal("#Head_TotToPaid");
             let pexp1 = parseVal("#Head_PExpAmt");
             let pexp2 = parseVal("#Head_PExpAmt2");
@@ -550,47 +754,36 @@
             let otherExp = parseVal("#Head_TotOtherEx");
             let deliveryAmt = parseVal("#Head_DeliveryAmt");
             let lifterAmt = parseVal("#Head_TotLifter2");
-            
+
             let totalExpenses = pexp1 + pexp2 + pexp3 + localAmt + otherExp + deliveryAmt + lifterAmt;
             let netAmt = toPay - totalExpenses;
-            
+
             $("#Head_NetAmt").val(netAmt.toFixed(2));
         }
-        
+
         function parseVal(selector) {
             let val = parseFloat($(selector).val());
             return isNaN(val) ? 0 : val;
         }
-        
-        // Validation before submit
+
+        // Validation before submit - modified: removed "at least one bilty" check
         function validateBeforeSubmit() {
-            // Check if at least one detail row exists
-            if ($("#tbodyItems tr").length === 0 || $("#noDataRow").length > 0) {
-                alert("Please add at least one bilty detail before saving.");
-                return false;
-            }
-            
             // Check if all required fields are filled
             let isValid = true;
             $("#tbodyItems tr").each(function() {
                 const billtiNo = $(this).find(".billti-no").val();
                 const cusName = $(this).find(".cus-name").val();
-                
+
                 if (!billtiNo || !cusName) {
                     isValid = false;
                     return false;
                 }
             });
-            
-            if (!isValid) {
-                alert("Please fill in all required fields (Bilty No and Party Name) for each row.");
-                return false;
-            }
-            
+
             return true;
         }
-        
-        // Debug: Log form data before submit
+
+        // Debug: Log form data before submit - UNCHANGED
         function debugFormData() {
             console.log("=== Form Data Debug ===");
             $("#tbodyItems tr").each(function(index) {
@@ -608,28 +801,25 @@
                 });
             });
         }
-        
-        // Event listeners for real-time calculation
+
+        // Event listeners for real-time calculation - UNCHANGED
         $(document).on("input", ".biltyamt, #Head_BillTiAmt, #Head_TotToPaid, #Head_PExpAmt, #Head_PExpAmt2, #Head_PExpAmt3, #Head_LocalAmt, #Head_TotOtherEx, #Head_DeliveryAmt, #Head_TotLifter2", function() {
             calculateTotals();
         });
-        
+
         // Initialize on document ready
         $(document).ready(function() {
-            // Start with one empty row (index 0)
-            addEmptyRow();
-            
             // Trigger calculation on page load
             calculateTotals();
         });
-        
-        // Attach to form submit
+
+        // Attach to form submit - UNCHANGED
         $("#challanForm").on("submit", function(e) {
             debugFormData();
             return validateBeforeSubmit();
         });
-        
-        // Make functions global for onclick handlers
+
+        // Make functions global for onclick handlers - UNCHANGED
         window.addEmptyRow = addEmptyRow;
         window.removeRow = removeRow;
         window.addSelectedBilties = addSelectedBilties;

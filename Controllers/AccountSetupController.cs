@@ -51,7 +51,7 @@ namespace Nskg.Controllers
 
                 // 🔥 US COMPANY KE YEARS LOAD KARO
                 var years = _context.FinancialYears
-                    .Where(x => x.CompanyId == model.SelectedCompanyId && !x.IsClosed)
+                    .Where(x => x.CompanyId == model.SelectedCompanyId)
                     .Select(y => new SelectListItem
                     {
                         Value = y.Id.ToString(),

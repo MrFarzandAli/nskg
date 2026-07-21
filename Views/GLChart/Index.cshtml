@@ -68,6 +68,9 @@
             <button class="btn btn-success" onclick="openDetailModal()">
                 <i class="fa fa-plus"></i> Detail
             </button>
+                <button id="deleteAccountBtn" class="btn btn-danger ms-2" onclick="deleteAccount()">
+                    <i class="fa fa-trash"></i> Delete Account
+                </button>
         </div>
     </div>
 </div>
@@ -100,6 +103,7 @@
                     </div>
                 }
 
+        
             </div>
         </div>
 
@@ -472,6 +476,73 @@
             });
 
         });
+
+
+        // DELETE ACCOUNT (Header)
+        function deleteAccount() {
+            if (currentAccountId === 0) {
+                toastr.warning('Select account first');
+                return;
+            }
+
+            const name = $('.account-item.active small').text() || $('.account-item.active b').text();
+            const token = $('input[name="__RequestVerificationToken"]').val();
+            const url = '/GLChart/DeleteAccount?id=' + currentAccountId;
+
+            Swal.fire({
+                title: 'Are you sure?',
+                html: `You want to delete <b>"${name}"</b>?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                width: 360,
+                showLoaderOnConfirm: true,
+                preConfirm: async () => {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': token
+                            }
+                        });
+
+                        const result = await response.json();
+                        if (!response.ok) throw new Error(result.message || 'Delete failed');
+                        return result;
+                    } catch (err) {
+                        Swal.showValidationMessage(`Error: ${err.message}`);
+                    }
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed && result.value?.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: result.value.message || 'Account deleted',
+                        showConfirmButton: false,
+                        timer: 1500,
+                        width: 320
+                    });
+
+                    // remove from left list and clear details
+                    $('.account-item.active').remove();
+                    $('#detailList').html('');
+                    currentAccountId = 0;
+                }
+                else if (result.isConfirmed && !result.value?.success) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: result.value?.message || 'Delete failed!'
+                    });
+                }
+            });
+        }
 
     </script>
     <script>

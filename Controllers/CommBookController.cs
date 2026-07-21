@@ -1,0 +1,770 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using Nskg.Data;
+using Nskg.Extensions;
+using Nskg.Helper;
+using Nskg.Models;
+using Nskg.Models.ViewModels;
+using Nskg.Repositories.Interfaces;
+using Nskg.Services;
+using System.Reflection.Emit;
+
+namespace Nskg.Controllers
+{
+    public class CommBookController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly AccountingService _service;
+        private readonly IAuditService _audit;
+
+        public CommBookController(ApplicationDbContext context, AccountingService service, IAuditService audit)
+        {
+            _context = context;
+            _service = service;
+            _audit = audit; // ✅ ADD
+        }
+        public IActionResult Index()
+        {
+            try
+            {
+                var data = _context.CommHead
+                    .ToList();
+
+                return View(data);
+            }
+            catch (Exception ex)
+            {
+                _audit.LogAsync("Error", "CommBook", "0", ex.Message).Wait();
+                TempData["ErrorMessage"] = "❌ Failed to load commission books!";
+                return View(new List<CommHead>());
+            }
+        }
+
+        public IActionResult Create()
+        {
+            LoadDropdowns();
+
+            return View(new CommBookViewModel
+            {
+                Head = new CommHead
+                {
+                    DocDate = DateTime.Now,
+                    DocNo = GenerateDocNo()
+                },
+                Details = new List<CommBookDetailVM>()
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(CommBookViewModel model)
+        {
+            try
+            {
+                // Debug output for posted form and model
+                foreach (var key in Request.Form.Keys)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Form Key: {key} = {Request.Form[key]}");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Details Count: {model.Details?.Count ?? 0}");
+
+                foreach (var d in model.Details ?? new List<CommBookDetailVM>())
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"BillTiNo={d.BillTiNo}, CusName={d.CusName}, BillTiAmt={d.BillTiAmt}, PaidAmt={d.PaidAmt}");
+                }
+
+                // Ensure details list exists
+                model.Details ??= new List<CommBookDetailVM>();
+
+                // Remove empty rows (based on fields present in CommBookDetailVM)
+                model.Details = model.Details
+                    .Where(x =>
+                        !string.IsNullOrWhiteSpace(x.BillTiNo) ||
+                        !string.IsNullOrWhiteSpace(x.CusName) ||
+                        !string.IsNullOrWhiteSpace(x.SendTo) ||
+                        (x.BillTiAmt ?? 0) > 0 ||
+                        (x.PaidAmt ?? 0) > 0 ||
+                        (x.NetAmt ?? 0) > 0
+                    )
+                    .ToList();
+
+                if (!model.Details.Any())
+                {
+                    ModelState.AddModelError("", "At least one commission detail is required.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    LoadDropdowns();
+                    return View(model);
+                }
+
+                using var transaction = _context.Database.BeginTransaction();
+
+                // =========================
+                // FILL HEAD AUTO VALUES
+                // =========================
+                model.Head.DocNo ??= GenerateDocNo();
+
+                // Populate common ERP fields - property names in CommHead
+                model.Head.CompanyId = User.GetCompanyId();
+                model.Head.FinancialYearId = User.GetFinancialYearId();
+
+                model.Head.PaidAmt = model.Details.Sum(x => x.PaidAmt ?? 0);
+                model.Head.BillTiAmt = model.Details.Sum(x => x.BillTiAmt ?? 0);
+
+                // Recalculate totals if appropriate fields exist
+                model.Head.TotAmt = (model.Head.TotAmt ?? 0) + model.Details.Sum(x => (x.NetAmt ?? 0));
+                model.Head.NetAmt = (model.Head.TotNet ?? model.Head.TotAmt) ?? model.Head.TotAmt;
+
+                model.Head.TotNet = model.Details.Sum(x => x.NetAmt ?? 0);
+                model.Head.DeliveryAmt1 = model.Details.Sum(x => x.DeliveryAmt ?? 0);
+                model.Head.DeliveryAmt2 = model.Details.Sum(x => x.ToPaidAmt ?? 0);
+
+                model.Head.CreatedOn = DateTime.Now;
+                model.Head.CreatedBy = User.Identity?.Name ?? string.Empty;
+
+                // =========================
+                // LOOKUP MASTER DATA
+                // =========================
+                var station = _context.GLChart3
+                    .FirstOrDefault(x => x.Id == model.Head.StationId);
+
+                var transporter = _context.GLChart3
+                    .FirstOrDefault(x => x.Id == model.Head.TransId);
+
+                var advance = _context.GLChart3
+                    .FirstOrDefault(x => x.Id == model.Head.AdvanceId);
+
+                model.Head.Station = station?.Name;
+                model.Head.StationCode = station?.ACC;
+
+                model.Head.Transporter = transporter?.Name;
+                model.Head.TransCode = transporter?.ACC;
+
+                model.Head.Advance = advance?.Name;
+                model.Head.AdvanceCode = advance?.ACC;
+
+                // =========================
+                // SAVE HEAD
+                // =========================
+                _context.CommHead.Add(model.Head);
+                _context.SaveChanges();
+
+                // =========================
+                // SAVE DETAILS
+                // Map ViewModel -> Entity
+                // =========================
+                foreach (var item in model.Details)
+                {
+                    var det = new CommDetail
+                    {
+                        CommHeadId = model.Head.Id,
+                        DocDate = model.Head.DocDate,
+                        CompanyId = model.Head.CompanyId,
+                        FinancialYearId = model.Head.FinancialYearId,
+                        CreatedBy = model.Head.CreatedBy,
+                        CreatedOn = model.Head.CreatedOn,
+
+                        Fooder = item.Fooder,
+                        CusName = item.CusName,
+                        SendTo = item.SendTo,
+                        BillTiAmt = item.BillTiAmt,
+                        PaidAmt = item.PaidAmt,
+                        ToPaidAmt = item.ToPaidAmt,
+                        DeliveryAmt = item.DeliveryAmt,
+                        LocalAmt = item.LocalAmt,
+                        NetAmt = item.NetAmt
+                    };
+
+                    // Try to parse BillTiNo into int? (CommDetail uses int? BillTiNo)
+                    if (!string.IsNullOrWhiteSpace(item.BillTiNo) &&
+                        int.TryParse(item.BillTiNo, out var billTiInt))
+                    {
+                        det.BillTiNo = billTiInt;
+                    }
+
+                    _context.CommDetail.Add(det);
+
+                    // =========================
+                    // UPDATE ORIGINAL BILTY TABLE (IssHead)
+                    // Mark as used (DescYN = "Y")
+                    // =========================
+                    if (!string.IsNullOrWhiteSpace(item.BillTiNo))
+                    {
+                        // Try match by numeric BillTiNo where possible, otherwise match by string comparison
+                        ChallanHead? originalBilty = null;
+
+                        if (decimal.TryParse(item.BillTiNo, out var billTiDecimal))
+                        {
+                            originalBilty = _context.ChallanHead
+                                .FirstOrDefault(b => b.ChalNo == billTiDecimal);
+                        }
+                        else
+                        {
+                            originalBilty = _context.ChallanHead
+                                .FirstOrDefault(b => b.DocNo == item.BillTiNo);
+                        }
+
+                        if (originalBilty != null)
+                        {
+                            originalBilty.DescYn = "Y";
+                            // Optionally store reference - IssHead.ChallanId exists as int? (reused for linking)
+                            try
+                            {
+                                originalBilty.commBookId = (int)model.Head.Id;
+                            }
+                            catch
+                            {
+                                // ignore if id is too large to convert; linking is optional
+                            }
+
+                            _context.Entry(originalBilty).State = EntityState.Modified;
+                        }
+                    }
+                }
+
+                _context.SaveChanges();
+
+                transaction.Commit();
+
+                _audit.LogAsync(
+                    "Create",
+                    "CommBook",
+                    model.Head.Id.ToString(),
+                    $"Comm Book Created: {model.Head.DocNo}"
+                ).Wait();
+
+                TempData["SuccessMessage"] = "✅ Commission book saved successfully.";
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _audit.LogAsync(
+                    "Error",
+                    "CommBook Create",
+                    "0",
+                    ex.ToString()
+                ).Wait();
+
+                TempData["ErrorMessage"] = "❌ Failed to save commission book.";
+
+                LoadDropdowns();
+                return View(model);
+            }
+        }
+
+        public IActionResult Edit(int id)
+        {
+            LoadDropdowns();
+
+            var head = _context.CommHead
+                .FirstOrDefault(x => x.Id == id);
+
+            if (head == null)
+                return NotFound();
+
+            var details = _context.CommDetail
+                 .Where(x => x.CommHeadId == id)
+                 .Select(x => new CommBookDetailVM
+                 {
+                     BillTiNo = x.BillTiNo.HasValue ? x.BillTiNo.Value.ToString() : null,
+                     Fooder = x.Fooder,
+                     CusName = x.CusName,
+                     SendTo = x.SendTo,
+                     BillTiAmt = x.BillTiAmt,
+                     PaidAmt = x.PaidAmt,
+                     ToPaidAmt = x.ToPaidAmt,
+                     DeliveryAmt = x.DeliveryAmt,
+                     LocalAmt = x.LocalAmt,
+                     NetAmt = x.NetAmt,
+                     DCNo = x.DcNo,
+                     FooderCode = x.FooderCode
+                 })
+                 .ToList();
+
+            var model = new CommBookViewModel
+            {
+                Head = head,
+                Details = details ?? new List<CommBookDetailVM>()
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Edit(CommBookViewModel model)
+        {
+            try
+            {
+                model.Details ??= new List<CommBookDetailVM>();
+
+                // Remove empty rows
+                model.Details = model.Details
+                    .Where(x =>
+                        !string.IsNullOrWhiteSpace(x.BillTiNo) ||
+                        !string.IsNullOrWhiteSpace(x.CusName) ||
+                        !string.IsNullOrWhiteSpace(x.SendTo) ||
+                        (x.BillTiAmt ?? 0) > 0 ||
+                        (x.PaidAmt ?? 0) > 0 ||
+                        (x.NetAmt ?? 0) > 0)
+                    .ToList();
+
+                if (!model.Details.Any())
+                {
+                    ModelState.AddModelError("", "At least one commission detail is required.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    LoadDropdowns();
+                    return View(model);
+                }
+
+                using var transaction = _context.Database.BeginTransaction();
+
+                var head = _context.CommHead
+                    .Include(x => x.Details)
+                    .FirstOrDefault(x => x.Id == model.Head.Id);
+
+                if (head == null)
+                    return NotFound();
+
+                // Unlink previously linked challans that are NOT present in the updated details
+                var previouslyLinked = _context.ChallanHead
+                    .Where(ch => ch.commBookId == head.Id)
+                    .ToList();
+
+                // Collect BillTiNo values from submitted details for comparison
+                var newBillNos = model.Details
+                    .Where(d => !string.IsNullOrWhiteSpace(d.BillTiNo))
+                    .Select(d => d.BillTiNo!.Trim())
+                    .ToList();
+
+                foreach (var ch in previouslyLinked)
+                {
+                    var stillLinked = false;
+
+                    // If challan has a DocNo, check string match
+                    if (!string.IsNullOrWhiteSpace(ch.DocNo))
+                    {
+                        if (newBillNos.Any(nb => string.Equals(nb, ch.DocNo, StringComparison.OrdinalIgnoreCase)))
+                            stillLinked = true;
+                    }
+
+                    // If challan has a numeric ChalNo, check numeric match
+                    if (!stillLinked && ch.ChalNo != null)
+                    {
+                        foreach (var nb in newBillNos)
+                        {
+                            if (decimal.TryParse(nb, out var nbDec) && ch.ChalNo == nbDec)
+                            {
+                                stillLinked = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!stillLinked)
+                    {
+                        ch.DescYn = "N";
+                        ch.commBookId = null;
+                        ch.ModifiedOn = DateTime.Now;
+                        ch.ModifiedBy = User?.Identity?.Name;
+                        _context.Entry(ch).State = EntityState.Modified;
+                    }
+                }
+
+                // Update head fields
+                head.ChalNo = model.Head.ChalNo;
+                head.DocDate = model.Head.DocDate;
+                head.StationId = model.Head.StationId;
+                head.TransId = model.Head.TransId;
+                head.VehicleNo = model.Head.VehicleNo;
+                head.Driver = model.Head.Driver;
+                head.Narration = model.Head.Narration;
+
+                head.StationAmt = model.Head.StationAmt;
+                head.TransporterAmt = model.Head.TransporterAmt;
+                head.AdvanceId = model.Head.AdvanceId;
+                head.AdvanceAmt = model.Head.AdvanceAmt;
+
+                head.PartyExAmt = model.Head.PartyExAmt;
+                head.Lifter2Amt = model.Head.Lifter2Amt;
+                head.OtherExAmt = model.Head.OtherExAmt;
+
+                head.DeliveryAmt = model.Head.DeliveryAmt;
+                head.LocalAmt = model.Head.LocalAmt;
+                head.Labour = model.Head.Labour;
+                head.Tax = model.Head.Tax;
+
+                head.TotNet = model.Details.Sum(x => x.NetAmt ?? 0);
+                head.BillTiAmt = model.Details.Sum(x => x.BillTiAmt ?? 0);
+                head.PaidAmt = model.Details.Sum(x => x.PaidAmt ?? 0);
+                head.TotAmt = (model.Head.TotAmt ?? 0) + head.TotNet;
+
+                head.ModifiedOn = DateTime.Now;
+                head.ModifiedBy = User?.Identity?.Name;
+
+                // Delete old details
+                var oldDetails = _context.CommDetail.Where(d => d.CommHeadId == head.Id).ToList();
+                _context.CommDetail.RemoveRange(oldDetails);
+                _context.SaveChanges();
+
+                // Insert new details and link challans
+                foreach (var item in model.Details)
+                {
+                    var det = new CommDetail
+                    {
+                        CommHeadId = head.Id,
+                        DocDate = head.DocDate,
+                        CompanyId = head.CompanyId,
+                        FinancialYearId = head.FinancialYearId,
+                        CreatedBy = head.CreatedBy,
+                        CreatedOn = head.CreatedOn,
+
+                        Fooder = item.Fooder,
+                        CusName = item.CusName,
+                        SendTo = item.SendTo,
+                        BillTiAmt = item.BillTiAmt,
+                        PaidAmt = item.PaidAmt,
+                        ToPaidAmt = item.ToPaidAmt,
+                        DeliveryAmt = item.DeliveryAmt,
+                        LocalAmt = item.LocalAmt,
+                        NetAmt = item.NetAmt,
+                        DcNo = item.DCNo
+                    };
+
+                    if (!string.IsNullOrWhiteSpace(item.BillTiNo) && int.TryParse(item.BillTiNo, out var billTiInt))
+                        det.BillTiNo = billTiInt;
+
+                    _context.CommDetail.Add(det);
+
+                    // Link to ChallanHead if BillTiNo provided
+                    if (!string.IsNullOrWhiteSpace(item.BillTiNo))
+                    {
+                        ChallanHead? chall = null;
+                        if (decimal.TryParse(item.BillTiNo, out var asDec))
+                        {
+                            chall = _context.ChallanHead.FirstOrDefault(c => c.ChalNo == asDec);
+                        }
+                        else
+                        {
+                            chall = _context.ChallanHead.FirstOrDefault(c => c.DocNo == item.BillTiNo);
+                        }
+
+                        if (chall != null)
+                        {
+                            chall.DescYn = "Y";
+                            chall.commBookId = head.Id;
+                            chall.ModifiedOn = DateTime.Now;
+                            chall.ModifiedBy = User?.Identity?.Name;
+                            _context.Entry(chall).State = EntityState.Modified;
+                        }
+                    }
+                }
+
+                _context.SaveChanges();
+
+                transaction.Commit();
+
+                TempData["SuccessMessage"] = "✅ Commission book updated successfully.";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _audit.LogAsync("Error", "CommBook Edit", "0", ex.ToString()).Wait();
+                TempData["ErrorMessage"] = "❌ Failed to update commission book.";
+                LoadDropdowns();
+                return View(model);
+            }
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Delete(int id)
+        {
+            try
+            {
+                var v = _context.CommHead
+                    .Include(x => x.Details)
+                    .FirstOrDefault(x => x.Id == id);
+
+                if (v == null)
+                {
+                    return Json(new { success = false, message = "CommBook not found!" });
+                }
+
+                // Remove related GL transactions as before
+                var gl = _context.GLTrans
+                    .Where(x => x.RefId == v.Id);
+
+                _context.GLTrans.RemoveRange(gl);
+
+                // Before soft-deleting CommHead, unlink related ChallanHead entries
+                var linkedChallans = _context.ChallanHead
+                    .Where(ch => ch.commBookId == v.Id)
+                    .ToList();
+
+                foreach (var ch in linkedChallans)
+                {
+                    ch.DescYn = "N"; // mark challan as not described/available
+                    ch.commBookId = null;
+                    ch.ModifiedOn = DateTime.Now;
+                    ch.ModifiedBy = User?.Identity?.Name;
+                    _context.Entry(ch).State = EntityState.Modified;
+                }
+
+                // Soft-delete CommHead and mark details as deleted (DescYn)
+                v.IsDeleted = true;
+                v.ModifiedOn = DateTime.Now;
+                v.ModifiedBy = User?.Identity?.Name;
+
+                //foreach (var det in v.Details)
+                //{
+                //    det.DescYn = true;
+                //}
+
+                _context.Entry(v).State = EntityState.Modified;
+                _context.SaveChanges();
+
+                _audit.LogAsync("Delete", "CommBook", id.ToString(),
+                    $"Soft-deleted: {v.DocNo}").Wait();
+
+                return Json(new { success = true, message = "CommBook soft-deleted successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        private void LoadDropdowns()
+        {
+            try
+            {
+
+
+                var transporterlist = _context.AcPara
+    .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
+                && a.Cocode == User.GetCompanyId().ToString()
+                && a.Parent == "P")
+    .Select(a => a.Accode)
+    .Distinct();
+
+                var transporterAccounts = _context.GLChart3
+                    .Where(g =>
+                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.AcType != "S" &&
+                        transporterlist.Contains(g.AC1)
+                    )
+                    .Select(g => new SelectListItem
+                    {
+                        Value = g.Id.ToString(),
+                        Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                    })
+                    .OrderBy(x => x.Text)
+                    .ToList();
+
+                // ✅ Add default item at index 0
+                transporterAccounts.Insert(0, new SelectListItem
+                {
+                    Value = "",
+                    Text = "-- Select Transporter Account --"
+                });
+
+                ViewBag.Transporters = transporterAccounts;
+
+                var advancelist = _context.AcPara
+    .Where(a => AccountCategories.Advance.Contains(a.ActypeCode)
+                && a.Cocode == User.GetCompanyId().ToString()
+                && a.Parent == "P")
+    .Select(a => a.Accode)
+    .Distinct();
+
+                var advanceAccounts = _context.GLChart3
+                    .Where(g =>
+                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.AcType != "S" &&
+                        advancelist.Contains(g.AC1)
+                    )
+                    .Select(g => new SelectListItem
+                    {
+                        Value = g.Id.ToString(),
+                        Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                    })
+                    .OrderBy(x => x.Text)
+                    .ToList();
+
+                // ✅ Add default item at index 0
+                advanceAccounts.Insert(0, new SelectListItem
+                {
+                    Value = "",
+                    Text = "-- Select Advance Account --"
+                });
+
+                ViewBag.Advances = advanceAccounts;
+
+                var stationList = _context.AcPara
+                    .Where(a => AccountCategories.Station.Contains(a.ActypeCode)
+                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
+
+                var stationAccounts = _context.GLChart3
+                    .Where(g =>
+                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.AcType != "S" &&
+                        stationList.Contains(g.AC1)
+                    )
+                    .Select(g => new SelectListItem
+                    {
+                        Value = g.Id.ToString(),
+                        Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                    })
+                    .OrderBy(x => x.Text)
+                    .ToList();
+
+                stationAccounts.Insert(0, new SelectListItem
+                {
+                    Value = "",
+                    Text = "-- Select Station Account --"
+                });
+
+                ViewBag.Stations = stationAccounts;
+
+                //party station 
+                var PartyStationList = _context.AcPara
+                    .Where(a => AccountCategories.Party_Station.Contains(a.ActypeCode)
+                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
+
+                var PartyStationAccounts = _context.GLChart3
+                    .Where(g =>
+                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.AcType != "S" &&
+                        PartyStationList.Contains(g.AC1)
+                    )
+                    .Select(g => new SelectListItem
+                    {
+                        Value = g.Id.ToString(),
+                        Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                    })
+                    .OrderBy(x => x.Text)
+                    .ToList();
+
+                PartyStationAccounts.Insert(0, new SelectListItem
+                {
+                    Value = "",
+                    Text = "-- Select Party Station Account --"
+                });
+
+                ViewBag.PartyStations = PartyStationAccounts;
+
+                //party Exp
+                var PartyExpList = _context.AcPara
+                    .Where(a => AccountCategories.Too_PayParty.Contains(a.ActypeCode)
+                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
+
+                var PartyExpAccounts = _context.GLChart3
+                    .Where(g =>
+                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.AcType != "S" &&
+                        PartyExpList.Contains(g.AC1)
+                    )
+                    .Select(g => new SelectListItem
+                    {
+                        Value = g.Id.ToString(),
+                        Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                    })
+                    .OrderBy(x => x.Text)
+                    .ToList();
+
+                PartyExpAccounts.Insert(0, new SelectListItem
+                {
+                    Value = "",
+                    Text = "-- Select Party Exp Account --"
+                });
+
+                ViewBag.PartyExps = PartyExpAccounts;
+
+
+                //Load bilty
+                ViewBag.ChallanList = _context.ChallanHead
+    .Where(x => x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn))
+    .Select(x => new
+    {
+        x.Id,
+        x.DocNo,
+        x.DocDate,
+        x.ChalNo,
+        x.VehicleNo,
+        x.Transporter,
+        x.Driver,
+        x.StationCode,
+        x.Station,
+        x.TotPaid,
+        x.NetAmt,
+        x.TotToPaid,
+        x.TotBillTi,
+        x.DeliveryAmt,
+        x.LocalAmt,
+        x.TotPartyEx,
+        x.TotLifter2,
+        x.TotOtherEx
+
+    })
+    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _audit.LogAsync("Error", "LoadDropdowns", "0", ex.Message).Wait();
+                throw;
+            }
+        }
+        private string GenerateDocNo()
+        {
+            var fy = _context.FinancialYears
+                .FirstOrDefault(x =>
+                    x.Id == User.GetFinancialYearId());
+
+            if (fy == null)
+                throw new Exception("Active financial year not found.");
+
+            string monthPart = DateTime.Now.ToString("MM");
+            string yearPart = fy.StartDate.ToString("yy");
+
+            string code = monthPart + yearPart;   // e.g. 0426
+
+            var lastDoc = _context.CommHead
+                .Where(x => x.DocNo.EndsWith("/" + code))
+                .OrderByDescending(x => x.Id)
+                .Select(x => x.DocNo)
+                .FirstOrDefault();
+
+            int nextNumber = 1;
+
+            if (!string.IsNullOrEmpty(lastDoc))
+            {
+                var numericPart = lastDoc.Split('/')[0];
+
+                if (int.TryParse(numericPart, out int lastNumber))
+                    nextNumber = lastNumber + 1;
+            }
+
+            return $"{nextNumber:D4}/{code}";
+        }
+    }
+}

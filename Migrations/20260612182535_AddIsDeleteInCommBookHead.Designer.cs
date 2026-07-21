@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260612182535_AddIsDeleteInCommBookHead")]
+    partial class AddIsDeleteInCommBookHead
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -778,8 +781,8 @@ namespace Nskg.Migrations
                     b.Property<string>("VehicleNo")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<long?>("commBookId")
-                        .HasColumnType("bigint");
+                    b.Property<int?>("commBookId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 

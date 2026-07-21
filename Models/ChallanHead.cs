@@ -59,6 +59,17 @@
 
         public string? PartyStationCode { get; set; }
 
+        // ✅ Soft Delete
+        public bool IsDeleted { get; set; }
+
+        // ✅ Audit Fields (optional for future use)
+        public DateTime CreatedOn { get; set; }
+        public string? CreatedBy { get; set; }
+
+        public DateTime? ModifiedOn { get; set; }
+        public string? ModifiedBy { get; set; }
+
+        public long? commBookId { get; set; }
         // 🔗 Navigation
         public List<ChallanDet> Details { get; set; } = new();
     }

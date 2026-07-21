@@ -109,6 +109,13 @@ namespace Nskg.Controllers
                 if (data == null)
                     return Json(new { success = false, message = "Not found!" });
 
+                // Check for existing details
+                var hasDetails = _context.GLChart3.Any(x => x.GLChart1Id == id);
+                if (hasDetails)
+                {
+                    return Json(new { success = false, message = "Cannot delete account with existing details. Please delete all details first." });
+                }
+
                 _context.GLChart1.Remove(data);
                 _context.SaveChanges();
 

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260603175221_AlterTableCommHead")]
+    partial class AlterTableCommHead
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -655,12 +658,6 @@ namespace Nskg.Migrations
                     b.Property<int>("CompanyId")
                         .HasColumnType("int");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("datetime2");
-
                     b.Property<decimal?>("DeliveryAmt")
                         .HasColumnType("decimal(18,2)");
 
@@ -682,20 +679,11 @@ namespace Nskg.Migrations
                     b.Property<int>("FyId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
                     b.Property<decimal?>("LocalAmt")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("LocalAmt2")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ModifiedOn")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Narration")
                         .HasColumnType("nvarchar(max)");
@@ -777,9 +765,6 @@ namespace Nskg.Migrations
 
                     b.Property<string>("VehicleNo")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<long?>("commBookId")
-                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -1092,9 +1077,6 @@ namespace Nskg.Migrations
                     b.Property<string>("AdvanceCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("AdvanceId")
-                        .HasColumnType("int");
-
                     b.Property<decimal?>("BillTiAmt")
                         .HasColumnType("decimal(18,2)");
 
@@ -1105,6 +1087,7 @@ namespace Nskg.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("CreatedBy")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedOn")
@@ -1137,9 +1120,6 @@ namespace Nskg.Migrations
 
                     b.Property<int>("FinancialYearId")
                         .HasColumnType("int");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
 
                     b.Property<decimal?>("Labour")
                         .HasColumnType("decimal(18,2)");

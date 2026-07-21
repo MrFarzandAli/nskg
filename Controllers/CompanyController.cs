@@ -44,6 +44,13 @@ namespace Nskg.Controllers
         {
             try
             {
+                var cocode = await _unitOfWork.companyRepository.IsCocodeExist(model.Cocode);
+
+                if (cocode)
+                {
+                    TempData["ErrorMessage"] = "❌ Company Code already exists!";
+                    return View(model);
+                }
                 // 🔥 SET AUDIT FIELDS
                 model.CreatedOn = DateTime.Now;
                 model.CreatedBy = GetUser();

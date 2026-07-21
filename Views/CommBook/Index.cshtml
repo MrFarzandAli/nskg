@@ -1,8 +1,8 @@
-﻿@model IEnumerable<ChallanHead>
+﻿@model IEnumerable<CommHead>
 
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "Challan";
+    ViewData["Title"] = "Commission Book";
 }
 @Html.AntiForgeryToken()
 <div class="page-header">
@@ -14,16 +14,15 @@
                 <li class="breadcrumb-item">
                     <a asp-controller="Home" asp-action="Index">Dashboard</a>
                 </li>
-                <li class="breadcrumb-item active">Challan</li>
+                <li class="breadcrumb-item active">Commission Book</li>
             </ul>
         </div>
 
-        <div class="col-auto float-end ms-auto">
-            <a asp-controller="Challan"
-               asp-action="Create"
-               class="btn add-btn"
-               id="addChallanBtn">
-                <i class="fa fa-plus"></i> Add Challan
+        <div class="col-auto ms-auto d-flex align-items-center justify-content-end">
+            <a id="addCommissionBtn" tabindex="0" asp-controller="CommBook"
+                   asp-action="Create"
+                   class="btn add-btn">
+                <i class="fa fa-plus"></i> Add Commission
             </a>
         </div>
     </div>
@@ -59,15 +58,15 @@
                                         </h2>
                                     </td>
 
-                                    <td>@(b.DocDate?.ToString("dd-MMM-yyyy") ?? "")</td>
+                                    <td>@(b.DocDate.ToString("dd-MMM-yyyy"))</td>
                                     <td>@b.Station</td>
                                     <td>@b.Transporter</td>
                                     <td class="text-end">
                                         <div class="d-flex justify-content-end gap-2">
 
                                             <a asp-action="Edit"
-                                               asp-route-id="@b.Id"
-                                               class="btn btn-sm btn-primary">
+                                                   asp-route-id="@b.Id"
+                                                   class="btn btn-sm btn-primary">
                                                 <i class="fa fa-pencil"></i> Edit
                                             </a>
 
@@ -76,8 +75,8 @@
                                                     onclick="confirmDelete(@b.Id)">
                                                 <i class="fa fa-trash"></i> Delete
                                             </button>
-
                                             
+
                                         </div>
                                     </td>
                                 </tr>
@@ -108,40 +107,38 @@
                 "responsive": true
             });
 
-            // 🔥 Focus on Add Challan button when page loads
+            // Focus and highlight Add Commission button on page load (match Bilty Index behavior)
             setTimeout(function() {
-                $('#addChallanBtn').focus();
+                $('#addCommissionBtn').focus();
 
-                // Add temporary highlight effect to draw attention
-                $('#addChallanBtn').css({
+                // Optional: Add highlight effect to the focused button
+                $('#addCommissionBtn').css({
                     'box-shadow': '0 0 0 0.2rem rgba(13, 110, 253, 0.5)',
                     'border-color': '#0d6efd',
-                    'transition': 'all 0.3s ease',
-                    'transform': 'scale(1.02)'
+                    'transition': 'all 0.3s ease'
                 });
 
-                // Remove highlight after 3 seconds or when user interacts
+                // Remove highlight after 3 seconds or when user clicks elsewhere
                 setTimeout(function() {
-                    $('#addChallanBtn').css({
+                    $('#addCommissionBtn').css({
                         'box-shadow': '',
-                        'border-color': '',
-                        'transform': ''
+                        'border-color': ''
                     });
                 }, 3000);
-            }, 100); // Small delay to ensure DOM is fully rendered
+            }, 100); // small delay to ensure DOM is fully rendered
 
         });
 
-        function confirmDelete(id) {
+               function confirmDelete(id) {
 
-            if (!confirm("Are you sure you want to delete Challan ?")) {
+            if (!confirm("Are you sure you want to delete Commission Book ?")) {
                 return;
             }
 
             const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
             $.ajax({
-                url: '/Challan/Delete',
+                url: '/CommBook/Delete',
                 type: 'POST',
                 data: {
                     id: id,
@@ -162,23 +159,18 @@
 }
 
 <style>
-    /* 🔥 Style for focused Add Challan button */
-    #addChallanBtn:focus {
+    /* Match Bilty Index: focused Add Commission button style */
+    #addCommissionBtn:focus {
         box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.5) !important;
         border-color: #0d6efd !important;
         transform: scale(1.02);
         transition: all 0.3s ease;
-        outline: none;
     }
-
-    /* Add some hover effect */
-    #addChallanBtn:hover {
+    #addCommissionBtn:hover {
         transform: scale(1.05);
         transition: all 0.3s ease;
     }
-
-    /* Smooth transitions */
-    #addChallanBtn {
+    #addCommissionBtn {
         transition: all 0.3s ease;
     }
 </style>

@@ -9,99 +9,166 @@
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Company & Financial Year</title>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Select Company & Financial Year</title>
 
-    <link rel="shortcut icon" href="~/assets/img/favicon.png">
+        <link rel="shortcut icon" href="~/assets/img/favicon.png">
         <link rel="stylesheet" href="~/assets/css/bootstrap.min.css">
-            <link rel="stylesheet" href="~/assets/plugins/fontawesome/css/all.min.css">
-                <link rel="stylesheet" href="~/assets/css/style.css">
-                </head>
-                <body class="account-page">
+        <link rel="stylesheet" href="~/assets/plugins/fontawesome/css/all.min.css">
+        <link rel="stylesheet" href="~/assets/css/style.css">
+        <style>
+            .focused-control {
+                border-color: #0d6efd !important;
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+            }
+        </style>
+    </head>
+    <body class="account-page">
 
-                    <div class="main-wrapper">
-                        <div class="account-content">
-                            <div class="container">
+        <div class="main-wrapper">
+            <div class="account-content">
+                <div class="container">
 
-                                <!-- Account Logo -->
-                                <div class="account-logo">
-                                    <a href="#"><img src="~/assets/img/logo2.png" alt="Logo"></a>
-                                </div>
-
-                                <!-- Card for Company Selection -->
-                                <div class="account-box">
-                                    <div class="account-wrapper">
-                                        <h3 class="account-title">Select Company & Financial Year</h3>
-                                        <p class="account-subtitle">Please choose your company and financial year to continue</p>
-
-                                        <form asp-action="SelectCompany" method="post">
-
-                                            <div class="form-group">
-                                                <label for="companyDropdown">Company</label>
-                                                <select asp-for="SelectedCompanyId" asp-items="Model.Companies"
-                                                        id="companyDropdown" class="form-control">
-                                                    <option value="">--select--</option>
-                                                </select>
-                                                <span asp-validation-for="SelectedCompanyId" class="text-danger"></span>
-                                            </div>
-
-                                            <div class="form-group mt-3">
-                                                <label for="yearDropdown">Financial Year</label>
-                                                @* <select asp-for="SelectedFinancialYearId"
-                                                        id="yearDropdown" class="form-control"> *@
-                                                <select asp-for="SelectedFinancialYearId" asp-items="Model.FinancialYears"
-                                                        id="yearDropdown" class="form-control">
-                                                    <option value="">--select--</option>
-                                                </select>
-                                                <span asp-validation-for="SelectedFinancialYearId" class="text-danger"></span>
-                                            </div>
-
-                                            <div class="text-center mt-4">
-                                                <button type="submit" class="btn btn-primary account-btn">
-                                                    Continue
-                                                </button>
-                                            </div>
-
-                                        </form>
-                                    </div>
-                                </div>
-                                <!-- /Card -->
-
-                            </div>
-                        </div>
+                    <!-- Account Logo -->
+                    <div class="account-logo">
+                        <a href="#"><img src="~/assets/img/logo2.png" alt="Logo"></a>
                     </div>
 
-                    <script src="~/assets/js/jquery-3.7.0.min.js"></script>
-                    <script src="~/assets/js/bootstrap.bundle.min.js"></script>
+                    <!-- Card for Company Selection -->
+                    <div class="account-box">
+                        <div class="account-wrapper">
+                            <h3 class="account-title">Select Company & Financial Year</h3>
+                            <p class="account-subtitle">Please choose your company and financial year to continue</p>
 
-                    <script>
-                            document.getElementById("companyDropdown").addEventListener("change", function () {
-                                var companyId = this.value;
-                                fetch('/AccountSetup/GetFinancialYears?companyId=' + companyId)
-                                    .then(res => res.json())
-                                    .then(data => {
-                                        var yearDropdown = document.getElementById("yearDropdown");
-                                        yearDropdown.innerHTML = '<option value="">--select--</option>';
-                                        data.forEach(item => {
-                                            var option = document.createElement("option");
-                                            option.value = item.value;
-                                            option.text = item.text;
-                                           // 🔥 first auto select
-                                           if (index === 0) {
-                                           option.selected = true;
-                                             }
+                            <form asp-action="SelectCompany" method="post">
 
-                                            yearDropdown.appendChild(option);
-                                        });
-                                    });
-                            });
-                    </script>
+                                <div class="form-group">
+                                    <label for="companyDropdown">Company</label>
+                                    <select asp-for="SelectedCompanyId" asp-items="Model.Companies"
+                                            id="companyDropdown" class="form-control">
+                                        <option value="">--select--</option>
+                                    </select>
+                                    <span asp-validation-for="SelectedCompanyId" class="text-danger"></span>
+                                </div>
 
-                    @section Scripts {
-                        <partial name="_ValidationScriptsPartial" />
-                    }
+                                <div class="form-group mt-3">
+                                    <label for="yearDropdown">Financial Year</label>
+                                    @* <select asp-for="SelectedFinancialYearId"
+                                            id="yearDropdown" class="form-control"> *@
+                                    <select asp-for="SelectedFinancialYearId" asp-items="Model.FinancialYears"
+                                            id="yearDropdown" class="form-control">
+                                        <option value="">--select--</option>
+                                    </select>
+                                    <span asp-validation-for="SelectedFinancialYearId" class="text-danger"></span>
+                                </div>
 
-                </body>
-            </html>
+                                <div class="text-center mt-4">
+                                    <button type="submit" class="btn btn-primary account-btn">
+                                        Continue
+                                    </button>
+                                </div>
+
+                            </form>
+                        </div>
+                    </div>
+                    <!-- /Card -->
+
+                </div>
+            </div>
+        </div>
+
+        <script src="~/assets/js/jquery-3.7.0.min.js"></script>
+        <script src="~/assets/js/bootstrap.bundle.min.js"></script>
+
+        <script>
+         document.addEventListener("DOMContentLoaded", function () {
+
+        const companyDropdown = document.getElementById("companyDropdown");
+        const yearDropdown = document.getElementById("yearDropdown");
+
+        // Focus Company on page load
+        companyDropdown.focus();
+        companyDropdown.classList.add("focused-control");
+
+        // Focus indicator
+        document.querySelectorAll(".form-control").forEach(control => {
+
+            control.addEventListener("focus", function () {
+                document.querySelectorAll(".form-control")
+                    .forEach(c => c.classList.remove("focused-control"));
+
+                this.classList.add("focused-control");
+            });
+
+            control.addEventListener("blur", function () {
+                this.classList.remove("focused-control");
+            });
+        });
+
+        // Load financial years on company change
+        companyDropdown.addEventListener("change", function () {
+
+            var companyId = this.value;
+
+            if (!companyId) {
+                yearDropdown.innerHTML = '<option value="">--select--</option>';
+                return;
+            }
+
+            fetch('/AccountSetup/GetFinancialYears?companyId=' + companyId)
+                .then(res => res.json())
+                .then(data => {
+
+                    yearDropdown.innerHTML = '<option value="">--select--</option>';
+
+                    data.forEach((item, index) => {
+
+                        var option = document.createElement("option");
+                        option.value = item.value;
+                        option.text = item.text;
+
+                        // Auto select first financial year
+                        if (index === 0) {
+                            option.selected = true;
+                        }
+
+                        yearDropdown.appendChild(option);
+                    });
+
+                    // Move focus to Financial Year
+                    yearDropdown.focus();
+                });
+        });
+
+        // Enter on Company -> move to Year
+        companyDropdown.addEventListener("keydown", function (e) {
+
+            if (e.key === "Enter") {
+                e.preventDefault();
+
+                if (companyDropdown.value) {
+                    yearDropdown.focus();
+                }
+            }
+        });
+
+        // Enter on Year -> Submit Form
+        yearDropdown.addEventListener("keydown", function (e) {
+
+            if (e.key === "Enter") {
+                e.preventDefault();
+                this.form.submit();
+            }
+        });
+
+    });
+        </script>
+        
+        @section Scripts {
+            <partial name="_ValidationScriptsPartial" />
+        }
+
+    </body>
+</html>
