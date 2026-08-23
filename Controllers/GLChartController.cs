@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nskg.Data;
@@ -25,23 +25,32 @@ namespace Nskg.Controllers
 
         public IActionResult Index()
         {           
+            int companyId = User.GetCompanyId();
+            string companyCode = User.GetCompanyCode();
+
             return View(new ChartVM
             {
-                Accounts = _context.GLChart1.ToList(),
+                Accounts = _context.GLChart1
+                    .Where(x => x.CompanyId == companyId || x.CoCode == companyCode)
+                    .ToList(),
                 Categories = _context.AccCat
-                .Select(x => new SelectListItem
-                {
-                    Value = x.CatCode,     // or x.Id if you have Id
-                    Text = x.Category
-                })
-                .ToList()
+                    .Where(x => !x.IsDeleted && (x.CompanyId == companyId || x.CoCode == companyCode))
+                    .Select(x => new SelectListItem
+                    {
+                        Value = x.CatCode,     // or x.Id if you have Id
+                        Text = x.Category
+                    })
+                    .ToList()
             });
         }
 
         public IActionResult GetDetails(int accountId)
         {
+            int companyId = User.GetCompanyId();
+            string companyCode = User.GetCompanyCode();
+
             var data = _context.GLChart3
-                .Where(x => x.GLChart1Id == accountId)
+                .Where(x => x.GLChart1Id == accountId && (x.CompanyId == companyId || x.CoCode == companyCode))
                 .ToList();
 
             return PartialView("_GLChart3List", data);
@@ -54,7 +63,8 @@ namespace Nskg.Controllers
             try
             {
                 model.AC1 = GenerateAC1();
-                model.CoCode = User.GetCompanyId().ToString();
+                model.CompanyId = User.GetCompanyId();
+                model.CoCode = User.GetCompanyCode();
 
                 _context.GLChart1.Add(model);
                 _context.SaveChanges();
@@ -83,6 +93,8 @@ namespace Nskg.Controllers
                 data.Name = model.Name;
                 data.CType = model.CType;
                 data.AcType = model.AcType;
+                data.CompanyId = User.GetCompanyId();
+                data.CoCode = User.GetCompanyCode();
 
                 _context.SaveChanges();
 
@@ -146,7 +158,8 @@ namespace Nskg.Controllers
                 model.AcType = account.AcType;
                 model.CType = account.CType;
                 model.CHName = account.Name;
-                model.CoCode = User.GetCompanyId().ToString();
+                model.CoCode = User.GetCompanyCode();
+                model.CompanyId = User.GetCompanyId();
 
                 _context.GLChart3.Add(model);
                 _context.SaveChanges();
@@ -186,7 +199,8 @@ namespace Nskg.Controllers
                 AcType = glchart1.AcType,
                 CType = glchart1.CType,
                 CHName = glchart1.Name,
-                CoCode = User.GetCompanyId().ToString(),
+                CoCode = User.GetCompanyCode(),
+                CompanyId = User.GetCompanyId(),
                 Name = name
             };
 
@@ -264,15 +278,22 @@ namespace Nskg.Controllers
         }
         private string GenerateAC1()
         {
+            int companyId = User.GetCompanyId();
+            string companyCode = User.GetCompanyCode();
+
             var last = _context.GLChart1
+                .Where(x => x.CompanyId == companyId || x.CoCode == companyCode)
                 .OrderByDescending(x => x.Id)
                 .FirstOrDefault();
 
-            if (last == null)
+            if (last == null || string.IsNullOrEmpty(last.AC1))
                 return "01";
 
-            int next = int.Parse(last.AC1) + 1;
-            return next.ToString("D2");
+            if (int.TryParse(last.AC1, out int current))
+            {
+                return (current + 1).ToString("D2");
+            }
+            return "01";
         }
 
         private string GenerateAC3(int accountId)

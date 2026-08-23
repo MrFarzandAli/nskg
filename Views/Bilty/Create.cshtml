@@ -59,6 +59,7 @@
                         <select asp-for="Head.CustomerId"
                                 id="CustomerId"
                                 class="form-select" tabindex="4"
+                                required
                                 asp-items="@(new SelectList(ViewBag.Customers, "Value", "Text"))">
                         </select>
 

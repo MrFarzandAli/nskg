@@ -1,4 +1,4 @@
-﻿@{
+@{
 ViewData["Title"] = "General Ledger Report";
 
 
@@ -48,7 +48,7 @@ var accodeValue = ViewBag.Accode as string;
             <!-- LEFT SIDE FILTERS -->
             <div class="col-md-3">
                 <label class="form-label">Account Code</label>
-<select class="form-control" name="accode" required>
+<select class="form-control select2" id="accodeSelect" name="accode" required>
     <option value="">-- Select Account --</option>
 
     @foreach (var item in ViewBag.AccountList)
@@ -133,38 +133,20 @@ var accodeValue = ViewBag.Accode as string;
 
 </div>
 
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                placeholder: "-- Select Account --",
+                allowClear: true,
+                width: '100%'
+            });
+        });
+    </script>
+}
+
 <script>
-    // function loadOnScreenReport() {
-
-    //     var accode = $('input[name="accode"]').val();
-    //     var fromDate = $('input[name="fromDate"]').val();
-    //     var toDate = $('input[name="toDate"]').val();
-        
-
-    //     // if (!accode || !fromDate || !toDate ) {
-    //     //     alert("Please fill all fields");
-    //     //     return;
-    //     // }
-
-    //     $('#reportCard').show();
-    //     $('#reportLoader').show();
-    //     $('#reportFrame').hide();
-
-    //     var url = '/GenerlLedgerReport/OnScreenReport'
-    //         + '?accode=' + accode
-    //         + '&fromDate=' + fromDate
-    //         + '&toDate=' + toDate
-          
-
-    //     $('#reportFrame').off('load');
-
-    //     $('#reportFrame').attr('src', url);
-
-    //     $('#reportFrame').on('load', function () {
-    //         $('#reportLoader').hide();
-    //         $('#reportFrame').show();
-    //     });
-    // }
     function loadOnScreenReport() {
 
     var accode = $('select[name="accode"]').val();

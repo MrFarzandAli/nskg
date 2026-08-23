@@ -107,7 +107,7 @@ namespace Nskg.Controllers
                 existing.Name = model.Name;
                 existing.Mobile = model.Mobile;
                 existing.Email = model.Email;
-                existing.Cocode = model.Cocode;
+               // existing.Cocode = model.Cocode;
                 existing.IsActive = model.IsActive;
 
                 // 🔥 AUDIT UPDATE

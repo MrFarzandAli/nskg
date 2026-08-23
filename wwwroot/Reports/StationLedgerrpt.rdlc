@@ -1,0 +1,1236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2008/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <Body>
+    <ReportItems>
+      <!-- Main Data Table / Grid -->
+      <Tablix Name="TablixStationLedger">
+        <TablixBody>
+          <TablixColumns>
+            <!-- 1. Doc.Date -->
+            <TablixColumn>
+              <Width>0.65in</Width>
+            </TablixColumn>
+            <!-- 2. Doc. # -->
+            <TablixColumn>
+              <Width>0.50in</Width>
+            </TablixColumn>
+            <!-- 3. Typ -->
+            <TablixColumn>
+              <Width>0.35in</Width>
+            </TablixColumn>
+            <!-- 4. Comm -->
+            <TablixColumn>
+              <Width>0.45in</Width>
+            </TablixColumn>
+            <!-- 5. Vehicle No -->
+            <TablixColumn>
+              <Width>0.95in</Width>
+            </TablixColumn>
+            <!-- 6. Station -->
+            <TablixColumn>
+              <Width>1.05in</Width>
+            </TablixColumn>
+            <!-- 7. Narration -->
+            <TablixColumn>
+              <Width>1.40in</Width>
+            </TablixColumn>
+            <!-- 8. Comapny -->
+            <TablixColumn>
+              <Width>0.60in</Width>
+            </TablixColumn>
+            <!-- 9. Delivery AMT -->
+            <TablixColumn>
+              <Width>0.85in</Width>
+            </TablixColumn>
+            <!-- 10. 6% Delivery -->
+            <TablixColumn>
+              <Width>0.85in</Width>
+            </TablixColumn>
+            <!-- 11. DEBIT -->
+            <TablixColumn>
+              <Width>0.95in</Width>
+            </TablixColumn>
+            <!-- 12. CREDIT -->
+            <TablixColumn>
+              <Width>0.95in</Width>
+            </TablixColumn>
+            <!-- 13. BALANCE -->
+            <TablixColumn>
+              <Width>1.05in</Width>
+            </TablixColumn>
+          </TablixColumns>
+
+          <TablixRows>
+            <!-- Header Row -->
+            <TablixRow>
+              <Height>0.24in</Height>
+              <TablixCells>
+                <!-- 1. Doc.Date -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrDocDate">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Doc.Date</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 2. Doc. # -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrDocNo">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Doc. #</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 3. Typ -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrTyp">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Typ</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 4. Comm -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrComm">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Comm</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 5. Vehicle No -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrVehicleNo">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Vehicle No</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 6. Station -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrStation">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Station</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 7. Narration -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrNarration">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Narration</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 8. Comapny -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrCompany">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Comapny</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 9. Delivery AMT -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrDeliveryAmt">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Delivery AMT</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 10. 6% Delivery -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrDeliveryAmt2">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>6% Delivery</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 11. DEBIT -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrDebit">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>D E B I T</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 12. CREDIT -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrCredit">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>C R E D I T</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 13. BALANCE -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrBalance">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>B A L A N C E</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+              </TablixCells>
+            </TablixRow>
+
+            <!-- Data Detail Row -->
+            <TablixRow>
+              <Height>0.20in</Height>
+              <TablixCells>
+                <!-- 1. Doc.Date -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValDocDate">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0, "", IIf(IsNothing(Fields!DocDate.Value), "", Format(Fields!DocDate.Value, "dd-MM-yy")))</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 2. Doc. # -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValDocNo">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0, "", Fields!DocNo.Value)</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 3. Typ -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValVotype">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0, "", Fields!Votype.Value)</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 4. Comm -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValComm">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0, "", Fields!Comm.Value)</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 5. Vehicle No / Opening Balance text -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValVehicleNo">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0, "Balance Brought Farword", Fields!VehicleNo.Value)</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>=IIf(Fields!SortOrder.Value = 0, "Bold", "Normal")</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>=IIf(Fields!SortOrder.Value = 0, "Left", "Left")</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>2pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 6. Station -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValStation">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0, "", Fields!Station.Value)</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Left</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>2pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 7. Narration -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValNarration">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0, "", Fields!Narration.Value)</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Left</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>2pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 8. Comapny -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValCompany">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0, "", Fields!CompanyCode.Value)</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 9. Delivery AMT -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValDeliveryAmt">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0 Or IsNothing(Fields!DeliveryAmt.Value) Or Fields!DeliveryAmt.Value = 0, "", Format(Fields!DeliveryAmt.Value, "#,##0"))</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 10. 6% Delivery -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValDeliveryAmt2">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0 Or IsNothing(Fields!DeliveryAmt2.Value) Or Fields!DeliveryAmt2.Value = 0, "", Format(Fields!DeliveryAmt2.Value, "#,##0"))</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 11. DEBIT -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValDebit">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0 Or IsNothing(Fields!Debit.Value) Or Fields!Debit.Value = 0, "", Format(Fields!Debit.Value, "#,##0"))</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 12. CREDIT -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValCredit">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=IIf(Fields!SortOrder.Value = 0 Or IsNothing(Fields!Credit.Value) Or Fields!Credit.Value = 0, "", Format(Fields!Credit.Value, "#,##0"))</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 13. BALANCE -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValBalance">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=Format(Fields!Balance.Value, "#,##0")</Value><Style><FontFamily>Arial</FontFamily><FontSize>7.5pt</FontSize><FontWeight>=IIf(Fields!SortOrder.Value = 0, "Bold", "Normal")</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+              </TablixCells>
+            </TablixRow>
+
+            <!-- Table Footer Row: GRAND TOTAL -->
+            <TablixRow>
+              <Height>0.24in</Height>
+              <TablixCells>
+                <!-- 1. DocDate -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotDocDate">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 2. DocNo -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotDocNo">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 3. Typ -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotTyp">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 4. Comm -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotComm">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 5. VehicleNo -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotVehicleNo">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 6. Station -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotStation">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 7. Narration / Grand Total Label -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotGrandLabel">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>GRAND TOTAL...........</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>1pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 8. Company -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotCompany">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 9. Delivery AMT -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotDeliveryAmt">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 10. 6% Delivery -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotDeliveryAmt2">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 11. Total Debit -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotalDebit">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=Format(Sum(Fields!Debit.Value), "#,##0")</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 12. Total Credit -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotalCredit">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=Format(Sum(Fields!Credit.Value), "#,##0")</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <!-- 13. Final Balance -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotalBalance">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=Format(Last(Fields!Balance.Value), "#,##0")</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Right</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>1pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+              </TablixCells>
+            </TablixRow>
+          </TablixRows>
+        </TablixBody>
+
+        <TablixColumnHierarchy>
+          <TablixMembers>
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+            <TablixMember />
+          </TablixMembers>
+        </TablixColumnHierarchy>
+
+        <TablixRowHierarchy>
+          <TablixMembers>
+            <TablixMember>
+              <KeepWithGroup>After</KeepWithGroup>
+              <RepeatOnNewPage>true</RepeatOnNewPage>
+            </TablixMember>
+            <TablixMember>
+              <Group Name="DetailsGroup" />
+            </TablixMember>
+            <TablixMember>
+              <KeepWithGroup>Before</KeepWithGroup>
+            </TablixMember>
+          </TablixMembers>
+        </TablixRowHierarchy>
+
+        <DataSetName>DSStationLedger</DataSetName>
+        <Top>0.05in</Top>
+        <Left>0.2in</Left>
+        <Height>0.68in</Height>
+        <Width>10.60in</Width>
+        <Style>
+          <Border>
+            <Color>Black</Color>
+            <Style>Solid</Style>
+            <Width>0.5pt</Width>
+          </Border>
+        </Style>
+      </Tablix>
+
+      <!-- PAGE TOTAL Box at Bottom -->
+      <Rectangle Name="RectPageTotal">
+        <ReportItems>
+          <Textbox Name="TxtPageTotalLabel">
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns><TextRun><Value>PAGE TOTAL....................................................................................</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                <Style><TextAlign>Right</TextAlign></Style>
+              </Paragraph>
+            </Paragraphs>
+            <Top>0.02in</Top>
+            <Left>0.0in</Left>
+            <Height>0.22in</Height>
+            <Width>7.65in</Width>
+            <Style>
+              <Border><Style>None</Style></Border>
+              <PaddingRight>4pt</PaddingRight>
+            </Style>
+          </Textbox>
+
+          <Textbox Name="TxtPageDebit">
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns><TextRun><Value>=Format(Sum(Fields!Debit.Value, "DSStationLedger"), "#,##0.00")</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                <Style><TextAlign>Right</TextAlign></Style>
+              </Paragraph>
+            </Paragraphs>
+            <Top>0.02in</Top>
+            <Left>7.65in</Left>
+            <Height>0.22in</Height>
+            <Width>0.95in</Width>
+            <Style>
+              <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+              <PaddingRight>2pt</PaddingRight>
+            </Style>
+          </Textbox>
+
+          <Textbox Name="TxtPageCredit">
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns><TextRun><Value>=Format(Sum(Fields!Credit.Value, "DSStationLedger"), "#,##0.00")</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                <Style><TextAlign>Right</TextAlign></Style>
+              </Paragraph>
+            </Paragraphs>
+            <Top>0.02in</Top>
+            <Left>8.60in</Left>
+            <Height>0.22in</Height>
+            <Width>0.95in</Width>
+            <Style>
+              <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+              <PaddingRight>2pt</PaddingRight>
+            </Style>
+          </Textbox>
+
+          <Textbox Name="TxtPageBalance">
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns><TextRun><Value>=Format(Last(Fields!Balance.Value, "DSStationLedger"), "#,##0.00")</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                <Style><TextAlign>Right</TextAlign></Style>
+              </Paragraph>
+            </Paragraphs>
+            <Top>0.02in</Top>
+            <Left>9.55in</Left>
+            <Height>0.22in</Height>
+            <Width>1.05in</Width>
+            <Style>
+              <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+              <PaddingRight>2pt</PaddingRight>
+            </Style>
+          </Textbox>
+        </ReportItems>
+        <Top>0.78in</Top>
+        <Left>0.2in</Left>
+        <Height>0.26in</Height>
+        <Width>10.60in</Width>
+        <Style>
+          <Border><Style>None</Style></Border>
+        </Style>
+      </Rectangle>
+    </ReportItems>
+    <Height>1.10in</Height>
+    <Style />
+  </Body>
+
+  <Width>11.0in</Width>
+
+  <Page>
+    <!-- Page Header containing Title, Dates, Page Numbers, and Account Header -->
+    <PageHeader>
+      <Height>1.20in</Height>
+      <PrintOnFirstPage>true</PrintOnFirstPage>
+      <PrintOnLastPage>true</PrintOnLastPage>
+      <ReportItems>
+        <!-- Company Name Header -->
+        <Textbox Name="TxtCompanyName">
+          <CanGrow>true</CanGrow>
+          <KeepTogether>true</KeepTogether>
+          <Paragraphs>
+            <Paragraph>
+              <TextRuns>
+                <TextRun>
+                  <Value>=First(Fields!CompanyName.Value, "DSStationLedger")</Value>
+                  <Style>
+                    <FontFamily>Arial</FontFamily>
+                    <FontSize>14pt</FontSize>
+                    <FontWeight>Bold</FontWeight>
+                  </Style>
+                </TextRun>
+              </TextRuns>
+              <Style>
+                <TextAlign>Center</TextAlign>
+              </Style>
+            </Paragraph>
+          </Paragraphs>
+          <Top>0.05in</Top>
+          <Left>0.2in</Left>
+          <Height>0.28in</Height>
+          <Width>10.6in</Width>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+            <PaddingLeft>2pt</PaddingLeft>
+            <PaddingRight>2pt</PaddingRight>
+            <PaddingTop>2pt</PaddingTop>
+            <PaddingBottom>2pt</PaddingBottom>
+          </Style>
+        </Textbox>
+
+        <!-- Report Title Subheader -->
+        <Textbox Name="TxtReportTitle">
+          <CanGrow>true</CanGrow>
+          <KeepTogether>true</KeepTogether>
+          <Paragraphs>
+            <Paragraph>
+              <TextRuns>
+                <TextRun>
+                  <Value>G E N E R A L   L E D G E R</Value>
+                  <Style>
+                    <FontFamily>Arial</FontFamily>
+                    <FontSize>11pt</FontSize>
+                    <FontWeight>Bold</FontWeight>
+                  </Style>
+                </TextRun>
+              </TextRuns>
+              <Style>
+                <TextAlign>Center</TextAlign>
+              </Style>
+            </Paragraph>
+          </Paragraphs>
+          <Top>0.35in</Top>
+          <Left>0.2in</Left>
+          <Height>0.22in</Height>
+          <Width>10.6in</Width>
+          <ZIndex>1</ZIndex>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+            <PaddingLeft>2pt</PaddingLeft>
+            <PaddingRight>2pt</PaddingRight>
+            <PaddingTop>2pt</PaddingTop>
+            <PaddingBottom>2pt</PaddingBottom>
+          </Style>
+        </Textbox>
+
+        <!-- Info Line: Printed On -->
+        <Textbox Name="TxtPrintedOn">
+          <CanGrow>true</CanGrow>
+          <KeepTogether>true</KeepTogether>
+          <Paragraphs>
+            <Paragraph>
+              <TextRuns>
+                <TextRun>
+                  <Value>="Printed On : " &amp; UCase(Format(Globals!ExecutionTime, "dd MMMM   yyyy"))</Value>
+                  <Style>
+                    <FontFamily>Arial</FontFamily>
+                    <FontSize>8.5pt</FontSize>
+                    <FontWeight>Bold</FontWeight>
+                  </Style>
+                </TextRun>
+              </TextRuns>
+              <Style>
+                <TextAlign>Left</TextAlign>
+              </Style>
+            </Paragraph>
+          </Paragraphs>
+          <Top>0.62in</Top>
+          <Left>0.2in</Left>
+          <Height>0.2in</Height>
+          <Width>2.6in</Width>
+          <ZIndex>2</ZIndex>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+            <PaddingLeft>2pt</PaddingLeft>
+            <PaddingRight>2pt</PaddingRight>
+            <PaddingTop>2pt</PaddingTop>
+            <PaddingBottom>2pt</PaddingBottom>
+          </Style>
+        </Textbox>
+
+        <!-- Info Line: From Date -->
+        <Textbox Name="TxtFromDate">
+          <CanGrow>true</CanGrow>
+          <KeepTogether>true</KeepTogether>
+          <Paragraphs>
+            <Paragraph>
+              <TextRuns>
+                <TextRun>
+                  <Value>="From : " &amp; UCase(Format(First(Fields!FromDate.Value, "DSStationLedger"), "dd MMMM   yyyy"))</Value>
+                  <Style>
+                    <FontFamily>Arial</FontFamily>
+                    <FontSize>8.5pt</FontSize>
+                    <FontWeight>Bold</FontWeight>
+                  </Style>
+                </TextRun>
+              </TextRuns>
+              <Style>
+                <TextAlign>Left</TextAlign>
+              </Style>
+            </Paragraph>
+          </Paragraphs>
+          <Top>0.62in</Top>
+          <Left>2.85in</Left>
+          <Height>0.2in</Height>
+          <Width>2.5in</Width>
+          <ZIndex>3</ZIndex>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+            <PaddingLeft>2pt</PaddingLeft>
+            <PaddingRight>2pt</PaddingRight>
+            <PaddingTop>2pt</PaddingTop>
+            <PaddingBottom>2pt</PaddingBottom>
+          </Style>
+        </Textbox>
+
+        <!-- Info Line: To Date -->
+        <Textbox Name="TxtToDate">
+          <CanGrow>true</CanGrow>
+          <KeepTogether>true</KeepTogether>
+          <Paragraphs>
+            <Paragraph>
+              <TextRuns>
+                <TextRun>
+                  <Value>="To: " &amp; UCase(Format(First(Fields!ToDate.Value, "DSStationLedger"), "dd MMMM   yyyy"))</Value>
+                  <Style>
+                    <FontFamily>Arial</FontFamily>
+                    <FontSize>8.5pt</FontSize>
+                    <FontWeight>Bold</FontWeight>
+                  </Style>
+                </TextRun>
+              </TextRuns>
+              <Style>
+                <TextAlign>Left</TextAlign>
+              </Style>
+            </Paragraph>
+          </Paragraphs>
+          <Top>0.62in</Top>
+          <Left>5.45in</Left>
+          <Height>0.2in</Height>
+          <Width>2.5in</Width>
+          <ZIndex>4</ZIndex>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+            <PaddingLeft>2pt</PaddingLeft>
+            <PaddingRight>2pt</PaddingRight>
+            <PaddingTop>2pt</PaddingTop>
+            <PaddingBottom>2pt</PaddingBottom>
+          </Style>
+        </Textbox>
+
+        <!-- Info Line: Page No -->
+        <Textbox Name="TxtPageNo">
+          <CanGrow>true</CanGrow>
+          <KeepTogether>true</KeepTogether>
+          <Paragraphs>
+            <Paragraph>
+              <TextRuns>
+                <TextRun>
+                  <Value>="Page No.   " &amp; Globals!PageNumber &amp; "  of:  " &amp; Globals!TotalPages</Value>
+                  <Style>
+                    <FontFamily>Arial</FontFamily>
+                    <FontSize>8.5pt</FontSize>
+                    <FontWeight>Bold</FontWeight>
+                  </Style>
+                </TextRun>
+              </TextRuns>
+              <Style>
+                <TextAlign>Right</TextAlign>
+              </Style>
+            </Paragraph>
+          </Paragraphs>
+          <Top>0.62in</Top>
+          <Left>8.4in</Left>
+          <Height>0.2in</Height>
+          <Width>2.4in</Width>
+          <ZIndex>5</ZIndex>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+            <PaddingLeft>2pt</PaddingLeft>
+            <PaddingRight>2pt</PaddingRight>
+            <PaddingTop>2pt</PaddingTop>
+            <PaddingBottom>2pt</PaddingBottom>
+          </Style>
+        </Textbox>
+
+        <!-- Account Code & Name Header Line -->
+        <Textbox Name="TxtAccountHeader">
+          <CanGrow>true</CanGrow>
+          <KeepTogether>true</KeepTogether>
+          <Paragraphs>
+            <Paragraph>
+              <TextRuns>
+                <TextRun>
+                  <Value>=First(Fields!Accode.Value, "DSStationLedger") &amp; "      " &amp; UCase(First(Fields!AccName.Value, "DSStationLedger"))</Value>
+                  <Style>
+                    <FontFamily>Arial</FontFamily>
+                    <FontSize>9.5pt</FontSize>
+                    <FontWeight>Bold</FontWeight>
+                  </Style>
+                </TextRun>
+              </TextRuns>
+              <Style>
+                <TextAlign>Center</TextAlign>
+              </Style>
+            </Paragraph>
+          </Paragraphs>
+          <Top>0.88in</Top>
+          <Left>0.2in</Left>
+          <Height>0.22in</Height>
+          <Width>10.6in</Width>
+          <ZIndex>6</ZIndex>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+            <PaddingLeft>2pt</PaddingLeft>
+            <PaddingRight>2pt</PaddingRight>
+            <PaddingTop>2pt</PaddingTop>
+            <PaddingBottom>2pt</PaddingBottom>
+          </Style>
+        </Textbox>
+      </ReportItems>
+      <Style>
+        <Border>
+          <Style>None</Style>
+        </Border>
+      </Style>
+    </PageHeader>
+
+    <PageHeight>8.5in</PageHeight>
+    <PageWidth>11in</PageWidth>
+    <LeftMargin>0.2in</LeftMargin>
+    <RightMargin>0.2in</RightMargin>
+    <TopMargin>0.25in</TopMargin>
+    <BottomMargin>0.25in</BottomMargin>
+    <Style />
+  </Page>
+
+  <AutoRefresh>0</AutoRefresh>
+
+  <DataSources>
+    <DataSource Name="DSAuditLog">
+      <ConnectionProperties>
+        <DataProvider>System.Data.DataSet</DataProvider>
+        <ConnectString>/* Local Connection */</ConnectString>
+      </ConnectionProperties>
+      <rd:DataSourceID>2799024b-2eab-47bb-861f-ea625d10bbcf</rd:DataSourceID>
+    </DataSource>
+  </DataSources>
+
+  <DataSets>
+    <DataSet Name="DSStationLedger">
+      <Query>
+        <DataSourceName>DSAuditLog</DataSourceName>
+        <CommandText>/* Local Query */</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="SortOrder">
+          <DataField>SortOrder</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="DocDate">
+          <DataField>DocDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="DocNo">
+          <DataField>DocNo</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Votype">
+          <DataField>Votype</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Comm">
+          <DataField>Comm</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="VehicleNo">
+          <DataField>VehicleNo</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Station">
+          <DataField>Station</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Narration">
+          <DataField>Narration</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="CompanyCode">
+          <DataField>CompanyCode</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="DeliveryAmt">
+          <DataField>DeliveryAmt</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="DeliveryAmt2">
+          <DataField>DeliveryAmt2</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Debit">
+          <DataField>Debit</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Credit">
+          <DataField>Credit</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Balance">
+          <DataField>Balance</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Accode">
+          <DataField>Accode</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="AccName">
+          <DataField>AccName</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="CompanyName">
+          <DataField>CompanyName</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="FromDate">
+          <DataField>FromDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="ToDate">
+          <DataField>ToDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+      </Fields>
+      <rd:DataSetInfo>
+        <rd:DataSetName>DSAuditLog</rd:DataSetName>
+        <rd:SchemaPath>C:\nskg web app\DSAuditLog.xsd</rd:SchemaPath>
+        <rd:TableName>sp_GeneralLedger</rd:TableName>
+        <rd:TableAdapterFillMethod>Fill</rd:TableAdapterFillMethod>
+        <rd:TableAdapterGetDataMethod>GetData</rd:TableAdapterGetDataMethod>
+        <rd:TableAdapterName>sp_GeneralLedgerTableAdapter</rd:TableAdapterName>
+      </rd:DataSetInfo>
+    </DataSet>
+  </DataSets>
+  <rd:ReportUnitType>Inch</rd:ReportUnitType>
+  <rd:ReportID>5f3638a3-6fab-4494-afe7-bafda5854009</rd:ReportID>
+</Report>

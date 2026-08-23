@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Nskg.Models
 {
@@ -20,6 +20,7 @@ namespace Nskg.Models
         public decimal? Opening { get; set; }
 
         public string? CoCode { get; set; }
+        public int CompanyId { get; set; }
         public string? AType { get; set; }
         public string? CType { get; set; }
 

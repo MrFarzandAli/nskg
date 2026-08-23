@@ -1,4 +1,4 @@
-﻿using Humanizer;
+using Humanizer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -35,25 +35,88 @@ namespace Nskg.Controllers
         // LIST
         public IActionResult Index(string type)
         {
+            ViewBag.Type = type;
+            ViewBag.PageTitle = GetVoucherTitle(type) + " List";
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult GetVoucherList(string type)
+        {
             try
             {
-                //var data = _context.VoHead
-                //    .Where(x => x.Votype == type)
-                //    .ToList();
-                var data = _context.VoHead
-    .Where(x => x.Votype == type && !x.IsDeleted)
-    .ToList();
+                var draw = Request.Form["draw"].FirstOrDefault();
+                var start = Request.Form["start"].FirstOrDefault();
+                var length = Request.Form["length"].FirstOrDefault();
+                var searchValue = Request.Form["search[value]"].FirstOrDefault();
+                var sortColumnIndex = Request.Form["order[0][column]"].FirstOrDefault();
+                var sortColumnDir = Request.Form["order[0][dir]"].FirstOrDefault();
 
-                ViewBag.Type = type;
-                ViewBag.PageTitle = GetVoucherTitle(type) + " List"; // ✅ ADD THIS
+                int pageSize = length != null ? Convert.ToInt32(length) : 10;
+                int skip = start != null ? Convert.ToInt32(start) : 0;
 
-                return View(data);
+                var query = _context.VoHead
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted);
+
+                if (!string.IsNullOrWhiteSpace(type))
+                {
+                    query = query.Where(x => x.Votype == type);
+                }
+
+                int totalRecords = query.Count();
+
+                // Searching
+                if (!string.IsNullOrWhiteSpace(searchValue))
+                {
+                    searchValue = searchValue.Trim().ToLower();
+                    query = query.Where(x =>
+                        (x.Vono != null && x.Vono.ToLower().Contains(searchValue)) ||
+                        (x.Votype != null && x.Votype.ToLower().Contains(searchValue))
+                    );
+                }
+
+                int filterRecords = query.Count();
+
+                // Sorting
+                switch (sortColumnIndex)
+                {
+                    case "0":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Vono) : query.OrderByDescending(x => x.Vono);
+                        break;
+                    case "1":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Vodate) : query.OrderByDescending(x => x.Vodate);
+                        break;
+                    case "2":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Votype) : query.OrderByDescending(x => x.Votype);
+                        break;
+                    default:
+                        query = query.OrderByDescending(x => x.Id);
+                        break;
+                }
+
+                var data = query.Skip(skip).Take(pageSize)
+                    .Select(v => new
+                    {
+                        id = v.Id,
+                        vono = v.Vono ?? "",
+                        vodate = v.Vodate.HasValue ? v.Vodate.Value.ToString("dd-MMM-yyyy") : "",
+                        votype = v.Votype ?? ""
+                    })
+                    .ToList();
+
+                return Json(new
+                {
+                    draw = draw,
+                    recordsTotal = totalRecords,
+                    recordsFiltered = filterRecords,
+                    data = data
+                });
             }
             catch (Exception ex)
             {
                 _audit.LogAsync("Error", "Voucher", "0", ex.Message).Wait();
-                TempData["ErrorMessage"] = "❌ Failed to load vouchers!";
-                return View(new List<VoHead>());
+                return Json(new { draw = 0, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
             }
         }
 
@@ -603,14 +666,14 @@ namespace Nskg.Controllers
 
                 var partylist = _context.AcPara
     .Where(a => AccountCategories.Party.Contains(a.ActypeCode)
-                && a.Cocode == User.GetCompanyId().ToString()
+                && a.CompanyId == User.GetCompanyId()
                 && a.Parent == "P")
     .Select(a => a.Accode)
     .Distinct();
 
                 var partyAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         partylist.Contains(g.AC1)
                     )
@@ -633,14 +696,14 @@ namespace Nskg.Controllers
 
                 var transporterList = _context.AcPara
                     .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
-                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.CompanyId == User.GetCompanyId()
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 ViewBag.transporterList = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         transporterList.Contains(g.AC1)
                     )
@@ -664,7 +727,7 @@ namespace Nskg.Controllers
                 var ac1List = _context.AcPara
                     .Where(a =>
                         allowedTypes.Contains(a.ActypeCode)
-                        && a.Cocode == User.GetCompanyId().ToString()
+                        && a.CompanyId == User.GetCompanyId()
                         && a.Parent == "P"
                     )
                     .Select(a => a.Accode)
@@ -675,7 +738,7 @@ namespace Nskg.Controllers
 
                 ViewBag.HeaderAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         ac1List.Contains(g.AC1)
                     )
@@ -689,7 +752,7 @@ namespace Nskg.Controllers
 
                 ViewBag.Accounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S"
                     )
                     .Select(g => new SelectListItem

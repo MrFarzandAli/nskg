@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Nskg.Data;
@@ -25,18 +25,85 @@ namespace Nskg.Controllers
         }
         public IActionResult Index()
         {
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult GetChallanList()
+        {
             try
             {
-                var data = _context.ChallanHead
+                var draw = Request.Form["draw"].FirstOrDefault();
+                var start = Request.Form["start"].FirstOrDefault();
+                var length = Request.Form["length"].FirstOrDefault();
+                var searchValue = Request.Form["search[value]"].FirstOrDefault();
+                var sortColumnIndex = Request.Form["order[0][column]"].FirstOrDefault();
+                var sortColumnDir = Request.Form["order[0][dir]"].FirstOrDefault();
+
+                int pageSize = length != null ? Convert.ToInt32(length) : 10;
+                int skip = start != null ? Convert.ToInt32(start) : 0;
+
+                var query = _context.ChallanHead
+                    .AsNoTracking();
+
+                int totalRecords = query.Count();
+
+                // Searching
+                if (!string.IsNullOrWhiteSpace(searchValue))
+                {
+                    searchValue = searchValue.Trim().ToLower();
+                    query = query.Where(x =>
+                        (x.DocNo != null && x.DocNo.ToLower().Contains(searchValue)) ||
+                        (x.Station != null && x.Station.ToLower().Contains(searchValue)) ||
+                        (x.Transporter != null && x.Transporter.ToLower().Contains(searchValue))
+                    );
+                }
+
+                int filterRecords = query.Count();
+
+                // Sorting
+                switch (sortColumnIndex)
+                {
+                    case "0":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocNo) : query.OrderByDescending(x => x.DocNo);
+                        break;
+                    case "1":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate) : query.OrderByDescending(x => x.DocDate);
+                        break;
+                    case "2":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Station) : query.OrderByDescending(x => x.Station);
+                        break;
+                    case "3":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Transporter) : query.OrderByDescending(x => x.Transporter);
+                        break;
+                    default:
+                        query = query.OrderByDescending(x => x.Id);
+                        break;
+                }
+
+                var data = query.Skip(skip).Take(pageSize)
+                    .Select(b => new
+                    {
+                        id = b.Id,
+                        docNo = b.DocNo ?? "",
+                        docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
+                        station = b.Station ?? "",
+                        transporter = b.Transporter ?? ""
+                    })
                     .ToList();
 
-                return View(data);
+                return Json(new
+                {
+                    draw = draw,
+                    recordsTotal = totalRecords,
+                    recordsFiltered = filterRecords,
+                    data = data
+                });
             }
             catch (Exception ex)
             {
                 _audit.LogAsync("Error", "Challan", "0", ex.Message).Wait();
-                TempData["ErrorMessage"] = "❌ Failed to load challans!";
-                return View(new List<ChallanHead>());
+                return Json(new { draw = 0, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
             }
         }
 
@@ -208,6 +275,9 @@ namespace Nskg.Controllers
                 }
 
                 _context.SaveChanges();
+
+                var challanDetails = _context.ChallanDet.Where(x => x.ChallanHeadId == model.Head.Id).ToList();
+                _service.PostChallan(model.Head, challanDetails);
 
                 transaction.Commit();
 
@@ -424,6 +494,10 @@ namespace Nskg.Controllers
                 }
 
                 _context.SaveChanges();
+
+                var updatedDetails = _context.ChallanDet.Where(x => x.ChallanHeadId == head.Id).ToList();
+                _service.PostChallan(head, updatedDetails);
+
                 transaction.Commit();
 
                 _audit.LogAsync("Edit", "Challan", head.Id.ToString(),
@@ -457,9 +531,9 @@ namespace Nskg.Controllers
                     return Json(new { success = false, message = "Challan not found!" });
                 }
 
-                // Remove related GL transactions as before
+                // Remove related GL transactions
                 var gl = _context.GLTrans
-                    .Where(x => x.RefId == v.Id);
+                    .Where(x => x.RefId == v.Id && x.RefType == "CL");
 
                 _context.GLTrans.RemoveRange(gl);
 
@@ -505,14 +579,14 @@ namespace Nskg.Controllers
 
                 var transporterlist = _context.AcPara
     .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
-                && a.Cocode == User.GetCompanyId().ToString()
+                && a.CompanyId == User.GetCompanyId()
                 && a.Parent == "P")
     .Select(a => a.Accode)
     .Distinct();
 
                 var transporterAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         transporterlist.Contains(g.AC1)
                     )
@@ -535,14 +609,14 @@ namespace Nskg.Controllers
 
                 var stationList = _context.AcPara
                     .Where(a => AccountCategories.Station.Contains(a.ActypeCode)
-                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.CompanyId == User.GetCompanyId()
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var stationAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         stationList.Contains(g.AC1)
                     )
@@ -565,14 +639,14 @@ namespace Nskg.Controllers
                 //party station 
                 var PartyStationList = _context.AcPara
                     .Where(a => AccountCategories.Party_Station.Contains(a.ActypeCode)
-                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.CompanyId == User.GetCompanyId()
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var PartyStationAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         PartyStationList.Contains(g.AC1)
                     )
@@ -595,14 +669,14 @@ namespace Nskg.Controllers
                 //party Exp
                 var PartyExpList = _context.AcPara
                     .Where(a => AccountCategories.Too_PayParty.Contains(a.ActypeCode)
-                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.CompanyId == User.GetCompanyId()
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var PartyExpAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         PartyExpList.Contains(g.AC1)
                     )

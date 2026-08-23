@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nskg.Data;
 using Nskg.Extensions;
@@ -25,6 +25,9 @@ namespace Nskg.Controllers
 
         public IActionResult Index()
         {
+            int companyId = User.GetCompanyId();
+            string companyCode = User.GetCompanyCode();
+
             ViewBag.AccountType = _context.Actype.Where(x => !x.IsDeleted)
                 .Select(x => new
                 {
@@ -34,7 +37,7 @@ namespace Nskg.Controllers
                 .ToList();
 
             var data = _context.AcPara
-                .Where(x => !x.IsDeleted)   // 🔥 ADD THIS
+                .Where(x => !x.IsDeleted && (x.CompanyId == companyId || x.Cocode == companyCode || x.Cocode == companyId.ToString()))
                 .Include(x => x.Actype)
                 .Include(x => x.GLChart1)
                 .Include(x => x.GLChart3)
@@ -53,7 +56,11 @@ namespace Nskg.Controllers
                     !_context.Actype.Any(x => x.ACTYPE == model.ActypeCode))
                     return Json(new { success = false, message = "Invalid Account Type" });
 
-                model.Cocode = User.GetCompanyId().ToString();
+                int companyId = User.GetCompanyId();
+                string companyCode = User.GetCompanyCode();
+
+                model.CompanyId = companyId;
+                model.Cocode = companyCode;
 
                 if (model.Parent == "P")
                 {
@@ -70,7 +77,7 @@ namespace Nskg.Controllers
                     model.GLChart1Id = null;
                 }
 
-                if (_context.AcPara.Any(x => x.Accode == model.Accode))
+                if (_context.AcPara.Any(x => x.Accode == model.Accode && (x.CompanyId == companyId || x.Cocode == companyCode)))
                     return Json(new { success = false, message = "Account code already exists!" });
                 // 🔥 SET AUDIT FIELDS
                 model.CreatedOn = DateTime.Now;
@@ -101,7 +108,10 @@ namespace Nskg.Controllers
                 if (data == null)
                     return Json(new { success = false, message = "Not found!" });
 
-                if (_context.AcPara.Any(x => x.Accode == model.Accode && x.Id != model.Id))
+                int companyId = User.GetCompanyId();
+                string companyCode = User.GetCompanyCode();
+
+                if (_context.AcPara.Any(x => x.Accode == model.Accode && x.Id != model.Id && (x.CompanyId == companyId || x.Cocode == companyCode)))
                     return Json(new { success = false, message = "Account code already exists!" });
 
                 if (!string.IsNullOrEmpty(model.ActypeCode) &&
@@ -111,6 +121,8 @@ namespace Nskg.Controllers
                 data.ActypeCode = model.ActypeCode;
                 data.Parent = model.Parent;
                 data.Opening = model.Opening;
+                data.CompanyId = companyId;
+                data.Cocode = companyCode;
 
                 if (model.Parent == "P")
                 {
@@ -168,9 +180,13 @@ namespace Nskg.Controllers
         }
         public IActionResult GetAccounts(string type)
         {
+            int companyId = User.GetCompanyId();
+            string companyCode = User.GetCompanyCode();
+
             if (type == "P")
             {
                 var data = _context.GLChart1
+                    .Where(x => x.CompanyId == companyId || x.CoCode == companyCode)
                     .Select(x => new
                     {
                         accode = x.AC1,     // ✅ normalize name
@@ -184,6 +200,7 @@ namespace Nskg.Controllers
             else if (type == "C")
             {
                 var data = _context.GLChart3
+                    .Where(x => x.CoCode == companyCode || x.CoCode == companyId.ToString())
                     .Select(x => new
                     {
                         accode = x.ACC,     // ✅ normalize name

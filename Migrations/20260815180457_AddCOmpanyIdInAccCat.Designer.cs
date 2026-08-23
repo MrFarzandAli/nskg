@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nskg.Data;
 
@@ -11,9 +12,11 @@ using Nskg.Data;
 namespace Nskg.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260815180457_AddCOmpanyIdInAccCat")]
+    partial class AddCOmpanyIdInAccCat
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -245,9 +248,6 @@ namespace Nskg.Migrations
 
                     b.Property<string>("Cocode")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -1348,9 +1348,6 @@ namespace Nskg.Migrations
                     b.Property<string>("CoCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("CompanyId")
-                        .HasColumnType("int");
-
                     b.Property<string>("IncBal")
                         .HasColumnType("nvarchar(max)");
 
@@ -1448,9 +1445,6 @@ namespace Nskg.Migrations
 
                     b.Property<decimal?>("CommPer")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
 
                     b.Property<decimal?>("CurrBill")
                         .HasColumnType("decimal(18,2)");

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nskg.Extensions;
 using Nskg.Models;
@@ -26,8 +26,9 @@ namespace Nskg.Controllers
         // ✅ INDEX
         public async Task<IActionResult> Index()
         {
+            int companyId = User.GetCompanyId();
             var accCats = (await _unitOfWork.AccCat.GetAllAsync())
-                                       .Where(x => !x.IsDeleted); 
+                                       .Where(x => !x.IsDeleted && (x.CompanyId == companyId || x.CoCode == companyId.ToString())); 
 
             return View(accCats);
         }
@@ -49,12 +50,15 @@ namespace Nskg.Controllers
                     return View(vm);
 
                 int companyId = User.GetCompanyId();
+                string companycode = User.GetCompanyCode();
+
 
                 var model = new AccCat
                 {
                     CatCode = vm.CatCode,
                     Category = vm.Category,
-                    CoCode = companyId.ToString()
+                    CoCode = companycode,
+                    CompanyId = companyId
                 };
                 model.CreatedOn = DateTime.Now;
                 model.CreatedBy = GetUser();
@@ -66,7 +70,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Create",
                     "AccountCategory",
-                    model.CatCode.ToString(),
+                    model.Id.ToString(),
                     $"Created Account Category: {model.Category}"
 
                 );
@@ -91,7 +95,7 @@ namespace Nskg.Controllers
 
 
         // ✅ EDIT (GET)
-        public async Task<IActionResult> Edit(string id)
+        public async Task<IActionResult> Edit(int id)
         {
             var accCat = await _unitOfWork.AccCat.GetByIdAsync(id);
 
@@ -114,7 +118,7 @@ namespace Nskg.Controllers
                
 
                 // ✅ Step 1: existing record fetch karo
-                var existing = await _unitOfWork.AccCat.GetByIdAsync(model.CatCode);
+                var existing = await _unitOfWork.AccCat.GetByIdAsync(model.Id);
 
                 if (existing == null)
                 {
@@ -123,7 +127,10 @@ namespace Nskg.Controllers
                 }
 
                 // ✅ Step 2: fields update karo
+                existing.CatCode = model.CatCode;
                 existing.Category = model.Category;
+                existing.CompanyId = User.GetCompanyId();
+                existing.CoCode = User.GetCompanyCode();
 
                 existing.ModifiedOn = DateTime.Now;
                 existing.ModifiedBy = GetUser();
@@ -135,7 +142,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Update",
                     "AccountCategory",
-                    existing.CatCode,
+                    existing.Id.ToString(),
                     $"Updated Account Category: {existing.Category}"
                 );
 
@@ -147,7 +154,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Error",
                     "AccountCategory",
-                    model.CatCode,
+                    model.Id.ToString(),
                     ex.Message
                 );
 
@@ -160,7 +167,7 @@ namespace Nskg.Controllers
        
         [HttpDelete]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(int id)
         {
             try
             {
@@ -183,7 +190,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Delete",
                     "AccountCategory",
-                    id,
+                    id.ToString(),
                     $"Soft Deleted Account Category: {accCat.Category}"
                 );
 
@@ -194,7 +201,7 @@ namespace Nskg.Controllers
                 await _audit.LogAsync(
                     "Error",
                     "AccountCategory",
-                    id,
+                    id.ToString(),
                     ex.Message
                 );
 

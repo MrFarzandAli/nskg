@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Nskg.Data;
@@ -29,19 +29,81 @@ namespace Nskg.Controllers
         }
         public IActionResult Index()
         {
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult GetBiltyList()
+        {
             try
             {
-                var data = _context.IssHead
-               .Where(x => !x.IsDeleted)
-               .ToList();
+                var draw = Request.Form["draw"].FirstOrDefault();
+                var start = Request.Form["start"].FirstOrDefault();
+                var length = Request.Form["length"].FirstOrDefault();
+                var searchValue = Request.Form["search[value]"].FirstOrDefault();
+                var sortColumnIndex = Request.Form["order[0][column]"].FirstOrDefault();
+                var sortColumnDir = Request.Form["order[0][dir]"].FirstOrDefault();
 
-                return View(data);
+                int pageSize = length != null ? Convert.ToInt32(length) : 10;
+                int skip = start != null ? Convert.ToInt32(start) : 0;
+
+                var query = _context.IssHead
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted);
+
+                int totalRecords = query.Count();
+
+                // Searching
+                if (!string.IsNullOrWhiteSpace(searchValue))
+                {
+                    searchValue = searchValue.Trim().ToLower();
+                    query = query.Where(x =>
+                        (x.DocNo != null && x.DocNo.ToLower().Contains(searchValue)) ||
+                        (x.CusName != null && x.CusName.ToLower().Contains(searchValue))
+                    );
+                }
+
+                int filterRecords = query.Count();
+
+                // Sorting
+                switch (sortColumnIndex)
+                {
+                    case "0":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocNo) : query.OrderByDescending(x => x.DocNo);
+                        break;
+                    case "1":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate) : query.OrderByDescending(x => x.DocDate);
+                        break;
+                    case "2":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.CusName) : query.OrderByDescending(x => x.CusName);
+                        break;
+                    default:
+                        query = query.OrderByDescending(x => x.Id);
+                        break;
+                }
+
+                var data = query.Skip(skip).Take(pageSize)
+                    .Select(b => new
+                    {
+                        id = b.Id,
+                        docNo = b.DocNo ?? "",
+                        docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
+                        cusName = b.CusName ?? ""
+                    })
+                    .ToList();
+
+                return Json(new
+                {
+                    draw = draw,
+                    recordsTotal = totalRecords,
+                    recordsFiltered = filterRecords,
+                    data = data
+                });
             }
             catch (Exception ex)
             {
                 _audit.LogAsync("Error", "Bilty", "0", ex.Message).Wait();
-                TempData["ErrorMessage"] = "❌ Failed to load bilty!";
-                return View(new List<IssHead>());
+                return Json(new { draw = 0, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
             }
         }
 
@@ -90,10 +152,10 @@ namespace Nskg.Controllers
 
                 using var transaction = _context.Database.BeginTransaction();
 
-                var DetailAccount = _context.GLChart3.FirstOrDefault(x => x.Id == model.Head.CustomerId);
-                var FooderlAccount = _context.GLChart3.FirstOrDefault(x => x.Id == model.Head.CustomerId);
+                var DetailAccount = model.Head.CustomerId > 0 ? _context.GLChart3.FirstOrDefault(x => x.Id == model.Head.CustomerId) : null;
+                var FooderlAccount = model.Head.StationId > 0 ? _context.GLChart3.FirstOrDefault(x => x.Id == model.Head.StationId) : null;
                 var SalesAccount = _context.AcPara.Where(a => AccountCategories.Sales.Contains(a.ActypeCode)
-                   && a.Cocode == User.GetCompanyId().ToString()
+                   && a.CompanyId == User.GetCompanyId()
                    && a.Parent == "P").Select(a => a.Accode).Distinct().FirstOrDefault();
 
                 // Security / consistency fields
@@ -142,7 +204,8 @@ namespace Nskg.Controllers
                     _context.IssDetail.Add(issDetail);
                 }
 
-                _context.SaveChanges();
+                var insertedDetails = _context.IssDetail.Where(x => x.IssHeadId == model.Head.Id && !x.IsDeleted).ToList();
+                _service.PostBilty(model.Head, insertedDetails);
 
                 transaction.Commit();
 
@@ -289,6 +352,10 @@ namespace Nskg.Controllers
                 }
 
                 _context.SaveChanges();
+
+                var activeDetails = _context.IssDetail.Where(x => x.IssHeadId == head.Id && !x.IsDeleted).ToList();
+                _service.PostBilty(head, activeDetails);
+
                 transaction.Commit();
 
                 TempData["SuccessMessage"] = "Updated successfully!";
@@ -352,9 +419,9 @@ namespace Nskg.Controllers
                     return Json(new { success = false, message = "Bilty not found!" });
                 }
 
-                // 🔥 GL REMOVE (same as before)
+                // 🔥 GL REMOVE
                 var gl = _context.GLTrans
-                    .Where(x => x.RefId == v.Id);
+                    .Where(x => x.RefId == v.Id && (x.RefType == "BL" || x.RefType == "SL" || x.RefType == "WT"));
 
                 _context.GLTrans.RemoveRange(gl);
 
@@ -397,14 +464,14 @@ namespace Nskg.Controllers
 
                 var customerlist = _context.AcPara
     .Where(a => AccountCategories.Customer.Contains(a.ActypeCode)
-                && a.Cocode == User.GetCompanyId().ToString()
+                && a.CompanyId == User.GetCompanyId()
                 && a.Parent == "P")
     .Select(a => a.Accode)
     .Distinct();
 
                 var customerAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         customerlist.Contains(g.AC1)
                     )
@@ -427,14 +494,14 @@ namespace Nskg.Controllers
 
                 var stationList = _context.AcPara
                     .Where(a => AccountCategories.Station.Contains(a.ActypeCode)
-                                && a.Cocode == User.GetCompanyId().ToString()
+                                && a.CompanyId == User.GetCompanyId()
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var stationAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CoCode == User.GetCompanyId().ToString() &&
+                        g.CompanyId == User.GetCompanyId() &&
                         g.AcType != "S" &&
                         stationList.Contains(g.AC1)
                     )

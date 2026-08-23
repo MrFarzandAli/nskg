@@ -1,0 +1,189 @@
+@{
+    ViewData["Title"] = "Account Ledger Report (Detailed)";
+
+    var fromDateValue = ViewBag.FromDate as string;
+    var toDateValue = ViewBag.ToDate as string;
+    var accodeValue = ViewBag.Accode as string;
+
+    if (string.IsNullOrEmpty(fromDateValue))
+    {
+        fromDateValue = DateTime.Now.ToString("yyyy-MM-dd");
+    }
+
+    if (string.IsNullOrEmpty(toDateValue))
+    {
+        toDateValue = DateTime.Now.ToString("yyyy-MM-dd");
+    }
+}
+
+<style>
+    .custom-card { border-radius: 10px; }
+    .heading-glow { font-weight: 600; }
+    .custom-btn { border-radius: 6px; }
+    iframe { border-radius: 8px; }
+</style>
+
+<div class="container-fluid mt-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold"><i class="fa fa-book me-2 text-primary"></i> Account Ledger Report (Detailed)</h3>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card custom-card mb-4 shadow-sm border-0">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-semibold">
+                <i class="fa fa-filter me-2"></i> Filter Parameters
+            </h5>
+        </div>
+        <div class="card-body p-4 bg-light">
+            <form method="get">
+                <div class="row g-3">
+                    <!-- Account Code Selector -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Select Account</label>
+                        <select class="form-control select2" id="accodeSelect" name="accode" required>
+                            <option value="">-- Select Account --</option>
+                            @if (ViewBag.AccountList != null)
+                            {
+                                foreach (var item in ViewBag.AccountList)
+                                {
+                                    <option value="@item.Code" 
+                                            selected="@(item.Code == accodeValue ? "selected" : null)">
+                                        @item.Code - @item.Name
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- From Date -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">From Date</label>
+                        <input type="date" class="form-control" name="fromDate" value="@fromDateValue" required />
+                    </div>
+
+                    <!-- To Date -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">To Date</label>
+                        <input type="date" class="form-control" name="toDate" value="@toDateValue" required />
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="col-md-2 d-flex align-items-end gap-2">
+                        <!-- VIEW ON SCREEN -->
+                        <button type="button"
+                                class="btn btn-primary btn-md flex-fill text-white shadow-sm"
+                                onclick="loadOnScreenReport()">
+                            <i class="fa fa-desktop me-1"></i> View
+                        </button>
+                    </div>
+
+                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                        <!-- EXCEL EXPORT -->
+                        <button type="submit"
+                                class="btn btn-success btn-sm px-3 shadow-sm"
+                                asp-action="ExportExcel">
+                            <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
+                        </button>
+
+                        <!-- PDF DOWNLOAD -->
+                        <button type="submit"
+                                class="btn btn-danger btn-sm px-3 shadow-sm"
+                                asp-action="GeneratePDF"
+                                formtarget="_blank">
+                            <i class="fa fa-file-pdf-o me-1"></i> Open / Print PDF
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ON SCREEN REPORT PREVIEW -->
+    <div id="reportCard" class="card shadow border-0" style="display:none;">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="mb-0 fs-6"><i class="fa fa-file-text-o me-2"></i> Report Preview</h5>
+            <button type="button" class="btn btn-sm btn-outline-light" onclick="$('#reportCard').hide()">
+                <i class="fa fa-times"></i> Close
+            </button>
+        </div>
+
+        <!-- LOADER -->
+        <div id="reportLoader" style="display:none; padding:40px; text-align:center;">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="mt-3 fw-bold text-muted">Generating ledger report via PROCESSDETAIL, please wait...</div>
+        </div>
+
+        <!-- REPORT IFRAME -->
+        <div class="card-body p-0">
+            <iframe id="reportFrame"
+                    style="width:100%; height:750px; border:none; display:none;"></iframe>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                placeholder: "-- Select Account --",
+                allowClear: true,
+                width: '100%'
+            });
+        });
+
+        function loadOnScreenReport() {
+            var accode = $('select[name="accode"]').val();
+            var fromDate = $('input[name="fromDate"]').val();
+            var toDate = $('input[name="toDate"]').val();
+
+            if (!accode) {
+                alert("Please select an Account Code.");
+                return;
+            }
+
+            if (!fromDate) {
+                alert("Please select From Date.");
+                return;
+            }
+
+            if (!toDate) {
+                alert("Please select To Date.");
+                return;
+            }
+
+            if (fromDate > toDate) {
+                alert("From Date cannot be greater than To Date.");
+                return;
+            }
+
+            $('#reportCard').show();
+            $('#reportLoader').show();
+            $('#reportFrame').hide();
+
+            // Smooth scroll down to preview
+            $('html, body').animate({
+                scrollTop: $("#reportCard").offset().top - 20
+            }, 400);
+
+            var url = '@Url.Action("OnScreenReport", "AccountLedgerReport")'
+                + '?accode=' + encodeURIComponent(accode)
+                + '&fromDate=' + encodeURIComponent(fromDate)
+                + '&toDate=' + encodeURIComponent(toDate);
+
+            $('#reportFrame').off('load');
+            $('#reportFrame').attr('src', url);
+
+            $('#reportFrame').on('load', function () {
+                $('#reportLoader').hide();
+                $('#reportFrame').show();
+            });
+        }
+    </script>
+}

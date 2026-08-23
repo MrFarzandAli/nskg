@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Nskg.Models
@@ -7,8 +7,10 @@ namespace Nskg.Models
     public class AccCat
     {
         [Key]
+        public int Id { get; set; }
+
         [Column("CATCODE")]
-        [StringLength(2)]
+        [StringLength(10)]
         public string CatCode { get; set; }
 
         [Column("CATEGORY")]
@@ -16,8 +18,10 @@ namespace Nskg.Models
         public string Category { get; set; }
 
         [Column("COCODE")]
-        [StringLength(2)]
+        [StringLength(10)]
         public string CoCode { get; set; }
+
+        public int CompanyId { get; set; }
         // ✅ Soft Delete
         public bool IsDeleted { get; set; }
 

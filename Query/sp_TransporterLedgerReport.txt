@@ -1,0 +1,103 @@
+-- ============================================================================
+-- Query / Script for Transporter Ledger based on dbo.PROCESSDETAIL_Transporter
+-- ============================================================================
+
+/*
+To execute the transporter ledger report directly in SQL Server:
+*/
+
+DECLARE @CompanyId INT = 1006;
+DECLARE @FromDate DATE = '2026-08-01';
+DECLARE @ToDate DATE = '2026-08-23';
+DECLARE @Accode VARCHAR(50) = '052034';
+
+-- 1. Run dbo.PROCESSDETAIL_Transporter to populate ACCUMULATED & ACCOPEN
+EXEC dbo.PROCESSDETAIL_Transporter 
+    @CompanyId = @CompanyId, 
+    @TDATE = @ToDate, 
+    @ACCODE = @Accode;
+
+-- 2. Fetch Account Name & Company Name
+DECLARE @AccName NVARCHAR(200) = '';
+SELECT TOP 1 @AccName = Name 
+FROM GLCHART3 
+WHERE (CompanyId = @CompanyId OR CompanyId = 0 OR CompanyId IS NULL) 
+  AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode));
+
+DECLARE @CompanyName NVARCHAR(200) = 'West Wharf-New Shadab Karachi Goods Transports';
+SELECT TOP 1 @CompanyName = Name 
+FROM Companies 
+WHERE Id = @CompanyId;
+
+-- 3. Calculate Opening Balance before @FromDate
+DECLARE @OpeningBal DECIMAL(18,2) = 0;
+
+SELECT @OpeningBal = ISNULL(SUM(ISNULL(DRAMT, 0) - ISNULL(CRAMT, 0)), 0)
+FROM ACCUMULATED
+WHERE VODATE < @FromDate;
+
+-- 4. Result Set with Running Balance
+;WITH RawData AS
+(
+    -- Opening Balance Row
+    SELECT 
+        0 AS SortOrder,
+        CAST(NULL AS DATE) AS DocDate,
+        CAST('' AS VARCHAR(50)) AS DocNo,
+        CAST('' AS VARCHAR(10)) AS Votype,
+        CAST(NULL AS VARCHAR(50)) AS BillTiNo,
+        CAST(NULL AS VARCHAR(50)) AS BilNo,
+        CAST('OPENING BALANCE' AS VARCHAR(100)) AS VehicleNo,
+        CAST('' AS VARCHAR(100)) AS Station,
+        CAST('' AS VARCHAR(250)) AS IName,
+        CAST(NULL AS DECIMAL(18,2)) AS Qty,
+        CASE WHEN @OpeningBal > 0 THEN @OpeningBal ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
+        CASE WHEN @OpeningBal < 0 THEN ABS(@OpeningBal) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
+        @OpeningBal AS Balance,
+        CAST(0 AS BIGINT) AS RowNum
+
+    UNION ALL
+
+    -- Transactions between FromDate and ToDate
+    SELECT 
+        1 AS SortOrder,
+        CAST(VODATE AS DATE) AS DocDate,
+        ISNULL(VONO, '') AS DocNo,
+        ISNULL(VOTYPE, '') AS Votype,
+        CASE WHEN BILLTINO IS NOT NULL AND BILLTINO <> 0 THEN CAST(CAST(BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BillTiNo,
+        CASE WHEN BILNO IS NOT NULL AND BILNO <> 0 THEN CAST(CAST(BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BilNo,
+        ISNULL(VEHICLENO, '') AS VehicleNo,
+        ISNULL(STATION, '') AS Station,
+        ISNULL(INAME, ISNULL(NARRATION, '')) AS IName,
+        QTY AS Qty,
+        ISNULL(DRAMT, 0) AS Debit,
+        ISNULL(CRAMT, 0) AS Credit,
+        @OpeningBal + SUM(ISNULL(DRAMT, 0) - ISNULL(CRAMT, 0)) OVER (
+            ORDER BY VODATE, VONO, (SELECT NULL)
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS Balance,
+        ROW_NUMBER() OVER (ORDER BY VODATE, VONO) AS RowNum
+    FROM ACCUMULATED
+    WHERE VODATE >= @FromDate AND VODATE <= @ToDate
+)
+SELECT 
+    SortOrder,
+    DocDate,
+    DocNo,
+    Votype,
+    BillTiNo,
+    BilNo,
+    VehicleNo,
+    Station,
+    INAME,
+    Qty,
+    Debit,
+    Credit,
+    Balance,
+    @Accode AS Accode,
+    @AccName AS AccName,
+    @CompanyName AS CompanyName,
+    @FromDate AS FromDate,
+    @ToDate AS ToDate
+FROM RawData
+ORDER BY SortOrder, DocDate, DocNo, RowNum;

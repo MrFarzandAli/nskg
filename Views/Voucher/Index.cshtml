@@ -1,4 +1,4 @@
-﻿
+
 @model IEnumerable<VoHead>
 
 @{
@@ -9,7 +9,6 @@
 <div class="page-header">
     <div class="row align-items-center">
         <div class="col">
-            @*             <h3 class="page-title">Vouchers</h3> *@
             <h3 class="page-title">@ViewBag.PageTitle</h3>
                 <ul class="breadcrumb">
                 <li class="breadcrumb-item">
@@ -39,7 +38,7 @@
 
                 <div class="table-responsive">
                     <table id="voucherTable"
-                           class="table table-striped table-hover table-nowrap">
+                           class="table table-striped table-hover table-nowrap" style="width:100%">
                         <thead>
                             <tr>
                                 <th>Voucher No</th>
@@ -48,47 +47,8 @@
                                 <th class="text-end">Action</th>
                             </tr>
                         </thead>
-
                         <tbody>
-                            @foreach (var v in Model)
-                            {
-                                <tr>
-                                    <td>
-                                        <h2 class="table-avatar">
-                                            <a href="#">@v.Vono</a>
-                                        </h2>
-                                    </td>
-
-                                    <td>@(v.Vodate?.ToString("dd-MMM-yyyy") ?? "")</td>
-
-                                    <td>
-                                        <span class="badge bg-info text-dark">
-                                            @v.Votype
-                                        </span>
-                                    </td>
-
-                                    <td class="text-end">
-                                        <div class="d-flex justify-content-end gap-2">
-
-                                            <a asp-action="Edit"
-                                                   asp-route-id="@v.Id"
-                                                   class="btn btn-sm btn-primary">
-                                                <i class="fa fa-pencil"></i> Edit
-                                            </a>
-
-                                            <button type="button"
-                                                    class="btn btn-sm btn-danger"
-                                                    onclick="confirmDelete(@v.Id, '@v.Vono')">
-                                                <i class="fa fa-trash"></i> Delete
-                                            </button>
-                                            
-
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
                         </tbody>
-
                     </table>
                 </div>
 
@@ -102,8 +62,53 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            const voucherType = "@(ViewBag.Type ?? "")";
 
             $('#voucherTable').DataTable({
+                "processing": true,
+                "serverSide": true,
+                "ajax": {
+                    "url": "@Url.Action("GetVoucherList", "Voucher")",
+                    "type": "POST",
+                    "data": function (d) {
+                        d.type = voucherType;
+                        d.__RequestVerificationToken = token;
+                    }
+                },
+                "columns": [
+                    {
+                        "data": "vono",
+                        "render": function (data, type, row) {
+                            return `<h2 class="table-avatar"><a href="#">${data || ''}</a></h2>`;
+                        }
+                    },
+                    { "data": "vodate" },
+                    {
+                        "data": "votype",
+                        "render": function (data, type, row) {
+                            return `<span class="badge bg-info text-dark">${data || ''}</span>`;
+                        }
+                    },
+                    {
+                        "data": "id",
+                        "orderable": false,
+                        "className": "text-end",
+                        "render": function (data, type, row) {
+                            return `
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="/Voucher/Edit/${data}" class="btn btn-sm btn-primary">
+                                        <i class="fa fa-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete(${data}, '${row.vono}')">
+                                        <i class="fa fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    }
+                ],
+                "order": [[0, "desc"]],
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,
@@ -115,7 +120,7 @@
 
         });
 
-               function confirmDelete(id, name) {
+        function confirmDelete(id, name) {
 
             if (!confirm("Are you sure you want to delete Voucher " + name + "?")) {
                 return;
@@ -133,7 +138,7 @@
                 success: function (res) {
                     alert(res.message);
                     if (res.success) {
-                        location.reload();
+                        $('#voucherTable').DataTable().ajax.reload(null, false);
                     }
                 },
                 error: function () {

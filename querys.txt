@@ -1,0 +1,186 @@
+  insert into [nskg2].[dbo].[ISSHEAD]
+  ([CompanyId],[FyId],[BCode],[Cancel],[DocDate],[WCode],[DocNo],[CusCode],[RefDocNo]
+  ,[RefDocDate],[InvNo],[InvDate],[CoCode],[MAmount],[Discount],[DisAmt],[STax],[STaxAmt]
+  ,[NetAmt],[SCode],[AccCode],[AcType],[CusName],[CusAdd],[CusTel],[Qty],[Narration],[UserId]
+  ,[BilNo],[BillTiNo],[CartType],[CartType2],[CartType3],[Cartage1],[Cartage2],[Cartage3],
+  [CommPer],[DCNO],[DescYN],[DescYN1],[DueDate],[Fooder],[FooderCode],[IName],[Labour],[Lifter2],
+  [NTN],[OtherEx],[PType],[PartyEx],[STaxNo],[SendTo],[T_T],[TrName],[TrName2],[TrName3]
+  ,[Transporter],[Transporter2],[Transporter3],[VehicleNo],[WH_IT],[WH_IT_Acc],[WH_IT_Amt]
+,[WH_IT_Rec],[WH_ST],[WH_ST_Acc],[WH_ST_Amt],[WH_ST_Rec],[CustomerId],[StationId],[ChallanId]
+,[CreatedBy],[CreatedOn],[IsDeleted],[ModifiedBy],[ModifiedOn])
+ 
+ select com.Id,4,[BCode],[Cnacel],[DocDate],[WCode],[DocNo],[CusCode],[RefDocNo]
+  ,[RefDocDate],[InvNo],[InvDate],h.[Cocode],[MAmount],[Discount],[DisAmt],[STax],[STaxAmt]
+  ,[NetAmt],h.[SCode],[AcCode],h.[AcType],[CusName],[CusAdd],[CusTel],[Qty],[Narration],[UserId]
+  ,[BilNo],[BillTiNo],[Cart_Type],[Cart_Type2],[Cart_Type3],[Cartage1],[Cartage2],[Cartage3],
+  [Comm_Per],[DCNO],[Desc_YN],[Desc_YN1],[DueDate],[Fooder],[FooderCode],[IName],[Labour],[Lifter2],
+  h.[NTN],[Other_Ex],[PType],[Party_Ex],h.[STaxNo],[SendTo],[T_T],[Tr_Name],[Tr_Name2],[Tr_Name3]
+  ,[Transporter],[Transporter2],[Transporter3],[VehicleNo],h.[WH_IT],h.[WH_IT_Acc],[WH_IT_Amt]
+,[WH_IT_Rec],h.[WH_ST],h.[WH_ST_Acc],[WH_ST_Amt],[WH_ST_Rec],g3.Id,g3_1.Id,null
+,null,GETDATE(),0,null,null
+  from nskg1.nskg1.ISSHEAD h
+  inner join nskg2.dbo.Companies com on h.COCODE = com.Cocode
+  inner join nskg2.dbo.GLChart3 g3 on g3.AC1 + g3.ac3 = h.CUSCODE and g3.Cocode = h.Cocode
+  inner join nskg2.dbo.GLChart3 g3_1 on g3_1.AC1 + g3_1.ac3 = h.FOODERCODE and g3_1.Cocode = h.Cocode
+
+
+
+
+
+  insert into [nskg2].[dbo].[ISSDETAIL]
+  ([CompanyId],[FyId],[IssHeadId],[BCode],[WCode],[DocNo],[DocDate],[CusCode],[IType],[ItemCode]
+  ,[Unit],[Qty],[Rate],[Amount],[SCode],[AccCode],[RefDocNo],[RefDocDate],[Packs],[QtyPerPack]
+  ,[IName],[STax],[STaxAmt],[AmtNet],[UserId],[Amount1],[BilNo],[BillTiNo],[Comm],[Comm2],[Comm3]
+  ,[CusName],[DescCode],[Discount],[Fooder],[FormulaCode],[Freight],[InvDate],[InvNo],[PCommPer]
+  ,[PackingN],[TotAmt],[VehicleNo],[CreatedBy],[CreatedOn],[IsDeleted],[ModifiedBy],[ModifiedOn])
+  select 
+  com.Id,4,h.Id,d.[BCode],d.[WCode],d.[DocNo],d.[DocDate],d.[CusCode],[IType],[ItemCode]
+  ,d.[Unit],d.[Qty],d.[Rate],[Amount],d.[SCode],[AcCode],d.[RefDocNo],d.[RefDocDate],[Packs],[QtyPerPack]
+  ,d.[IName],d.[STax],d.[STaxAmt],[AmtNet],d.[UserId],[Amount1],d.[BilNo],d.[BillTiNo],[Comm],[Comm2],[Comm3]
+  ,d.[CusName],[Desc_Code],d.[Discount],d.[Fooder],[FormulaCode],[Freight],d.[InvDate],d.[InvNo],[PComm_Per]
+  ,[PackingN],[Tot_Amt],d.[VehicleNo],null,GETDATE(),0,null,null
+  from [nskg1].[NSKG1].[ISSDETAIL] d
+  inner join nskg2.dbo.Companies com on d.COCODE = com.Cocode
+  inner join nskg2.dbo.ISSHEAD h on h.docno = d.DOCNO and h.Cocode = d.Cocode
+
+
+
+  insert into [nskg2].[dbo].[ChallanHead]
+  ([FyId],[CompanyId],[DocNo],[DocDate],[ChalNo],[Station],[VehicleNo],[Driver],[Transporter]
+  ,[TransCode],[TotBillTi],[NetAmt],[Narration],[CoCode],[DeliveryAmt],[LocalAmt],[TotPaid],
+  [DescYn],[TotToPaid],[TotPartyEx],[TotLifter2],[TotOtherEx],[StationCode],[BillTiAmt],
+  [DeliveryAmt2],[OtherEx2],[LocalAmt2],[PartyEx2],[PExpCode],[PExpCode2],[PExpCode3],[PExpAmt]
+  ,[PExpAmt2],[PExpAmt3],[PExpBilti],[PExpBilti2],[PExpBilti3],[PartyStationCode],[StationId]
+,[TransId],[CreatedBy],[CreatedOn],[IsDeleted],[ModifiedBy],[ModifiedOn],[commBookId])
+select
+4,com.id,[DocNo],[DocDate],[ChalNo],[Station],[VehicleNo],[Driver],[Transporter]
+  ,[TransCode],[TotBillTi],[NetAmt],[Narration],h.[CoCode],[DeliveryAmt],[LocalAmt],[TotPaid],
+  [Desc_Yn],[TotToPaid],[TotParty_Ex],[TotLifter2],[TotOther_Ex],[StationCode],[BillTiAmt],
+  [DeliveryAmt2],[Other_Ex2],[LocalAmt2],[Party_Ex2],[P_ExpCode],[P_ExpCode2],[P_ExpCode3],[P_ExpAmt]
+  ,[P_ExpAmt2],[P_ExpAmt3],[P_ExpBilti],[P_ExpBilti2],[P_ExpBilti3],[PartyStation_Code],
+  g3_1.id,g3.id,null,[CreatedOn],0,null,[ModifiedOn],null
+from [nskg1].[NSKG1].[CHALLANHEAD] h
+inner join nskg2.dbo.Companies com on h.COCODE = com.Cocode
+  inner join nskg2.dbo.GLChart3 g3 on g3.AC1 + g3.ac3 = h.TRANSCODE and g3.Cocode = h.Cocode
+  inner join nskg2.dbo.GLChart3 g3_1 on g3_1.AC1 + g3_1.ac3 = h.STATIONCODE and g3_1.Cocode = h.Cocode
+
+
+  insert into [nskg2].[dbo].[CommHead]
+  ([DocNo],[DocDate],[ChalNo],[Station],[VehicleNo],[Driver],[Transporter],[TransCode],
+  [Labour],[NetAmt],[Narration],[DeliveryAmt],[LocalAmt],[Advance],[StationAmt],[TransporterAmt]
+,[AdvanceAmt],[TotAmt],[AcCode],[PartyExAmt],[Lifter2Amt],[OtherExAmt],[TotNet],[StationCode]
+,[DeliveryAmt1],[AdvanceCode],[Tax],[AcCode1],[AcCode2],[AcType],[AcType1],[AcType2],[BillTiAmt]
+,[DescYn],[Acc1],[Acc2],[AccName1],[AccName2],[AccAmt1],[AccAmt2],[AccAcType1],[AccAcType2]
+,[AccCType1],[AccCType2],[DescYn1],[PaidAmt],[DeliveryAmt2],[CompanyId],[FinancialYearId]
+,[CreatedOn],[CreatedBy],[ModifiedOn],[ModifiedBy],[StationId],[TransId],[AdvanceId],[IsDeleted])
+select
+[DocNo],[DocDate],[ChalNo],[Station],[VehicleNo],[Driver],[Transporter],[TransCode],
+  [Labour],[NetAmt],[Narration],[DeliveryAmt],[LocalAmt],[Advance],[StationAmt],[TransporterAmt]
+,[AdvanceAmt],[TotAmt],[AcCode],[PARTY_EXAMT],[Lifter2Amt],[Other_ExAmt],[Tot_Net],[StationCode]
+,[DeliveryAmt1],[AdvanceCode],[Tax],[AcCode1],[AcCode2],h.[AcType],[AcType1],[AcType2],[BillTiAmt]
+,0,[Acc1],[Acc2],[AccName1],[AccName2],[AccAmt1],[AccAmt2],[AccAcType1],[AccAcType2]
+,[AccCType1],[AccCType2],0,[PaidAmt],[DeliveryAmt2],com.id,4
+,GETDATE(),null,null,null,g3_1.id,g3.id,g3_2.id,0
+from [nskg1].[NSKG1].COMMHEAD h
+inner join nskg2.dbo.Companies com on h.COCODE = com.Cocode
+inner join nskg2.dbo.GLChart3 g3 on g3.AC1 + g3.ac3 = h.TRANSCODE and g3.Cocode = h.Cocode
+inner join nskg2.dbo.GLChart3 g3_1 on g3_1.AC1 + g3_1.ac3 = h.STATIONCODE and g3_1.Cocode = h.Cocode
+left join nskg2.dbo.GLChart3 g3_2 on g3_2.AC1 + g3_2.ac3 = h.advancecode and g3_2.Cocode = h.Cocode
+
+
+
+  insert into [nskg2].[dbo].[ChallanDet] ([FyId],[CompanyId],[ChallanHeadId],[DocNo],[BCode]
+  ,[Cnacel],[DocDate],[WCode],[CusCode],[RefDocNo],[RefDocDate],[InvNo],[InvDate],[CoCode]
+  ,[MAmount],[Discount],[DisAmt],[STax],[STaxAmt],[NetAmt],[SCode],[AccCode],[AcType],[CusName]
+  ,[CusAdd],[CusTel],[Qty],[STaxNo],[NTN],[VehicleNo],[Transporter],[TrName],[DCNo],[CommPer],
+  [Narration],[DescYn],[DueDate],[WhIt],[WhItAmt],[WhSt],[WhStAmt],[WhItAcc],[WhStAcc],[WhStRec]
+  ,[WhItRec],[UserId],[Transporter2],[Transporter3],[TrName2],[TrName3],[Cartage1],[Cartage2]
+,[Cartage3],[CartType],[CartType2],[CartType3],[Fooder],[SendTo],[PType],[Labour],[TT],[BilNo]
+,[BillTiNo],[BillTiAmt],[PaidAmt],[ToPaidAmt],[PartyEx],[Lifter2],[OtherEx],[BillTiDate])
+select
+4,com.Id,h.id,d.[DocNo],d.[BCode]
+  ,[Cnacel],d.[DocDate],d.[WCode],d.[CusCode],d.[RefDocNo],d.[RefDocDate],d.[InvNo],d.[InvDate],d.[CoCode]
+  ,d.[MAmount],d.[Discount],d.[DisAmt],d.[STax],d.[STaxAmt],d.[NetAmt],d.[SCode],d.[AcCode],d.[AcType],d.[CusName]
+  ,d.[CusAdd],d.[CusTel],d.[Qty],d.[STaxNo],d.[NTN],d.[VehicleNo],d.[Transporter],[Tr_Name],d.[DCNo],[Comm_Per],
+  d.[Narration],[Desc_Yn],d.[DueDate],d.[Wh_It],d.[Wh_It_Amt],d.[Wh_St],d.[Wh_St_Amt],d.[Wh_It_Acc],d.[Wh_St_Acc],d.[Wh_St_Rec]
+  ,d.[Wh_It_Rec],d.[UserId],d.[Transporter2],d.[Transporter3],[Tr_Name2],[Tr_Name3],d.[Cartage1],d.[Cartage2]
+,d.[Cartage3],[Cart_Type],[Cart_Type2],[Cart_Type3],d.[Fooder],d.[SendTo],d.[PType],d.[Labour],d.[T_T],d.[BilNo]
+,d.[BillTiNo],d.[BillTiAmt],d.[PaidAmt],[ToPaidAmt],[Party_Ex],d.[Lifter2],[Other_Ex],[BillTiDate]
+from
+[nskg1].[NSKG1].[CHALLANDET] d
+inner join nskg2.dbo.Companies com on d.COCODE = com.Cocode
+INNER JOIN [nskg2].[dbo].ChallanHead AS h
+    ON h.[DocNo] = d.[DOCNO]
+    AND h.[CompanyId] = com.[Id];
+
+
+
+  insert into [nskg2].[dbo].[CommDetail] (
+[CommHeadId],[BCode],[Cancel],[DocDate],[WCode],[CusCode],[RefDocNo],[RefDocDate],[InvNo],[InvDate]
+,[MAmount],[Discount],[DisAmt],[STax],[STaxAmt],[NetAmt],[SCode],[AcCode],[AcType],[CusName]
+,[CusAdd],[CusTel],[Qty],[STaxNo],[NTN],[VehicleNo],[Transporter],[TrName],[DcNo],[CommPer]
+,[Narration],[DescYn],[DueDate],[WhIT],[WhITAmt],[WhST],[WhSTAmt],[WhITAcc],[WhSTAcc],[WhSTRec]
+,[WhITRec],[UserId],[Transporter2],[Transporter3],[TrName2],[TrName3],[Cartage1],[Cartage2]
+,[Cartage3],[CartType],[CartType2],[CartType3],[Fooder],[SendTo],[PType],[Labour],[TT],[BilNo]
+,[BillTiNo],[BillTiAmt],[PaidAmt],[ToPaidAmt],[DeliveryAmt],[LocalAmt],[PartyExAmt],[Lifter2Amt]
+,[OtherExAmt],[FooderCode],[DeliveryAmt2],[CompanyId],[FinancialYearId],[CreatedOn],[CreatedBy]
+,[ModifiedOn],[ModifiedBy])
+select
+h.id,[BCode],d.[Cnacel],d.[DocDate],[WCode],[CusCode],[RefDocNo],[RefDocDate],[InvNo],[InvDate]
+,[MAmount],[Discount],[DisAmt],[STax],[STaxAmt],d.[NetAmt],[SCode],d.[AcCode],d.[AcType],[CusName]
+,[CusAdd],[CusTel],[Qty],[STaxNo],[NTN],d.[VehicleNo],d.[Transporter],d.[Tr_Name],[DcNo],d.[Comm_Per]
+,d.[Narration],[DescYn],[DueDate],d.[Wh_IT],d.[Wh_IT_Amt],d.[Wh_ST],d.[Wh_ST_Amt],d.[Wh_IT_Acc],d.[Wh_ST_Acc],d.[Wh_ST_Rec]
+,d.[Wh_IT_Rec],[UserId],[Transporter2],[Transporter3],d.[Tr_Name2],d.[Tr_Name3],[Cartage1],[Cartage2]
+,[Cartage3],d.[Cart_Type],d.[Cart_Type2],d.[Cart_Type3],[Fooder],[SendTo],[PType],d.[Labour],d.[T_T],[BilNo]
+,[BillTiNo],d.[BillTiAmt],d.[PaidAmt],[ToPaidAmt],d.[DeliveryAmt],d.[LocalAmt],[PartyExAmt],d.[Lifter2Amt]
+,[OtherExAmt],[FooderCode],d.[DeliveryAmt2],com.id,4,GETDATE(),0
+,null,null
+from 
+[nskg1].[NSKG1].[COMMDET] d
+inner join nskg2.dbo.Companies com on d.COCODE = com.Cocode
+INNER JOIN [nskg2].[dbo].CommHead AS h
+    ON h.[DocNo] = d.[DOCNO]
+    AND h.[CompanyId] = com.[Id];
+
+
+
+  insert into [nskg2].[dbo].[VoHead]
+  ([Vono],[Vodate],[Votype],[Totdramt],[Totcramt],[Narration],[Cancel],[Entries],[Cocode],[Invno],
+  [Invdate],[Ac1],[Ac2],[Ac3],[Hdramt],[Hcramt],[Actype],[Diff],[Haccode],[Vono2],[VoucType]
+  ,[EntryDate],[PersonName],[Userid],[ExpDate],[ExpDays],[Allow],[Totptax],[Partycode],[CompanyId]
+  ,[FinancialYearId],[Status],[gl3Id],[CreatedBy],[CreatedOn],[IsDeleted],[ModifiedBy],[ModifiedOn])
+  select
+  [Vono],[Vodate],[Votype],[Totdramt],[Totcramt],[Narration],[Cancel],[Entries],h.[Cocode],[Invno],
+  [Invdate],h.[Ac1],h.[Ac2],h.[Ac3],[Hdramt],[Hcramt],h.[Actype],[Diff],[Haccode],[Vono2],[Vouc_Type]
+  ,[Entry_Date],[Person_Name],[Userid],[Exp_Date],[Exp_Days],[Allow],[Totptax],[Partycode],
+  com.id  ,4,'Draft',g3.id,null,GETDATE(),0,null,null
+  from 
+  [nskg1].[NSKG1].[VOHEAD] h
+  inner join nskg2.dbo.Companies com on h.COCODE = com.Cocode
+  left join nskg2.dbo.GLChart3 g3 on g3.AC1 + g3.ac3 = h.HACCODE and g3.Cocode = h.Cocode
+
+
+
+  insert into [nskg2].[dbo].[VoDet]
+  ([VoHeadId],[Vono],[Vodate],[Votype],[Ac1],[Ac2],[Ac3],[Actype],[Dramt],[Cramt],[Narration],
+  [Cancel],[Pay],[Cocode],[Invno],[Invdate],[Acc],[Ndramt],[Ncramt],[Hacc],[Name],[Chqno],
+  [Refno],[Qty],[Rate],[Wcode],[Qtyin],[Qtyout],[Ctype],[ChqDate],[EntryDate],[Userid],[FAmt],
+  [ERate],[Currency],[ExpDate],[Discount],[Payment],[CrDays],[Allow],[Billtino],[Bilno],
+  [Vehicleno],[Transcode],[Ptax],[Transporter], [gl3Id], [CreatedBy], [CreatedOn], [IsDeleted],
+  [ModifiedBy], [ModifiedOn])
+  select 
+  h.id,
+  d.[Vono],d.[Vodate],d.[Votype],d.[Ac1],d.[Ac2],d.[Ac3],d.[Actype],[Dramt],[Cramt],d.[Narration],
+  d.[Cancel],[Pay],d.[Cocode],d.[Invno],d.[Invdate],d.[Acc],[Ndramt],[Ncramt],[Hacc],d.[Name],[Chqno],
+  [Refno],[Qty],d.[Rate],[Wcode],[Qtyin],[Qtyout],d.[Ctype],[Chq_Date],[Entry_Date],d.[Userid],[F_Amt],
+  [E_Rate],[Currency],[Exp_Date],[Discount],[Payment],[Cr_Days],d.[Allow],[Billtino],[Bilno],
+  [Vehicleno],[Transcode],[Ptax],[Transporter], g3.id, null, GETDATE(), 0,
+  null,null
+  from 
+  [nskg1].[NSKG1].[VODET] d
+    inner join nskg2.dbo.GLChart3 g3 on g3.AC1 + g3.ac3 = d.acc and g3.Cocode = d.Cocode
+    INNER JOIN [nskg2].[dbo].VoHead AS h
+    ON h.Vono = d.VONO
+    and cast(h.Vodate as date) = cast(d.Vodate as date)
+    and h.Votype = d.Votype
+    AND h.Cocode = d.COCODE;

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Nskg.Models
 {
@@ -12,6 +12,7 @@ namespace Nskg.Models
         public string ActypeCode { get; set; }
         public string? Acname { get; set; }   // Account Name
         public string? Cocode { get; set; }   // Company Code
+        public int CompanyId { get; set; }
         public decimal? Opening { get; set; }
         public string? Parent { get; set; }   // 'P' or 'C'
         public bool IsDeleted { get; set; }

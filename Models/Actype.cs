@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Nskg.Models
@@ -19,7 +19,7 @@ namespace Nskg.Models
         public string ACNAME { get; set; }
 
         [Column("COCODE")]
-        [StringLength(2)]
+        [StringLength(10)]
         public string? COCODE { get; set; }
         // ✅ Soft Delete
         public bool IsDeleted { get; set; }

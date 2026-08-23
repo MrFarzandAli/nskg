@@ -83,7 +83,7 @@ namespace Nskg.Controllers
         }
 
         // ✅ EDIT (GET)
-        public async Task<IActionResult> Edit(string id)
+        public async Task<IActionResult> Edit(int id)
         {
             var actype = await _unitOfWork.Actype.GetByIdAsync(id);
 
@@ -108,7 +108,7 @@ namespace Nskg.Controllers
                     return View(model);
 
                 // 🔥 STEP 1: DB se existing record lao
-                var existing = await _unitOfWork.Actype.GetByIdAsync(model.ACTYPE); // 👈 apni PK use karo
+                var existing = await _unitOfWork.Actype.GetByIdAsync(model.Id); // 👈 apni PK use karo
 
                 if (existing == null)
                     return NotFound();

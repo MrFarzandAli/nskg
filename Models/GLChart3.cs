@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Nskg.Models
 {
@@ -38,6 +38,7 @@ namespace Nskg.Models
         public string? Fax { get; set; }
 
         public string? CoCode { get; set; }
+        public int? CompanyId { get; set; }
         public string? STaxNo { get; set; }
 
         public string? CName { get; set; }
