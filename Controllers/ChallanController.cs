@@ -42,6 +42,8 @@ namespace Nskg.Controllers
 
                 int pageSize = length != null ? Convert.ToInt32(length) : 10;
                 int skip = start != null ? Convert.ToInt32(start) : 0;
+                int drawVal = 0;
+                int.TryParse(draw, out drawVal);
 
                 var query = _context.ChallanHead
                     .AsNoTracking();
@@ -59,7 +61,7 @@ namespace Nskg.Controllers
                     );
                 }
 
-                int filterRecords = query.Count();
+                int filterRecords = string.IsNullOrWhiteSpace(searchValue) ? totalRecords : query.Count();
 
                 // Sorting
                 switch (sortColumnIndex)
@@ -68,7 +70,7 @@ namespace Nskg.Controllers
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocNo) : query.OrderByDescending(x => x.DocNo);
                         break;
                     case "1":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate) : query.OrderByDescending(x => x.DocDate);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
                     case "2":
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.Station) : query.OrderByDescending(x => x.Station);
@@ -77,24 +79,33 @@ namespace Nskg.Controllers
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.Transporter) : query.OrderByDescending(x => x.Transporter);
                         break;
                     default:
-                        query = query.OrderByDescending(x => x.Id);
+                        query = query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
                 }
 
-                var data = query.Skip(skip).Take(pageSize)
+                var rawData = query.Skip(skip).Take(pageSize)
                     .Select(b => new
                     {
-                        id = b.Id,
-                        docNo = b.DocNo ?? "",
-                        docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
-                        station = b.Station ?? "",
-                        transporter = b.Transporter ?? ""
+                        b.Id,
+                        b.DocNo,
+                        b.DocDate,
+                        b.Station,
+                        b.Transporter
                     })
                     .ToList();
 
+                var data = rawData.Select(b => new
+                {
+                    id = b.Id,
+                    docNo = b.DocNo ?? "",
+                    docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
+                    station = b.Station ?? "",
+                    transporter = b.Transporter ?? ""
+                }).ToList();
+
                 return Json(new
                 {
-                    draw = draw,
+                    draw = drawVal,
                     recordsTotal = totalRecords,
                     recordsFiltered = filterRecords,
                     data = data
@@ -103,7 +114,9 @@ namespace Nskg.Controllers
             catch (Exception ex)
             {
                 _audit.LogAsync("Error", "Challan", "0", ex.Message).Wait();
-                return Json(new { draw = 0, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
+                int drawVal = 0;
+                int.TryParse(Request.Form["draw"].FirstOrDefault(), out drawVal);
+                return Json(new { draw = drawVal, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
             }
         }
 
@@ -269,6 +282,7 @@ namespace Nskg.Controllers
                         {
                             originalBilty.DescYN = "Y";  // Mark as used
                             originalBilty.ChallanId = model.Head.Id; // Optional: store reference
+                            originalBilty.VehicleNo = model.Head.VehicleNo;
                             _context.Entry(originalBilty).State = EntityState.Modified;
                         }
                     }
@@ -308,6 +322,97 @@ namespace Nskg.Controllers
             }
         }
 
+        [HttpGet]
+        public IActionResult GetChallanId(
+            string? docNo,
+            string? chalNo,
+            string? station,
+            string? stationCode,
+            string? transporter,
+            string? driver,
+            decimal? netAmt,
+            decimal? billTiAmt,
+            decimal? paidAmt,
+            decimal? toPaidAmt,
+            decimal? deliveryAmt,
+            decimal? localAmt,
+            long? commBookId)
+        {
+            try
+            {
+                // Priority 1: Match by exact DocNo
+                if (!string.IsNullOrWhiteSpace(docNo))
+                {
+                    var c = _context.ChallanHead.AsNoTracking().FirstOrDefault(x => x.DocNo == docNo.Trim());
+                    if (c != null) return Json(new { success = true, id = c.Id });
+                }
+
+                int? chalNoInt = null;
+                if (!string.IsNullOrWhiteSpace(chalNo) && int.TryParse(chalNo.Trim(), out var parsedInt))
+                {
+                    chalNoInt = parsedInt;
+                }
+
+                if (chalNoInt.HasValue)
+                {
+                    // Candidate challans by ChalNo
+                    var query = _context.ChallanHead.AsNoTracking().Where(x => x.ChalNo == chalNoInt.Value);
+
+                    // If commBookId provided, check if any matched this commBook
+                    if (commBookId.HasValue && commBookId.Value > 0)
+                    {
+                        var commMatch = query.FirstOrDefault(x => x.commBookId == commBookId.Value);
+                        if (commMatch != null) return Json(new { success = true, id = commMatch.Id });
+                    }
+
+                    var candidates = query.ToList();
+
+                    if (candidates.Count == 1)
+                    {
+                        return Json(new { success = true, id = candidates[0].Id });
+                    }
+
+                    if (candidates.Count > 1)
+                    {
+                        // Match with all attributes: Station, Transporter, and Amounts
+                        var bestMatch = candidates.FirstOrDefault(c =>
+                            (string.IsNullOrWhiteSpace(station) || string.Equals(c.Station?.Trim(), station.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(c.StationCode?.Trim(), stationCode?.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                            (string.IsNullOrWhiteSpace(transporter) || string.Equals(c.Transporter?.Trim(), transporter.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                            (!netAmt.HasValue || c.NetAmt == netAmt) &&
+                            (!billTiAmt.HasValue || c.TotBillTi == billTiAmt)
+                        );
+
+                        if (bestMatch != null) return Json(new { success = true, id = bestMatch.Id });
+
+                        // Match by Station and Transporter
+                        bestMatch = candidates.FirstOrDefault(c =>
+                            (string.IsNullOrWhiteSpace(station) || string.Equals(c.Station?.Trim(), station.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(c.StationCode?.Trim(), stationCode?.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                            (string.IsNullOrWhiteSpace(transporter) || string.Equals(c.Transporter?.Trim(), transporter.Trim(), StringComparison.OrdinalIgnoreCase))
+                        );
+
+                        if (bestMatch != null) return Json(new { success = true, id = bestMatch.Id });
+
+                        // Match by Station or Transporter and NetAmt
+                        bestMatch = candidates.FirstOrDefault(c =>
+                            (string.IsNullOrWhiteSpace(station) || string.Equals(c.Station?.Trim(), station.Trim(), StringComparison.OrdinalIgnoreCase)) ||
+                            (string.IsNullOrWhiteSpace(transporter) || string.Equals(c.Transporter?.Trim(), transporter.Trim(), StringComparison.OrdinalIgnoreCase)) ||
+                            (netAmt.HasValue && c.NetAmt == netAmt)
+                        );
+
+                        if (bestMatch != null) return Json(new { success = true, id = bestMatch.Id });
+
+                        return Json(new { success = true, id = candidates[0].Id });
+                    }
+                }
+
+                return Json(new { success = false, message = "Challan not found" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         public IActionResult Edit(int id)
         {
             LoadDropdowns();
@@ -325,12 +430,29 @@ namespace Nskg.Controllers
                      CusName = x.CusName,
                      SendTo = x.SendTo,
                      DCNo = x.DCNo,
+                     BilNo = x.BilNo,
                      BillTiNo = x.BillTiNo,
                      BillTiAmt = x.BillTiAmt,
                      PaidAmt = x.PaidAmt,
                      Qty = x.Qty
                  })
                  .ToList();
+
+            var dcNos = details.Where(d => !string.IsNullOrEmpty(d.DCNo)).Select(d => d.DCNo).Distinct().ToList();
+            var biltyMap = _context.IssHead
+                .Where(b => !b.IsDeleted && (b.ChallanId == id || (b.DocNo != null && dcNos.Contains(b.DocNo))))
+                .Select(b => new { b.Id, b.DocNo, b.BillTiNo })
+                .ToList();
+
+            foreach (var det in details)
+            {
+                var match = biltyMap.FirstOrDefault(b => (!string.IsNullOrEmpty(det.DCNo) && b.DocNo == det.DCNo)
+                    || (det.BillTiNo != null && b.BillTiNo.HasValue && b.BillTiNo.Value.ToString() == det.BillTiNo));
+                if (match != null)
+                {
+                    det.BiltyId = match.Id;
+                }
+            }
 
             var model = new ChallanViewModel
             {
@@ -438,6 +560,7 @@ namespace Nskg.Controllers
                     if (!currentDcNos.Contains(bilty.DocNo))
                     {
                         bilty.DescYN = "N";
+                        bilty.VehicleNo = null;
                         bilty.ChallanId = null;
                         _context.Entry(bilty).State = EntityState.Modified;
                     }
@@ -488,6 +611,7 @@ namespace Nskg.Controllers
                         {
                             bilty.DescYN = "Y";
                             bilty.ChallanId = head.Id;
+                            bilty.VehicleNo = head.VehicleNo;
                             _context.Entry(bilty).State = EntityState.Modified;
                         }
                     }
@@ -554,6 +678,7 @@ namespace Nskg.Controllers
                     // When challan deleted we may want to unmark original bilty as unused
                     item.DescYN = "N";
                     item.ChallanId = null;
+                    item.VehicleNo = null;
                     _context.Entry(item).State = EntityState.Modified;
                 }
 
@@ -697,29 +822,38 @@ namespace Nskg.Controllers
                 ViewBag.PartyExps = PartyExpAccounts;
 
 
-                //Load bilty
+                // Load bilty - filter by user CompanyId, 3+ days old bilties first at top, then order by DocDate descending
+                var userCompanyId = User.GetCompanyId();
+                var threeDaysAgo = DateTime.Today.AddDays(-3);
                 ViewBag.BiltyList = _context.IssHead
-    .Where(x => x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN))
-    .Select(x => new
-    {
-        x.Id,
-        x.DocNo,
-        x.DocDate,
-        x.BillTiNo,
-        x.BilNo,
-        x.CusName,
-        x.SendTo,
-        x.Qty,
-        x.PType,
-        x.NetAmt,
-        x.Labour,
-        x.Cartage2,
-        x.Cartage3,
-        x.PartyEx,
-        x.Lifter2,
-        x.OtherEx
-    })
-    .ToList();
+                    .Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) && !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId))
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.CompanyId,
+                        x.StationId,
+                        x.SCode,
+                        x.Fooder,
+                        x.DocNo,
+                        x.DocDate,
+                        x.BillTiNo,
+                        x.BilNo,
+                        x.CusName,
+                        x.SendTo,
+                        x.Qty,
+                        x.PType,
+                        x.NetAmt,
+                        x.Labour,
+                        x.Cartage2,
+                        x.Cartage3,
+                        x.PartyEx,
+                        x.Lifter2,
+                        x.OtherEx
+                    })
+                    .AsEnumerable()
+                    .OrderBy(x => x.DocDate.HasValue && x.DocDate.Value.Date <= threeDaysAgo ? 0 : 1)
+                    .ThenByDescending(x => x.DocDate)
+                    .ToList();
             }
             catch (Exception ex)
             {

@@ -1,4 +1,4 @@
-﻿namespace Nskg.Models.ViewModels
+namespace Nskg.Models.ViewModels
 {
     public class ChallanDetailVM
     {
@@ -10,5 +10,6 @@
         public string? SendTo { get; set; }
         public string? DCNo { get; set; }
         public string? BilNo { get; set; }
+        public int? BiltyId { get; set; }
     }
 }

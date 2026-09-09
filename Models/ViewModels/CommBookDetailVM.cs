@@ -1,4 +1,4 @@
-﻿namespace Nskg.Models.ViewModels
+namespace Nskg.Models.ViewModels
 {
     public class CommBookDetailVM
     {
@@ -23,5 +23,6 @@
         public string? FooderCode { get; set; }
         public string? Transporter { get; set; }
         public string? TrName { get; set; }
+        public int? ChallanId { get; set; }
     }
 }

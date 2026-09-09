@@ -315,7 +315,7 @@
 						</ul>
 					</li>
 
-						var reportsControllers = new[] { "GenerlLedgerReport", "AccountLedgerReport", "TransporterLedgerReport", "StationLedgerReport", "TrailBalanceReport" };
+						var reportsControllers = new[] { "GenerlLedgerReport", "AccountLedgerReport", "TransporterLedgerReport", "StationLedgerReport", "TrailBalanceReport", "BiltyListReport" };
 						var showReports = isControllerIn(reportsControllers);
 
 					<li class="submenu@(showReports ? " active" : "")">
@@ -326,6 +326,7 @@
 							<li><a class="@(isActive("TransporterLedgerReport","Index") ? "active" : "")" asp-controller="TransporterLedgerReport" asp-action="Index">Transporter Ledger Report</a></li>
 							<li><a class="@(isActive("StationLedgerReport","Index") ? "active" : "")" asp-controller="StationLedgerReport" asp-action="Index">Station Ledger Report</a></li>
 							<li><a class="@(isActive("TrailBalanceReport","Index") ? "active" : "")" asp-controller="TrailBalanceReport" asp-action="Index">Trail Balance Report</a></li>
+							<li><a class="@(isActive("BiltyListReport","Index") ? "active" : "")" asp-controller="BiltyListReport" asp-action="Index">Bilty List Report</a></li>
 						</ul>
 					</li>	
 			}

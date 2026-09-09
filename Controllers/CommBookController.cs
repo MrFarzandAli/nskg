@@ -43,6 +43,8 @@ namespace Nskg.Controllers
 
                 int pageSize = length != null ? Convert.ToInt32(length) : 10;
                 int skip = start != null ? Convert.ToInt32(start) : 0;
+                int drawVal = 0;
+                int.TryParse(draw, out drawVal);
 
                 var query = _context.CommHead
                     .AsNoTracking();
@@ -60,7 +62,7 @@ namespace Nskg.Controllers
                     );
                 }
 
-                int filterRecords = query.Count();
+                int filterRecords = string.IsNullOrWhiteSpace(searchValue) ? totalRecords : query.Count();
 
                 // Sorting
                 switch (sortColumnIndex)
@@ -69,7 +71,7 @@ namespace Nskg.Controllers
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocNo) : query.OrderByDescending(x => x.DocNo);
                         break;
                     case "1":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate) : query.OrderByDescending(x => x.DocDate);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
                     case "2":
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.Station) : query.OrderByDescending(x => x.Station);
@@ -78,24 +80,33 @@ namespace Nskg.Controllers
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.Transporter) : query.OrderByDescending(x => x.Transporter);
                         break;
                     default:
-                        query = query.OrderByDescending(x => x.Id);
+                        query = query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
                 }
 
-                var data = query.Skip(skip).Take(pageSize)
+                var rawData = query.Skip(skip).Take(pageSize)
                     .Select(b => new
                     {
-                        id = b.Id,
-                        docNo = b.DocNo ?? "",
-                        docDate = b.DocDate.ToString("dd-MMM-yyyy"),
-                        station = b.Station ?? "",
-                        transporter = b.Transporter ?? ""
+                        b.Id,
+                        b.DocNo,
+                        b.DocDate,
+                        b.Station,
+                        b.Transporter
                     })
                     .ToList();
 
+                var data = rawData.Select(b => new
+                {
+                    id = b.Id,
+                    docNo = b.DocNo ?? "",
+                    docDate = b.DocDate != default ? b.DocDate.ToString("dd-MMM-yyyy") : "",
+                    station = b.Station ?? "",
+                    transporter = b.Transporter ?? ""
+                }).ToList();
+
                 return Json(new
                 {
-                    draw = draw,
+                    draw = drawVal,
                     recordsTotal = totalRecords,
                     recordsFiltered = filterRecords,
                     data = data
@@ -104,7 +115,9 @@ namespace Nskg.Controllers
             catch (Exception ex)
             {
                 _audit.LogAsync("Error", "CommBook", "0", ex.Message).Wait();
-                return Json(new { draw = 0, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
+                int drawVal = 0;
+                int.TryParse(Request.Form["draw"].FirstOrDefault(), out drawVal);
+                return Json(new { draw = drawVal, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
             }
         }
 
@@ -267,33 +280,35 @@ namespace Nskg.Controllers
                     // =========================
                     if (!string.IsNullOrWhiteSpace(item.BillTiNo))
                     {
-                        // Try match by numeric BillTiNo where possible, otherwise match by string comparison
                         ChallanHead? originalBilty = null;
 
-                        if (decimal.TryParse(item.BillTiNo, out var billTiDecimal))
+                        if (item.ChallanId.HasValue && item.ChallanId.Value > 0)
                         {
-                            originalBilty = _context.ChallanHead
-                                .FirstOrDefault(b => b.ChalNo == billTiDecimal);
+                            originalBilty = _context.ChallanHead.FirstOrDefault(b => b.Id == item.ChallanId.Value);
                         }
-                        else
+
+                        if (originalBilty == null && !string.IsNullOrWhiteSpace(item.DCNo))
                         {
-                            originalBilty = _context.ChallanHead
-                                .FirstOrDefault(b => b.DocNo == item.BillTiNo);
+                            originalBilty = _context.ChallanHead.FirstOrDefault(b => b.DocNo == item.DCNo.Trim());
+                        }
+
+                        if (originalBilty == null && int.TryParse(item.BillTiNo, out var billTiIntVal))
+                        {
+                            var candidates = _context.ChallanHead.Where(b => b.ChalNo == billTiIntVal).ToList();
+                            originalBilty = candidates.FirstOrDefault(b =>
+                                (string.IsNullOrEmpty(item.Fooder) || b.Station == item.Fooder || b.StationCode == item.FooderCode) &&
+                                (string.IsNullOrEmpty(item.CusName) || b.Transporter == item.CusName) &&
+                                (!item.NetAmt.HasValue || b.NetAmt == item.NetAmt)
+                            ) ?? candidates.FirstOrDefault(b =>
+                                (string.IsNullOrEmpty(item.Fooder) || b.Station == item.Fooder || b.StationCode == item.FooderCode) ||
+                                (string.IsNullOrEmpty(item.CusName) || b.Transporter == item.CusName)
+                            ) ?? candidates.FirstOrDefault();
                         }
 
                         if (originalBilty != null)
                         {
                             originalBilty.DescYn = "Y";
-                            // Optionally store reference - IssHead.ChallanId exists as int? (reused for linking)
-                            try
-                            {
-                                originalBilty.commBookId = (int)model.Head.Id;
-                            }
-                            catch
-                            {
-                                // ignore if id is too large to convert; linking is optional
-                            }
-
+                            originalBilty.commBookId = model.Head.Id;
                             _context.Entry(originalBilty).State = EntityState.Modified;
                         }
                     }
@@ -333,6 +348,97 @@ namespace Nskg.Controllers
             }
         }
 
+        [HttpGet]
+        public IActionResult GetChallanId(
+            string? docNo,
+            string? chalNo,
+            string? station,
+            string? stationCode,
+            string? transporter,
+            string? driver,
+            decimal? netAmt,
+            decimal? billTiAmt,
+            decimal? paidAmt,
+            decimal? toPaidAmt,
+            decimal? deliveryAmt,
+            decimal? localAmt,
+            long? commBookId)
+        {
+            try
+            {
+                // Priority 1: Match by exact DocNo
+                if (!string.IsNullOrWhiteSpace(docNo))
+                {
+                    var c = _context.ChallanHead.AsNoTracking().FirstOrDefault(x => x.DocNo == docNo.Trim());
+                    if (c != null) return Json(new { success = true, id = c.Id });
+                }
+
+                int? chalNoInt = null;
+                if (!string.IsNullOrWhiteSpace(chalNo) && int.TryParse(chalNo.Trim(), out var parsedInt))
+                {
+                    chalNoInt = parsedInt;
+                }
+
+                if (chalNoInt.HasValue)
+                {
+                    // Candidate challans by ChalNo
+                    var query = _context.ChallanHead.AsNoTracking().Where(x => x.ChalNo == chalNoInt.Value);
+
+                    // If commBookId provided, check if any matched this commBook
+                    if (commBookId.HasValue && commBookId.Value > 0)
+                    {
+                        var commMatch = query.FirstOrDefault(x => x.commBookId == commBookId.Value);
+                        if (commMatch != null) return Json(new { success = true, id = commMatch.Id });
+                    }
+
+                    var candidates = query.ToList();
+
+                    if (candidates.Count == 1)
+                    {
+                        return Json(new { success = true, id = candidates[0].Id });
+                    }
+
+                    if (candidates.Count > 1)
+                    {
+                        // Match with all attributes: Station, Transporter, and Amounts
+                        var bestMatch = candidates.FirstOrDefault(c =>
+                            (string.IsNullOrWhiteSpace(station) || string.Equals(c.Station?.Trim(), station.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(c.StationCode?.Trim(), stationCode?.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                            (string.IsNullOrWhiteSpace(transporter) || string.Equals(c.Transporter?.Trim(), transporter.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                            (!netAmt.HasValue || c.NetAmt == netAmt) &&
+                            (!billTiAmt.HasValue || c.TotBillTi == billTiAmt)
+                        );
+
+                        if (bestMatch != null) return Json(new { success = true, id = bestMatch.Id });
+
+                        // Match by Station and Transporter
+                        bestMatch = candidates.FirstOrDefault(c =>
+                            (string.IsNullOrWhiteSpace(station) || string.Equals(c.Station?.Trim(), station.Trim(), StringComparison.OrdinalIgnoreCase) || string.Equals(c.StationCode?.Trim(), stationCode?.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                            (string.IsNullOrWhiteSpace(transporter) || string.Equals(c.Transporter?.Trim(), transporter.Trim(), StringComparison.OrdinalIgnoreCase))
+                        );
+
+                        if (bestMatch != null) return Json(new { success = true, id = bestMatch.Id });
+
+                        // Match by Station or Transporter and NetAmt
+                        bestMatch = candidates.FirstOrDefault(c =>
+                            (string.IsNullOrWhiteSpace(station) || string.Equals(c.Station?.Trim(), station.Trim(), StringComparison.OrdinalIgnoreCase)) ||
+                            (string.IsNullOrWhiteSpace(transporter) || string.Equals(c.Transporter?.Trim(), transporter.Trim(), StringComparison.OrdinalIgnoreCase)) ||
+                            (netAmt.HasValue && c.NetAmt == netAmt)
+                        );
+
+                        if (bestMatch != null) return Json(new { success = true, id = bestMatch.Id });
+
+                        return Json(new { success = true, id = candidates[0].Id });
+                    }
+                }
+
+                return Json(new { success = false, message = "Challan not found" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         public IActionResult Edit(int id)
         {
             LoadDropdowns();
@@ -358,9 +464,81 @@ namespace Nskg.Controllers
                      LocalAmt = x.LocalAmt,
                      NetAmt = x.NetAmt,
                      DCNo = x.DcNo,
-                     FooderCode = x.FooderCode
+                     FooderCode = x.FooderCode,
+                     PartyEx = x.PartyExAmt,
+                     Lifter2 = x.Lifter2Amt,
+                     OtherEx = x.OtherExAmt
                  })
                  .ToList();
+
+            var linkedChallans = _context.ChallanHead
+                .Where(c => c.commBookId == id || (!string.IsNullOrEmpty(c.DocNo) && details.Select(d => d.DCNo).Contains(c.DocNo)))
+                .ToList();
+
+            var usedChallanIds = new HashSet<int>();
+            foreach (var det in details)
+            {
+                int.TryParse(det.BillTiNo, out var chalNoInt);
+
+                // Priority 1: Match within linkedChallans by DocNo
+                var match = linkedChallans.FirstOrDefault(c => !usedChallanIds.Contains(c.Id) && !string.IsNullOrEmpty(det.DCNo) && c.DocNo == det.DCNo);
+
+                // Priority 2: Match within linkedChallans by ChalNo, Station, Transporter, and Amounts
+                if (match == null && chalNoInt > 0)
+                {
+                    match = linkedChallans.FirstOrDefault(c => !usedChallanIds.Contains(c.Id) &&
+                        c.ChalNo == chalNoInt &&
+                        (string.IsNullOrEmpty(det.Fooder) || c.Station == det.Fooder || c.StationCode == det.FooderCode) &&
+                        (string.IsNullOrEmpty(det.CusName) || c.Transporter == det.CusName) &&
+                        (!det.NetAmt.HasValue || c.NetAmt == det.NetAmt)
+                    );
+                }
+
+                // Priority 3: Match within linkedChallans by ChalNo and Station/Transporter
+                if (match == null && chalNoInt > 0)
+                {
+                    match = linkedChallans.FirstOrDefault(c => !usedChallanIds.Contains(c.Id) &&
+                        c.ChalNo == chalNoInt &&
+                        (string.IsNullOrEmpty(det.Fooder) || c.Station == det.Fooder || c.StationCode == det.FooderCode ||
+                         string.IsNullOrEmpty(det.CusName) || c.Transporter == det.CusName)
+                    );
+                }
+
+                // Priority 4: Match within linkedChallans by ChalNo only
+                if (match == null && chalNoInt > 0)
+                {
+                    match = linkedChallans.FirstOrDefault(c => !usedChallanIds.Contains(c.Id) && c.ChalNo == chalNoInt);
+                }
+
+                // Priority 5: Fallback search across all Challans if not linked yet
+                if (match == null && chalNoInt > 0)
+                {
+                    var candidates = _context.ChallanHead
+                        .Where(c => c.ChalNo == chalNoInt)
+                        .ToList();
+
+                    match = candidates.FirstOrDefault(c =>
+                        !usedChallanIds.Contains(c.Id) &&
+                        (string.IsNullOrEmpty(det.Fooder) || c.Station == det.Fooder || c.StationCode == det.FooderCode) &&
+                        (string.IsNullOrEmpty(det.CusName) || c.Transporter == det.CusName) &&
+                        (!det.NetAmt.HasValue || c.NetAmt == det.NetAmt)
+                    ) ?? candidates.FirstOrDefault(c =>
+                        !usedChallanIds.Contains(c.Id) &&
+                        (string.IsNullOrEmpty(det.Fooder) || c.Station == det.Fooder || c.StationCode == det.FooderCode ||
+                         string.IsNullOrEmpty(det.CusName) || c.Transporter == det.CusName)
+                    ) ?? candidates.FirstOrDefault(c => !usedChallanIds.Contains(c.Id));
+                }
+
+                if (match != null)
+                {
+                    det.ChallanId = match.Id;
+                    if (string.IsNullOrEmpty(det.DCNo) && !string.IsNullOrEmpty(match.DocNo))
+                    {
+                        det.DCNo = match.DocNo;
+                    }
+                    usedChallanIds.Add(match.Id);
+                }
+            }
 
             var model = new CommBookViewModel
             {
@@ -532,13 +710,27 @@ namespace Nskg.Controllers
                     if (!string.IsNullOrWhiteSpace(item.BillTiNo))
                     {
                         ChallanHead? chall = null;
-                        if (decimal.TryParse(item.BillTiNo, out var asDec))
+                        if (item.ChallanId.HasValue && item.ChallanId.Value > 0)
                         {
-                            chall = _context.ChallanHead.FirstOrDefault(c => c.ChalNo == asDec);
+                            chall = _context.ChallanHead.FirstOrDefault(c => c.Id == item.ChallanId.Value);
                         }
-                        else
+
+                        if (chall == null && !string.IsNullOrWhiteSpace(item.DCNo))
                         {
-                            chall = _context.ChallanHead.FirstOrDefault(c => c.DocNo == item.BillTiNo);
+                            chall = _context.ChallanHead.FirstOrDefault(c => c.DocNo == item.DCNo.Trim());
+                        }
+
+                        if (chall == null && int.TryParse(item.BillTiNo, out var asInt))
+                        {
+                            var candidates = _context.ChallanHead.Where(c => c.ChalNo == asInt).ToList();
+                            chall = candidates.FirstOrDefault(c =>
+                                (string.IsNullOrEmpty(item.Fooder) || c.Station == item.Fooder || c.StationCode == item.FooderCode) &&
+                                (string.IsNullOrEmpty(item.CusName) || c.Transporter == item.CusName) &&
+                                (!item.NetAmt.HasValue || c.NetAmt == item.NetAmt)
+                            ) ?? candidates.FirstOrDefault(c =>
+                                (string.IsNullOrEmpty(item.Fooder) || c.Station == item.Fooder || c.StationCode == item.FooderCode) ||
+                                (string.IsNullOrEmpty(item.CusName) || c.Transporter == item.CusName)
+                            ) ?? candidates.FirstOrDefault();
                         }
 
                         if (chall != null)

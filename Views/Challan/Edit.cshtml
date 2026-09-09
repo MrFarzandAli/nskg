@@ -1,4 +1,4 @@
-﻿@using Nskg.Models.ViewModels
+@using Nskg.Models.ViewModels
 @model ChallanViewModel
 
 @section Styles {
@@ -69,8 +69,7 @@
         <div>
             <button type="button"
                     class="btn btn-outline-primary btn-sm me-2"
-                    data-bs-toggle="modal"
-                    data-bs-target="#biltyModal"
+                    onclick="openBiltyModal()"
                     id="addBiltyBtn"
                     tabindex="8">
                 <i class="fa fa-plus"></i> Add Bilty
@@ -193,11 +192,23 @@
                                     </td>
 
                                     <td class="text-center">
-                                        <button type="button"
-                                                class="btn btn-danger btn-sm"
-                                                onclick="removeRow(this)">
-                                            <i class="fa fa-trash"></i>
-                                        </button>
+                                        <input type="hidden" asp-for="Details[i].DCNo" class="dc-no" />
+                                        <input type="hidden" asp-for="Details[i].BilNo" class="bil-no" />
+                                        <input type="hidden" asp-for="Details[i].BiltyId" class="bilty-id" />
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <button type="button"
+                                                    class="btn btn-info btn-sm text-white"
+                                                    title="View Bilty in Edit mode"
+                                                    onclick="viewBilty(this)">
+                                                <i class="fa fa-eye"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-danger btn-sm"
+                                                    title="Delete Row"
+                                                    onclick="removeRow(this)">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -259,17 +270,17 @@
             <div class="row g-3">
 
                 <div class="col-md-4">
-                    <label>Party Expense</label>
+                    <label> B#/ Party Expense</label>
                     <input asp-for="Head.PartyEx2" class="form-control form-control-sm" tabindex="110" />
                 </div>
 
                 <div class="col-md-4">
-                    <label>Local Amount</label>
+                    <label>B#/ Local Amount</label>
                     <input asp-for="Head.LocalAmt2" class="form-control form-control-sm" tabindex="111" />
                 </div>
 
                 <div class="col-md-4">
-                    <label>Other Expense</label>
+                    <label>B#/ Other Expense</label>
                     <input asp-for="Head.OtherEx2" class="form-control form-control-sm" tabindex="112" />
                 </div>
 
@@ -350,6 +361,8 @@
                     <thead>
                         <tr>
                             <th>Select</th>
+                            <th>Doc No</th>
+                            <th>Date</th>
                             <th>Bilty No</th>
                             <th>Party Name</th>
                             <th>Send To</th>
@@ -360,13 +373,19 @@
                     <tbody>
                         @foreach (var bilty in ViewBag.BiltyList)
                         {
-                            <tr>
+                            var isOld = bilty.DocDate != null && ((DateTime)bilty.DocDate).Date <= DateTime.Today.AddDays(-3);
+                            var rowClass = isOld ? "table-warning fw-semibold" : "";
+                            <tr class="@rowClass" data-stationid="@bilty.StationId" data-fooder="@bilty.Fooder">
                                 <td>
                                     <input type="checkbox"
                                            class="bilty-check"
+                                           data-id="@bilty.Id"
+                                           data-stationid="@bilty.StationId"
+                                           data-fooder="@bilty.Fooder"
                                            data-billtino="@bilty.BillTiNo"
                                            data-bilno="@bilty.BilNo"
                                            data-docno="@bilty.DocNo"
+                                           data-docdate="@(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("yyyy-MM-dd") : "")"
                                            data-cusname="@bilty.CusName"
                                            data-sendto="@bilty.SendTo"
                                            data-qty="@bilty.Qty"
@@ -379,6 +398,14 @@
                                            data-lifter2="@bilty.Lifter2"
                                            data-otherex="@bilty.OtherEx" />
                                 </td>
+                                <td>
+                                    @bilty.DocNo
+                                    @if (isOld)
+                                    {
+                                        <span class="badge bg-danger ms-1" title="Older than 3 days">3+ Days</span>
+                                    }
+                                </td>
+                                <td>@(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("dd/MM/yyyy") : "")</td>
                                 <td>@bilty.BillTiNo</td>
                                 <td>@bilty.CusName</td>
                                 <td>@bilty.SendTo</td>
@@ -438,10 +465,22 @@
                 }
             });
 
-            // Prevent focus from going back to Add Bilty button
+            // Prevent focus from going back to Add Bilty button and check station
+            $('#biltyModal').on('show.bs.modal', function(e) {
+                var stationId = $('#Head_StationId').val();
+                if (!stationId || stationId === "" || stationId === "0") {
+                    alert("Please select Station first.");
+                    e.preventDefault();
+                    $('#Head_StationId').focus();
+                    highlightField('#Head_StationId');
+                    return false;
+                }
+                filterBiltiesByStation(stationId);
+            });
+
             $('#biltyModal').on('shown.bs.modal', function() {
-                // Focus on first checkbox in modal
-                var firstCheckbox = $('.bilty-check:first');
+                // Focus on first visible checkbox in modal
+                var firstCheckbox = $('.bilty-check:visible:first');
                 if (firstCheckbox.length) {
                     firstCheckbox.focus();
                 }
@@ -492,12 +531,7 @@
 
                 // If current element is Add Bilty button, open modal
                 if (currentElement.attr('id') === 'addBiltyBtn') {
-                    // Set flag when opening modal
-                    isModalClosing = true;
-                    focusTarget = '#PartyStationCode';
-                    // Open modal
-                    var modal = new bootstrap.Modal(document.getElementById('biltyModal'));
-                    modal.show();
+                    openBiltyModal();
                     return;
                 }
 
@@ -554,6 +588,68 @@
 
         let i = @(Model.Details?.Count ?? 0);
 
+        // Open bilty modal after verifying station is selected
+        function openBiltyModal() {
+            var stationId = $('#Head_StationId').val();
+            if (!stationId || stationId === "" || stationId === "0") {
+                alert("Please select Station first.");
+                $('#Head_StationId').focus();
+                highlightField('#Head_StationId');
+                return;
+            }
+
+            filterBiltiesByStation(stationId);
+
+            isModalClosing = true;
+            focusTarget = '#PartyStationCode';
+            var modalEl = document.getElementById('biltyModal');
+            if (modalEl) {
+                var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        }
+
+        // Filter modal bilty rows by selected station
+        function filterBiltiesByStation(stationId) {
+            var selectedText = $("#Head_StationId option:selected").text().toLowerCase().trim();
+            var stationName = selectedText.replace(/\s*\([^)]*\)/g, '').trim();
+
+            var visibleCount = 0;
+            $("#biltyModal tbody tr").each(function () {
+                var $tr = $(this);
+                if ($tr.attr('id') === 'noBiltyMatchRow') return;
+
+                var rowStationId = $tr.data('stationid') || $tr.find('.bilty-check').data('stationid');
+                var rowFooder = ($tr.data('fooder') || $tr.find('.bilty-check').data('fooder') || '').toString().toLowerCase().trim();
+
+                var matches = false;
+                if (rowStationId && stationId && rowStationId.toString() === stationId.toString()) {
+                    matches = true;
+                } else if (stationName && rowFooder && (rowFooder === stationName || rowFooder.indexOf(stationName) !== -1 || stationName.indexOf(rowFooder) !== -1)) {
+                    matches = true;
+                }
+
+                if (matches) {
+                    $tr.show();
+                    visibleCount++;
+                } else {
+                    $tr.hide();
+                    $tr.find('.bilty-check').prop('checked', false);
+                }
+            });
+
+            $("#noBiltyMatchRow").remove();
+            if (visibleCount === 0) {
+                $("#biltyModal tbody").append(`
+                    <tr id="noBiltyMatchRow">
+                        <td colspan="8" class="text-center text-muted py-3">
+                            <i class="fa fa-info-circle me-1 text-warning"></i> No pending bilties found for the selected station.
+                        </td>
+                    </tr>
+                `);
+            }
+        }
+
         function addRow() {
 
             const noData = document.getElementById("noDataRow");
@@ -593,10 +689,17 @@
                 </td>
 
                 <td class="text-center">
-                    <button type="button" class="btn btn-danger btn-sm"
-                            onclick="removeRow(this)">
-                        <i class="fa fa-trash"></i>
-                    </button>
+                    <input type="hidden" name="Details[${i}].DCNo" class="dc-no" value="" />
+                    <input type="hidden" name="Details[${i}].BilNo" class="bil-no" value="" />
+                    <input type="hidden" name="Details[${i}].BiltyId" class="bilty-id" value="" />
+                    <div class="d-flex justify-content-center gap-1">
+                        <button type="button" class="btn btn-info btn-sm text-white" title="View Bilty in Edit mode" onclick="viewBilty(this)">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>`;
 
@@ -635,6 +738,7 @@
                 // Calculate BillTiAmt properly
                 const billtiAmt = labour + cartage2 + cartage3 + partyEx + lifter2 + otherEx;
 
+                const biltyId = $checkbox.data("id") || "";
                 const billTiNoValue = $checkbox.data("billtino") || "";
                 const docNo = $checkbox.data("docno") || "";
                 const bilNo = $checkbox.data("bilno") || "";
@@ -649,8 +753,6 @@
                 const row = `
                     <tr data-row-index="${currentIndex}">
                         <td>
-                            <input type="hidden" name="Details[${currentIndex}].DCNo" value="${escapeHtml(docNo)}" />
-                            <input type="hidden" name="Details[${currentIndex}].BilNo" value="${escapeHtml(bilNo)}" />
                             <input type="text"
                                    name="Details[${currentIndex}].BillTiNo"
                                    value="${escapeHtml(billTiNoValue)}"
@@ -696,9 +798,17 @@
                                    tabindex="${baseTabIndex + 5}" />
                         </td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
-                                <i class="fa fa-trash"></i>
-                            </button>
+                            <input type="hidden" name="Details[${currentIndex}].DCNo" class="dc-no" value="${escapeHtml(docNo)}" />
+                            <input type="hidden" name="Details[${currentIndex}].BilNo" class="bil-no" value="${escapeHtml(bilNo)}" />
+                            <input type="hidden" name="Details[${currentIndex}].BiltyId" class="bilty-id" value="${biltyId}" />
+                            <div class="d-flex justify-content-center gap-1">
+                                <button type="button" class="btn btn-info btn-sm text-white" title="View Bilty in Edit mode" onclick="viewBilty(this)">
+                                    <i class="fa fa-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -755,6 +865,34 @@
             calculateTotals();
         }
 
+        // View Bilty function - Opens Bilty Edit in a new tab
+        function viewBilty(btn) {
+            var $tr = $(btn).closest('tr');
+            var biltyId = $tr.find('.bilty-id').val();
+            var docNo = $tr.find('.dc-no').val() || $tr.find('input[name*="DCNo"]').val();
+            var billTiNo = $tr.find('.billti-no').val() || $tr.find('input[name*="BillTiNo"]').val();
+
+            if (biltyId && parseInt(biltyId) > 0) {
+                window.open('/Bilty/Edit/' + biltyId, '_blank');
+                return;
+            }
+
+            if (docNo || billTiNo) {
+                $.get('/Bilty/GetBiltyId', { docNo: docNo, billTiNo: billTiNo }, function (res) {
+                    if (res && res.success && res.id) {
+                        $tr.find('.bilty-id').val(res.id);
+                        window.open('/Bilty/Edit/' + res.id, '_blank');
+                    } else {
+                        alert('Bilty record not found.');
+                    }
+                }).fail(function () {
+                    alert('Error looking up bilty record.');
+                });
+                return;
+            }
+
+            alert('Please enter or select a valid Bilty No first.');
+        }
 
         // 🔥 TOTAL CALCULATION (MAIN LOGIC) - UNCHANGED
         function calculateTotals() {
@@ -829,6 +967,7 @@
         window.addRow = addRow;
         window.removeRow = removeRow;
         window.addSelectedBilties = addSelectedBilties;
+        window.viewBilty = viewBilty;
         window.getNextRowIndex = getNextRowIndex;
         window.escapeHtml = escapeHtml;
     </script>

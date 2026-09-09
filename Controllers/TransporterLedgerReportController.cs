@@ -41,7 +41,7 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(string accode, string fromDate, string toDate)
+        public IActionResult Index(string accode, string fromDate, string toDate, string vehicleNo)
         {
             int companyId = GetCompanyId();
 
@@ -55,15 +55,31 @@ namespace Nskg.Controllers
                 .OrderBy(x => x.Code)
                 .ToList();
 
+            var vehicles = _context.VoDet
+                .Where(v => v.Vehicleno != null && v.Vehicleno.Trim() != "" && (v.VoHead == null || v.VoHead.CompanyId == companyId || v.VoHead.CompanyId == 0))
+                .Select(v => v.Vehicleno!.Trim())
+                .Union(_context.ChallanHead
+                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (c.CompanyId == companyId || c.CompanyId == 0))
+                    .Select(c => c.VehicleNo!.Trim()))
+                .Union(_context.CommHead
+                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (c.CompanyId == companyId || c.CompanyId == 0))
+                    .Select(c => c.VehicleNo!.Trim()))
+                .Where(v => v != "")
+                .Distinct()
+                .OrderBy(v => v)
+                .ToList();
+
             ViewBag.AccountList = accounts;
+            ViewBag.VehicleList = vehicles;
             ViewBag.Accode = accode;
+            ViewBag.VehicleNo = vehicleNo;
             ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.ToString("yyyy-MM-dd") : fromDate;
             ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
 
             return View();
         }
 
-        private DataTable GetTransporterLedger(string accode, DateTime fromDate, DateTime toDate, int companyId, int financialYearId)
+        private DataTable GetTransporterLedger(string accode, DateTime fromDate, DateTime toDate, string vehicleNo, int companyId, int financialYearId)
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
@@ -109,7 +125,8 @@ namespace Nskg.Controllers
 
                     SELECT @OpeningBal = ISNULL(SUM(ISNULL(DRAMT, 0) - ISNULL(CRAMT, 0)), 0)
                     FROM ACCUMULATED
-                    WHERE VODATE < @FromDate;
+                    WHERE VODATE < @FromDate
+                      AND (@VehicleNo = '' OR RTRIM(LTRIM(ISNULL(VEHICLENO, ''))) = RTRIM(LTRIM(@VehicleNo)));
 
                     ;WITH RawData AS
                     (
@@ -153,6 +170,7 @@ namespace Nskg.Controllers
                             ROW_NUMBER() OVER (ORDER BY VODATE, VONO) AS RowNum
                         FROM ACCUMULATED
                         WHERE VODATE >= @FromDate AND VODATE <= @ToDate
+                          AND (@VehicleNo = '' OR RTRIM(LTRIM(ISNULL(VEHICLENO, ''))) = RTRIM(LTRIM(@VehicleNo)))
                     )
                     SELECT 
                         SortOrder,
@@ -184,6 +202,7 @@ namespace Nskg.Controllers
                     cmdData.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
                     cmdData.Parameters.AddWithValue("@AccName", accName);
                     cmdData.Parameters.AddWithValue("@CompanyName", companyName);
+                    cmdData.Parameters.AddWithValue("@VehicleNo", string.IsNullOrWhiteSpace(vehicleNo) ? "" : vehicleNo.Trim());
 
                     using (SqlDataReader reader = cmdData.ExecuteReader())
                     {
@@ -196,14 +215,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult GeneratePDF(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult GeneratePDF(string accode, DateTime fromDate, DateTime toDate, string vehicleNo)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetTransporterLedger(accode, fromDate, toDate, companyId, financialYearId);
+                DataTable dt = GetTransporterLedger(accode, fromDate, toDate, vehicleNo, companyId, financialYearId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -232,7 +251,8 @@ namespace Nskg.Controllers
                         return Content("PDF generation failed or corrupted output.");
                     }
 
-                    return File(pdfBytes, "application/pdf", $"TransporterLedger_{accode}_{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}.pdf", enableRangeProcessing: true);
+                    string vehicleSuffix = string.IsNullOrWhiteSpace(vehicleNo) ? "" : $"_{vehicleNo.Trim()}";
+                    return File(pdfBytes, "application/pdf", $"TransporterLedger_{accode}{vehicleSuffix}_{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}.pdf", enableRangeProcessing: true);
                 }
             }
             catch (Exception ex)
@@ -242,14 +262,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult OnScreenReport(string accode, DateTime fromDate, DateTime toDate, string vehicleNo)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetTransporterLedger(accode, fromDate, toDate, companyId, financialYearId);
+                DataTable dt = GetTransporterLedger(accode, fromDate, toDate, vehicleNo, companyId, financialYearId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -295,14 +315,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult ExportExcel(string accode, DateTime fromDate, DateTime toDate, string vehicleNo)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetTransporterLedger(accode, fromDate, toDate, companyId, financialYearId);
+                DataTable dt = GetTransporterLedger(accode, fromDate, toDate, vehicleNo, companyId, financialYearId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -316,7 +336,8 @@ namespace Nskg.Controllers
                 string accName = (dt.Rows.Count > 0 ? dt.Rows[0]["AccName"]?.ToString() : null) ?? "";
                 sb.AppendLine($"\"{compName}\"");
                 sb.AppendLine("\"TRANSPORTER LEDGER\"");
-                sb.AppendLine($"\"Account:\",\"{accode} - {accName}\",\"From:\",\"{fromDate:dd-MM-yyyy}\",\"To:\",\"{toDate:dd-MM-yyyy}\"");
+                string vehicleInfo = string.IsNullOrWhiteSpace(vehicleNo) ? "" : $",\"Vehicle:\",\"{EscapeCsv(vehicleNo)}\"";
+                sb.AppendLine($"\"Account:\",\"{accode} - {accName}\",\"From:\",\"{fromDate:dd-MM-yyyy}\",\"To:\",\"{toDate:dd-MM-yyyy}\"{vehicleInfo}");
                 sb.AppendLine();
 
                 // Table Header
@@ -329,7 +350,7 @@ namespace Nskg.Controllers
                     string votype = EscapeCsv(row["Votype"]?.ToString() ?? "");
                     string billtiNo = EscapeCsv(row["BillTiNo"]?.ToString() ?? "");
                     string bilNo = EscapeCsv(row["BilNo"]?.ToString() ?? "");
-                    string vehicleNo = EscapeCsv(row["VehicleNo"]?.ToString() ?? "");
+                    string vNo = EscapeCsv(row["VehicleNo"]?.ToString() ?? "");
                     string station = EscapeCsv(row["Station"]?.ToString() ?? "");
                     string iname = EscapeCsv(row["IName"]?.ToString() ?? "");
                     string qty = row["Qty"] != DBNull.Value && row["Qty"] != null ? (row["Qty"]?.ToString() ?? "") : "";
@@ -337,11 +358,12 @@ namespace Nskg.Controllers
                     string credit = row["Credit"] != DBNull.Value && Convert.ToDecimal(row["Credit"]) != 0 ? Convert.ToDecimal(row["Credit"]).ToString("F2") : "";
                     string balance = row["Balance"] != DBNull.Value ? Convert.ToDecimal(row["Balance"]).ToString("F2") : "";
 
-                    sb.AppendLine($"{docDate},{docNo},{votype},{billtiNo},{bilNo},{vehicleNo},{station},{iname},{qty},{debit},{credit},{balance}");
+                    sb.AppendLine($"{docDate},{docNo},{votype},{billtiNo},{bilNo},{vNo},{station},{iname},{qty},{debit},{credit},{balance}");
                 }
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
-                return File(bytes, "text/csv", $"TransporterLedger_{accode}_{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}.csv");
+                string vehicleSuffix = string.IsNullOrWhiteSpace(vehicleNo) ? "" : $"_{vehicleNo.Trim()}";
+                return File(bytes, "text/csv", $"TransporterLedger_{accode}{vehicleSuffix}_{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}.csv");
             }
             catch (Exception ex)
             {

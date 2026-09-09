@@ -46,6 +46,8 @@ namespace Nskg.Controllers
 
                 int pageSize = length != null ? Convert.ToInt32(length) : 10;
                 int skip = start != null ? Convert.ToInt32(start) : 0;
+                int drawVal = 0;
+                int.TryParse(draw, out drawVal);
 
                 var query = _context.IssHead
                     .AsNoTracking()
@@ -63,7 +65,7 @@ namespace Nskg.Controllers
                     );
                 }
 
-                int filterRecords = query.Count();
+                int filterRecords = string.IsNullOrWhiteSpace(searchValue) ? totalRecords : query.Count();
 
                 // Sorting
                 switch (sortColumnIndex)
@@ -72,29 +74,37 @@ namespace Nskg.Controllers
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocNo) : query.OrderByDescending(x => x.DocNo);
                         break;
                     case "1":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate) : query.OrderByDescending(x => x.DocDate);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
                     case "2":
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.CusName) : query.OrderByDescending(x => x.CusName);
                         break;
                     default:
-                        query = query.OrderByDescending(x => x.Id);
+                        query = query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
                 }
 
-                var data = query.Skip(skip).Take(pageSize)
+                var rawData = query.Skip(skip).Take(pageSize)
                     .Select(b => new
                     {
-                        id = b.Id,
-                        docNo = b.DocNo ?? "",
-                        docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
-                        cusName = b.CusName ?? ""
+                        b.Id,
+                        b.DocNo,
+                        b.DocDate,
+                        b.CusName
                     })
                     .ToList();
 
+                var data = rawData.Select(b => new
+                {
+                    id = b.Id,
+                    docNo = b.DocNo ?? "",
+                    docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
+                    cusName = b.CusName ?? ""
+                }).ToList();
+
                 return Json(new
                 {
-                    draw = draw,
+                    draw = drawVal,
                     recordsTotal = totalRecords,
                     recordsFiltered = filterRecords,
                     data = data
@@ -103,7 +113,9 @@ namespace Nskg.Controllers
             catch (Exception ex)
             {
                 _audit.LogAsync("Error", "Bilty", "0", ex.Message).Wait();
-                return Json(new { draw = 0, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
+                int drawVal = 0;
+                int.TryParse(Request.Form["draw"].FirstOrDefault(), out drawVal);
+                return Json(new { draw = drawVal, recordsTotal = 0, recordsFiltered = 0, data = new List<object>() });
             }
         }
 
@@ -230,6 +242,35 @@ namespace Nskg.Controllers
                 return View(model);
             }
         }
+
+        [HttpGet]
+        public IActionResult GetBiltyId(string? docNo, string? billTiNo)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(docNo))
+                {
+                    var b = _context.IssHead.AsNoTracking().FirstOrDefault(x => x.DocNo == docNo.Trim() && !x.IsDeleted);
+                    if (b != null) return Json(new { success = true, id = b.Id });
+                }
+
+                if (!string.IsNullOrWhiteSpace(billTiNo))
+                {
+                    if (decimal.TryParse(billTiNo.Trim(), out var bVal))
+                    {
+                        var b = _context.IssHead.AsNoTracking().FirstOrDefault(x => x.BillTiNo == bVal && !x.IsDeleted);
+                        if (b != null) return Json(new { success = true, id = b.Id });
+                    }
+                }
+
+                return Json(new { success = false, message = "Bilty not found" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         public IActionResult Edit(int id)
         {
             LoadDropdowns();

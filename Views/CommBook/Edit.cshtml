@@ -1,4 +1,4 @@
-﻿@using Nskg.Models.ViewModels
+@using Nskg.Models.ViewModels
 @model CommBookViewModel
 
 @section Styles {
@@ -167,7 +167,7 @@
                             <th width="100">Delivery Amt</th>
                             <th width="100">Local Amt</th>
                             <th width="100">Net Amt</th>
-                            <th width="50"><i class="fa fa-cog"></i></th>
+                            <th width="90"><i class="fa fa-cog"></i></th>
                         </tr>
                         <tr class="total-row">
                             <td colspan="4" class="text-end fw-bold">Total:</td>
@@ -218,14 +218,20 @@
                                         <input type="number" name="Details[@i].NetAmt" value="@(d.NetAmt ?? 0)" class="form-control form-control-sm netamt text-end" step="any" readonly />
                                     </td>
                                     <td class="text-center">
-                                        <input type="hidden" name="Details[@i].DCNo" value="@d.DCNo" />
+                                        <input type="hidden" name="Details[@i].DCNo" class="dc-no" value="@d.DCNo" />
+                                        <input type="hidden" name="Details[@i].ChallanId" class="challan-id" value="@d.ChallanId" />
                                         <input type="hidden" name="Details[@i].FooderCode" value="@d.FooderCode" />
                                         <input type="hidden" name="Details[@i].PartyEx" value="@(d.PartyEx ?? 0)" />
                                         <input type="hidden" name="Details[@i].Lifter2" value="@(d.Lifter2 ?? 0)" />
                                         <input type="hidden" name="Details[@i].OtherEx" value="@(d.OtherEx ?? 0)" />
-                                        <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
-                                            <i class="fa fa-trash"></i>
-                                        </button>
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <button type="button" class="btn btn-info btn-sm text-white" title="View Challan in Edit mode" onclick="viewChallan(this)">
+                                                <i class="fa fa-eye"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -353,6 +359,7 @@
                                 <td>
                                     <input type="checkbox"
                                            class="bilty-check"
+                                           data-id="@chalno.Id"
                                            data-docno="@chalno.DocNo"
                                            data-chalno="@chalno.ChalNo"
                                            data-vehicleno="@chalno.VehicleNo"
@@ -543,14 +550,20 @@
                                step="any" value="0" />
                     </td>
                     <td class="text-center">
-                        <input type="hidden" name="Details[${currentIndex}].DCNo" value="" />
+                        <input type="hidden" name="Details[${currentIndex}].DCNo" class="dc-no" value="" />
+                        <input type="hidden" name="Details[${currentIndex}].ChallanId" class="challan-id" value="" />
                         <input type="hidden" name="Details[${currentIndex}].FooderCode" value="" />
                         <input type="hidden" name="Details[${currentIndex}].PartyEx" value="0" />
                         <input type="hidden" name="Details[${currentIndex}].Lifter2" value="0" />
                         <input type="hidden" name="Details[${currentIndex}].OtherEx" value="0" />
-                        <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
-                            <i class="fa fa-trash"></i>
-                        </button>
+                        <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn btn-info btn-sm text-white" title="View Challan in Edit mode" onclick="viewChallan(this)">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -604,6 +617,7 @@
                 const currentIndex = getNextRowIndex();
                 const $checkbox = $(this);
 
+                const challanId = $checkbox.data("id") || "";
                 const chalno = $checkbox.data("chalno") || "";
                 const transporter = $checkbox.data("transporter") || "";
                 const driver = $checkbox.data("driver") || "";
@@ -693,14 +707,20 @@
                                    step="any" readonly />
                         </td>
                         <td class="text-center">
-                            <input type="hidden" name="Details[${currentIndex}].DCNo" value="${escapeHtml(docNo)}" />
+                            <input type="hidden" name="Details[${currentIndex}].DCNo" class="dc-no" value="${escapeHtml(docNo)}" />
+                            <input type="hidden" name="Details[${currentIndex}].ChallanId" class="challan-id" value="${challanId}" />
                             <input type="hidden" name="Details[${currentIndex}].FooderCode" value="${escapeHtml(stationCode)}" />
                             <input type="hidden" name="Details[${currentIndex}].PartyEx" value="${totPartyEx.toFixed(2)}" />
                             <input type="hidden" name="Details[${currentIndex}].Lifter2" value="${totLifter2.toFixed(2)}" />
                             <input type="hidden" name="Details[${currentIndex}].OtherEx" value="${totOtherEx.toFixed(2)}" />
-                            <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
-                                <i class="fa fa-trash"></i>
-                            </button>
+                            <div class="d-flex justify-content-center gap-1">
+                                <button type="button" class="btn btn-info btn-sm text-white" title="View Challan in Edit mode" onclick="viewChallan(this)">
+                                    <i class="fa fa-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -731,6 +751,71 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+        }
+
+        // View Challan function - Opens Challan Edit in a new tab
+        function viewChallan(btn) {
+            var $tr = $(btn).closest('tr');
+            var challanId = $tr.find('.challan-id').val();
+            var docNo = $tr.find('.dc-no').val() || $tr.find('input[name*="DCNo"]').val();
+            var chalNo = $tr.find('.billti-no').val() || $tr.find('input[name*="BillTiNo"]').val();
+            var station = $tr.find('.fooder').val() || $tr.find('input[name*="Fooder"]').val();
+            var stationCode = $tr.find('input[name*="FooderCode"]').val();
+            var transporter = $tr.find('.cus-name').val() || $tr.find('input[name*="CusName"]').val();
+            var driver = $tr.find('.send-to').val() || $tr.find('input[name*="SendTo"]').val();
+            var netAmt = $tr.find('.netamt').val() || $tr.find('input[name*="NetAmt"]').val();
+            var billTiAmt = $tr.find('.biltyamt').val() || $tr.find('input[name*="BillTiAmt"]').val();
+            var paidAmt = $tr.find('.paidamt').val() || $tr.find('input[name*="PaidAmt"]').val();
+            var toPaidAmt = $tr.find('.topaidamt').val() || $tr.find('input[name*="ToPaidAmt"]').val();
+            var deliveryAmt = $tr.find('.deliveryamt').val() || $tr.find('input[name*="DeliveryAmt"]').val();
+            var localAmt = $tr.find('.localamt').val() || $tr.find('input[name*="LocalAmt"]').val();
+            var commBookId = $('#Head_Id').val() || $('input[name="Head.Id"]').val() || '';
+
+            if (challanId && parseInt(challanId) > 0) {
+                window.open('/Challan/Edit/' + challanId, '_blank');
+                return;
+            }
+
+            if (docNo || chalNo) {
+                var params = {
+                    docNo: docNo,
+                    chalNo: chalNo,
+                    station: station,
+                    stationCode: stationCode,
+                    transporter: transporter,
+                    driver: driver,
+                    netAmt: netAmt,
+                    billTiAmt: billTiAmt,
+                    paidAmt: paidAmt,
+                    toPaidAmt: toPaidAmt,
+                    deliveryAmt: deliveryAmt,
+                    localAmt: localAmt,
+                    commBookId: commBookId
+                };
+
+                $.get('/Challan/GetChallanId', params, function (res) {
+                    if (res && res.success && res.id) {
+                        $tr.find('.challan-id').val(res.id);
+                        window.open('/Challan/Edit/' + res.id, '_blank');
+                    } else {
+                        alert(res && res.message ? res.message : 'Challan record not found.');
+                    }
+                }).fail(function () {
+                    $.get('/CommBook/GetChallanId', params, function (res2) {
+                        if (res2 && res2.success && res2.id) {
+                            $tr.find('.challan-id').val(res2.id);
+                            window.open('/Challan/Edit/' + res2.id, '_blank');
+                        } else {
+                            alert(res2 && res2.message ? res2.message : 'Challan record not found.');
+                        }
+                    }).fail(function () {
+                        alert('Error looking up challan record. Please make sure the app has been reloaded.');
+                    });
+                });
+                return;
+            }
+
+            alert('Please enter or select a valid Challan No first.');
         }
 
         function validateBeforeSubmit() {
@@ -915,6 +1000,7 @@
         window.addEmptyRow = addEmptyRow;
         window.removeRow = removeRow;
         window.addSelectedBilties = addSelectedBilties;
+        window.viewChallan = viewChallan;
         window.validateBeforeSubmit = validateBeforeSubmit;
         window.selectAllBilties = selectAllBilties;
         window.deselectAllBilties = deselectAllBilties;
