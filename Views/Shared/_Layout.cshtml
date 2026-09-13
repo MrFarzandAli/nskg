@@ -303,31 +303,35 @@
 							<li><a class="@(isActiveWithRoute("Voucher","Index","BP") ? "active" : "")" asp-controller="Voucher" asp-action="Index" asp-route-type="BP">Bank Payment</a></li>
 						</ul>
 					</li>
-						var operationsControllers = new[] { "Bilty", "Challan", "CommBook" };
-						var showOperations = isControllerIn(operationsControllers);
+						var operationsControllers = new[] { "Bilty", "ToPayBilty", "Challan", "CommBook" };
+					var showOperations = isControllerIn(operationsControllers);
 
-						<li class="submenu@(showOperations ? " active" : "")">
-						<a href="#" class="@(showOperations ? "active" : "")"><i class="la la-truck"></i> <span> Operations</span> <span class="menu-arrow"></span></a>
-						<ul @(showOperations ? "style=\"display:block;\"" : "")>
-							<li><a class="@(isActive("Bilty","Index") ? "active" : "")"  asp-controller="Bilty" asp-action="Index">Bilty</a></li>
-							<li><a class="@(isActive("Challan","Index") ? "active" : "")" asp-controller="Challan" asp-action="Index">Challan</a></li>
-							<li><a class="@(isActive("CommBook","Index") ? "active" : "")" asp-controller="CommBook" asp-action="Index">Commission Book</a></li>		
-						</ul>
+					<li class="submenu@(showOperations ? " active" : "")">
+					<a href="#" class="@(showOperations ? "active" : "")"><i class="la la-truck"></i> <span> Operations</span> <span class="menu-arrow"></span></a>
+					<ul @(showOperations ? "style=\"display:block;\"" : "")>
+						<li><a class="@(isActive("Bilty","Index") ? "active" : "")"  asp-controller="Bilty" asp-action="Index">Paid Bilty</a></li>
+						<li><a class="@(isActive("ToPayBilty","Index") ? "active" : "")" asp-controller="ToPayBilty" asp-action="Index">To Pay Bilty</a></li>
+						<li><a class="@(isActive("Challan","Index") ? "active" : "")" asp-controller="Challan" asp-action="Index">Challan</a></li>
+						<li><a class="@(isActive("CommBook","Index") ? "active" : "")" asp-controller="CommBook" asp-action="Index">Commission Book</a></li>	
+					</ul>
 					</li>
 
-						var reportsControllers = new[] { "GenerlLedgerReport", "AccountLedgerReport", "TransporterLedgerReport", "StationLedgerReport", "TrailBalanceReport", "BiltyListReport" };
-						var showReports = isControllerIn(reportsControllers);
+					var reportsControllers = new[] { "GenerlLedgerReport", "AccountLedgerReport", "TrailBalanceReport", "PartyExpenseReport", "TransporterLedgerReport", "StationLedgerReport", "BiltyListReport", "ToPayBiltyReport", "AdvanceReport" };
+					var showReports = isControllerIn(reportsControllers);
 
 					<li class="submenu@(showReports ? " active" : "")">
-						<a href="#" class="@(showReports ? "active" : "")"><i class="la la-bar-chart"></i> <span> Reports</span> <span class="menu-arrow"></span></a>
-						<ul @(showReports ? "style=\"display:block;\"" : "")>						
-							<li><a class="@(isActive("GenerlLedgerReport","Index") ? "active" : "")" asp-controller="GenerlLedgerReport" asp-action="Index">General Ledger Report</a></li>
-							<li><a class="@(isActive("AccountLedgerReport","Index") ? "active" : "")" asp-controller="AccountLedgerReport" asp-action="Index">Account Ledger (Detailed)</a></li>
-							<li><a class="@(isActive("TransporterLedgerReport","Index") ? "active" : "")" asp-controller="TransporterLedgerReport" asp-action="Index">Transporter Ledger Report</a></li>
-							<li><a class="@(isActive("StationLedgerReport","Index") ? "active" : "")" asp-controller="StationLedgerReport" asp-action="Index">Station Ledger Report</a></li>
-							<li><a class="@(isActive("TrailBalanceReport","Index") ? "active" : "")" asp-controller="TrailBalanceReport" asp-action="Index">Trail Balance Report</a></li>
-							<li><a class="@(isActive("BiltyListReport","Index") ? "active" : "")" asp-controller="BiltyListReport" asp-action="Index">Bilty List Report</a></li>
-						</ul>
+					<a href="#" class="@(showReports ? "active" : "")"><i class="la la-bar-chart"></i> <span> Reports</span> <span class="menu-arrow"></span></a>
+					<ul @(showReports ? "style=\"display:block;\"" : "")>					
+						<li><a class="@(isActive("GenerlLedgerReport","Index") ? "active" : "")" asp-controller="GenerlLedgerReport" asp-action="Index">General Ledger Report</a></li>
+						<li><a class="@(isActive("AccountLedgerReport","Index") ? "active" : "")" asp-controller="AccountLedgerReport" asp-action="Index">Account Ledger (Detailed)</a></li>
+						<li><a class="@(isActive("TrailBalanceReport","Index") ? "active" : "")" asp-controller="TrailBalanceReport" asp-action="Index">Trail Balance Report</a></li>
+						<li><a class="@(isActive("PartyExpenseReport","Index") ? "active" : "")" asp-controller="PartyExpenseReport" asp-action="Index">Party Expense Report</a></li>
+						<li><a class="@(isActive("TransporterLedgerReport","Index") ? "active" : "")" asp-controller="TransporterLedgerReport" asp-action="Index">Transporter Ledger Report</a></li>
+						<li><a class="@(isActive("StationLedgerReport","Index") ? "active" : "")" asp-controller="StationLedgerReport" asp-action="Index">Station Ledger Report</a></li>
+						<li><a class="@(isActive("BiltyListReport","Index") ? "active" : "")" asp-controller="BiltyListReport" asp-action="Index">Paid Bilty Report</a></li>
+						<li><a class="@(isActive("ToPayBiltyReport","Index") ? "active" : "")" asp-controller="ToPayBiltyReport" asp-action="Index">To Pay Bilty Report</a></li>
+						<li><a class="@(isActive("AdvanceReport","Index") ? "active" : "")" asp-controller="AdvanceReport" asp-action="Index">Advance Report</a></li>
+					</ul>
 					</li>	
 			}
 			</ul>

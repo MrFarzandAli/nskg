@@ -10,9 +10,9 @@
         <div>
             <h3 class="mb-0">
                 <i class="fa fa-edit text-warning me-2"></i>
-                Edit Paid Bilty
+                Edit To Pay Bilty
             </h3>
-            <small class="text-muted">Update Paid Bilty</small>
+            <small class="text-muted">Update To Pay Bilty</small>
         </div>
 
         <div>
@@ -21,7 +21,7 @@
             </button>
 
             <button type="submit" id="btnUpdate" class="btn btn-warning btn-sm">
-                <i class="fa fa-save"></i> Update Bilty
+                <i class="fa fa-save"></i> Update To Pay Bilty
             </button>
         </div>
     </div>
@@ -95,8 +95,8 @@
     <div class="card shadow-sm border-0 mb-3">
         <div class="card-header bg-white">
             <h6 class="mb-0">
-                <i class="fa fa-list me-1 text-primary"></i>
-                Bilty Items
+                <i class="fa fa-list me-1 text-warning"></i>
+                To Pay Bilty Items
             </h6>
         </div>
 
@@ -192,74 +192,47 @@
 <div class="modal fade" id="customerModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-
             <div class="modal-header">
                 <h5 class="modal-title">Add Customer</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-
             <div class="modal-body">
-
                 <label>Customer Name</label>
                 <input type="text" id="CustomerName" class="form-control" />
-
             </div>
-
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-
-                <button type="button" class="btn btn-success" onclick="saveCustomer()">
-                    Save
-                </button>
+                <button type="button" class="btn btn-success" onclick="saveCustomer()">Save</button>
             </div>
-
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        // Highlight active field
         function highlightField(element) {
-            // Remove highlight from all fields and buttons
             $('.form-control, .form-select, .btn').removeClass('active-field');
-            // Add highlight to current element
             $(element).addClass('active-field');
         }
 
         function saveCustomer() {
             let name = $("#CustomerName").val();
-
-            if (name.trim() === "") {
-                alert("Customer name required");
-                return;
-            }
-
+            if (name.trim() === "") { alert("Customer name required"); return; }
             $.ajax({
-                url: '/GLChart/CreateAjax',
-                type: 'POST',
-                data: { name: name },
+                url: '/GLChart/CreateAjax', type: 'POST', data: { name: name },
                 success: function (res) {
                     if (res.success) {
                         let newOption = new Option(res.text, res.id, true, true);
                         $('#CustomerId').append(newOption).trigger('change');
-                        $("#CustomerName").val("");
-                        $("#customerModal").modal('hide');
-                    } else {
-                        alert(res.message);
-                    }
+                        $("#CustomerName").val(""); $("#customerModal").modal('hide');
+                    } else { alert(res.message); }
                 },
-                error: function () {
-                    alert("Error saving customer");
-                }
+                error: function () { alert("Error saving customer"); }
             });
         }
 
         let i = 0;
 
-        // =========================
-        // LOAD EXISTING DATA
-        // =========================
         $(document).ready(function () {
             let data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Details, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
 
@@ -271,227 +244,111 @@
                 data.forEach(x => {
                     let row = `
                     <tr>
-                        <td>
-                            <input name="Details[${i}].IName"
-                                   value="${x.iName ?? ''}"
-                                   class="form-control form-control-sm" readonly />
-                        </td>
-
-                        <td>
-                            <input name="Details[${i}].Qty"
-                                   value="${x.qty ?? 0}"
-                                   class="form-control form-control-sm qty" />
-                        </td>
-
-                        <td>
-                            <input name="Details[${i}].QtyPerPack"
-                                   value="${x.qtyPerPack ?? 0}"
-                                   class="form-control form-control-sm qtyperpack" />
-                        </td>
-
+                        <td><input name="Details[${i}].IName" value="${x.iName ?? ''}" class="form-control form-control-sm" readonly /></td>
+                        <td><input name="Details[${i}].Qty" value="${x.qty ?? 0}" class="form-control form-control-sm qty" /></td>
+                        <td><input name="Details[${i}].QtyPerPack" value="${x.qtyPerPack ?? 0}" class="form-control form-control-sm qtyperpack" /></td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-danger btn-sm"
-                                    onclick="removeRow(this)">
+                            <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
                                 <i class="fa fa-trash"></i>
                             </button>
                         </td>
                     </tr>`;
-
                     $("#tbodyItems").append(row);
                     i++;
                 });
             }
 
             calculateNetAmount();
-
-            // Focus on Bilty No when page loads
             $('#BiltyNo').focus();
             highlightField('#BiltyNo');
         });
 
-        // Handle Enter key navigation
         $(document).on('keydown', '.form-control, .form-select', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-
                 var currentElement = $(this);
-                var currentId = currentElement.attr('id');
                 var currentTabIndex = parseInt(currentElement.attr('tabindex')) || 0;
 
-                // Check if it's a Qty field
                 if (currentElement.hasClass('qty')) {
-                    var currentRow = currentElement.closest('tr');
                     var qtyValue = currentElement.val();
-                    var weightField = currentRow.find('.qtyperpack');
-
-                    // If Qty is empty or null, go to Freight
-                    if (!qtyValue || qtyValue.trim() === '') {
-                        $('#Cartage1').focus();
-                        highlightField('#Cartage1');
-                        return;
-                    }
-
-                    // If Qty has value, go to Weight field in same row
-                    if (weightField.length) {
-                        weightField.focus();
-                        highlightField(weightField);
-                    }
+                    if (!qtyValue || qtyValue.trim() === '') { $('#Cartage1').focus(); highlightField('#Cartage1'); return; }
+                    var weightField = currentElement.closest('tr').find('.qtyperpack');
+                    if (weightField.length) { weightField.focus(); highlightField(weightField); }
                     return;
                 }
 
-                // Check if it's a Weight field
                 if (currentElement.hasClass('qtyperpack')) {
-                    var currentRow = currentElement.closest('tr');
-                    var qtyField = currentRow.find('.qty');
                     var weightValue = currentElement.val();
-
-                    // If Weight is empty or null, go to Freight
-                    if (!weightValue || weightValue.trim() === '') {
-                        $('#Cartage1').focus();
-                        highlightField('#Cartage1');
-                        return;
-                    }
-
-                    // If Weight has value, add new row and focus on its Qty
+                    if (!weightValue || weightValue.trim() === '') { $('#Cartage1').focus(); highlightField('#Cartage1'); return; }
                     addRow();
-                    var newRow = $('#tbodyItems tr:last-child');
                     setTimeout(function() {
-                        var newQty = newRow.find('.qty');
-                        newQty.focus();
-                        highlightField(newQty);
+                        var newQty = $('#tbodyItems tr:last-child').find('.qty');
+                        newQty.focus(); highlightField(newQty);
                     }, 50);
                     return;
                 }
 
-                // Check if it's an expense field (tabindex 100+)
                 if (currentTabIndex >= 100) {
                     var nextExpense = $('[tabindex="' + (currentTabIndex + 1) + '"]');
-                    if (nextExpense.length) {
-                        nextExpense.focus();
-                        highlightField(nextExpense);
-                    } else {
-                        // After last expense, go to Update button
-                        $('#btnUpdate').focus();
-                        highlightField('#btnUpdate');
-                    }
+                    if (nextExpense.length) { nextExpense.focus(); highlightField(nextExpense); }
+                    else { $('#btnUpdate').focus(); highlightField('#btnUpdate'); }
                     return;
                 }
 
-                // Navigation for master fields (tabindex 1-7)
-                var nextTabIndex = currentTabIndex + 1;
-                var nextField = $('[tabindex="' + nextTabIndex + '"]');
-
-                if (nextField.length) {
-                    nextField.focus();
-                    highlightField(nextField);
-                } else {
-                    // After remarks (tabindex 7), go to first item Qty
+                var nextField = $('[tabindex="' + (currentTabIndex + 1) + '"]');
+                if (nextField.length) { nextField.focus(); highlightField(nextField); }
+                else {
                     var firstQty = $('#tbodyItems .qty:first');
-                    if (firstQty.length) {
-                        firstQty.focus();
-                        highlightField(firstQty);
-                    }
+                    if (firstQty.length) { firstQty.focus(); highlightField(firstQty); }
                 }
             }
         });
 
-        // Also highlight on focus
-        $(document).on('focus', '.form-control, .form-select', function() {
-            highlightField(this);
-        });
+        $(document).on('focus', '.form-control, .form-select', function() { highlightField(this); });
 
-        // =========================
-        // ADD ROW
-        // =========================
         function addRow() {
             const noData = document.getElementById("noDataRow");
             if (noData) noData.remove();
-
             let row = `
             <tr>
-                <td>
-                    <input name="Details[${i}].IName" value="NOS"
-                           class="form-control form-control-sm" readonly />
-                </td>
-
-                <td>
-                    <input name="Details[${i}].Qty" type="number" step="0.01"
-                           class="form-control form-control-sm qty" />
-                </td>
-
-                <td>
-                    <input name="Details[${i}].QtyPerPack" type="number" step="0.01"
-                           class="form-control form-control-sm qtyperpack" />
-                </td>
-
+                <td><input name="Details[${i}].IName" value="NOS" class="form-control form-control-sm" readonly /></td>
+                <td><input name="Details[${i}].Qty" type="number" step="0.01" class="form-control form-control-sm qty" /></td>
+                <td><input name="Details[${i}].QtyPerPack" type="number" step="0.01" class="form-control form-control-sm qtyperpack" /></td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-danger btn-sm"
-                            onclick="removeRow(this)">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
                         <i class="fa fa-trash"></i>
                     </button>
                 </td>
             </tr>`;
-
             $("#tbodyItems").append(row);
             i++;
         }
 
-        // =========================
-        // REMOVE ROW
-        // =========================
         function removeRow(btn) {
             var row = $(btn).closest("tr");
             var isFirstRow = row.is(':first-child');
-
             row.remove();
-
-            // If it was the first row, focus on the new first row's Qty
             if (isFirstRow) {
                 var newFirstQty = $('#tbodyItems .qty:first');
-                if (newFirstQty.length) {
-                    newFirstQty.focus();
-                    highlightField(newFirstQty);
-                } else {
-                    // No rows left, go to Freight
-                    $('#Cartage1').focus();
-                    highlightField('#Cartage1');
-                }
+                if (newFirstQty.length) { newFirstQty.focus(); highlightField(newFirstQty); }
+                else { $('#Cartage1').focus(); highlightField('#Cartage1'); }
             }
-
             if ($("#tbodyItems tr").length === 0) {
-                $("#tbodyItems").html(`
-                    <tr id="noDataRow">
-                        <td colspan="4" class="text-center text-muted py-3">
-                            No Items Added
-                        </td>
-                    </tr>
-                `);
+                $("#tbodyItems").html(`<tr id="noDataRow"><td colspan="4" class="text-center text-muted py-3">No Items Added</td></tr>`);
             }
         }
 
-        // =========================
-        // NET AMOUNT CALCULATION
-        // =========================
-        // ✅ NEW NET AMOUNT LOGIC
-         function calculateNetAmount() {
+        function calculateNetAmount() {
+            let c1 = parseFloat($("#Cartage1").val()) || 0;
+            let c2 = parseFloat($("#Cartage2").val()) || 0;
+            let c3 = parseFloat($("#Cartage3").val()) || 0;
+            let labour = parseFloat($("#Labour").val()) || 0;
+            let tt = parseFloat($("#T_T").val()) || 0;
+            $("#Head_NetAmt").val((c1 + c2 + c3 + labour + tt).toFixed(2));
+        }
 
-             let cartage1 = parseFloat($("#Cartage1").val()) || 0;
-             let cartage2 = parseFloat($("#Cartage2").val()) || 0;
-             let cartage3 = parseFloat($("#Cartage3").val()) || 0;
-             let labour   = parseFloat($("#Labour").val()) || 0;
-             let tt       = parseFloat($("#T_T").val()) || 0;
+        $(document).on("input", "#Cartage1, #Cartage2, #Cartage3, #Labour, #T_T", function () { calculateNetAmount(); });
 
-             let netAmt = cartage1 + cartage2 + cartage3 + labour + tt;
-
-             $("#Head_NetAmt").val(netAmt.toFixed(2));
-         }
-
-         // realtime update for ALL cost fields
-         $(document).on("input", "#Cartage1, #Cartage2, #Cartage3, #Labour, #T_T", function () {
-             calculateNetAmount();
-         });
-
-        // Ctrl+S to update
         document.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.key.toLowerCase() === 's') {
                 e.preventDefault();
@@ -502,37 +359,20 @@
 }
 
 <style>
-    /* Highlight style for form controls */
     .active-field {
-        border: 2px solid #0d6efd !important;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
-        background-color: #f0f7ff !important;
+        border: 2px solid #fd7e14 !important;
+        box-shadow: 0 0 0 0.2rem rgba(253, 126, 20, 0.25) !important;
+        background-color: #fff8f0 !important;
         transition: all 0.2s ease;
     }
-
-    /* Highlight style for buttons (Update button) */
     .btn.active-field {
-        border: 2px solid #0d6efd !important;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.3) !important;
-        transform: scale(1.02);
-        transition: all 0.2s ease;
-    }
-
-    /* Specific style for warning buttons */
-    .btn-warning.active-field {
-        border: 2px solid #0d6efd !important;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.3) !important;
-        background-color: #e0a800 !important;
+        border: 2px solid #fd7e14 !important;
+        box-shadow: 0 0 0 0.2rem rgba(253, 126, 20, 0.3) !important;
         transform: scale(1.02);
     }
-
     .form-control:focus, .form-select:focus {
-        border-color: #86b7fe;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        border-color: #fd7e14;
+        box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.25);
     }
-
-    /* Smooth transitions */
-    .form-control, .form-select, .btn {
-        transition: all 0.2s ease;
-    }
+    .form-control, .form-select, .btn { transition: all 0.2s ease; }
 </style>
