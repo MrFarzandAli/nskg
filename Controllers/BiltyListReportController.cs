@@ -93,75 +93,83 @@ SELECT
     b.Qty,
     b.NetAmt
 INTO #Bills
-FROM ISSHEAD b
-WHERE b.CompanyId = 1006
-  AND ISNULL(b.IsDeleted,0)=0
-  AND b.DocDate >= '20260101'
-  AND b.DocDate < '20260802';
+  FROM ISSHEAD b
+  WHERE b.CompanyId = @CompanyId
+    AND ISNULL(b.IsDeleted,0)=0
+    AND (@FromDate IS NULL OR b.DocDate >= @FromDate)
+    AND (@ToDate IS NULL OR b.DocDate <= @ToDate)
+    AND (@FromBilNo IS NULL OR CONVERT(INT, b.BilNo) >= @FromBilNo)
+    AND (@ToBilNo IS NULL OR CONVERT(INT, b.BilNo) <= @ToBilNo);
 
-CREATE CLUSTERED INDEX IX_Bills
-ON #Bills(BilNo, BillTiNo);
+  CREATE CLUSTERED INDEX IX_Bills
+  ON #Bills(BilNo, BillTiNo);
 
-----------------------------------------------------
--- Payments
-----------------------------------------------------
-SELECT
-    v.BilNo,
-    v.BillTiNo,
-    STRING_AGG(
-        CONVERT(VARCHAR(10), v.VoDate, 23),
-        ', '
-    ) AS ReceiveDate,
-    SUM(v.Cramt) AS Amount
-INTO #Payments
-FROM VoDet v
-INNER JOIN #Bills b
-    ON v.BilNo = b.BilNo
-   AND v.BillTiNo = b.BillTiNo
-WHERE v.IsDeleted = 0
-GROUP BY
-    v.BilNo,
-    v.BillTiNo;
+  ----------------------------------------------------
+  -- Payments
+  ----------------------------------------------------
+  SELECT
+      v.BilNo,
+      v.BillTiNo,
+      STRING_AGG(
+          CONVERT(VARCHAR(10), v.VoDate, 23),
+          ', '
+      ) AS ReceiveDate,
+      SUM(v.Cramt) AS Amount
+  INTO #Payments
+  FROM VoDet v
+  INNER JOIN #Bills b
+      ON v.BilNo = b.BilNo
+     AND v.BillTiNo = b.BillTiNo
+  WHERE v.IsDeleted = 0
+  GROUP BY
+      v.BilNo,
+      v.BillTiNo;
 
-CREATE CLUSTERED INDEX IX_Payments
-ON #Payments(BilNo, BillTiNo);
+  CREATE CLUSTERED INDEX IX_Payments
+  ON #Payments(BilNo, BillTiNo);
 
-----------------------------------------------------
--- Final
-----------------------------------------------------
-SELECT
-    CAST(b.BilNo AS VARCHAR(50)) AS BilNo,
-    CAST(b.BillTiNo AS VARCHAR(50)) AS BillTiNo,
-    b.DocDate,
+  ----------------------------------------------------
+  -- Final
+  ----------------------------------------------------
+  SELECT
+      CAST(b.BilNo AS VARCHAR(50)) AS BilNo,
+      CAST(b.BillTiNo AS VARCHAR(50)) AS BillTiNo,
+      b.DocDate,
 
-    COALESCE(g.Name, b.Fooder, '') AS Station,
-    COALESCE(c.Name, b.CusName, '') AS PartyName,
+      COALESCE(g.Name, b.Fooder, '') AS Station,
+      COALESCE(c.Name, b.CusName, '') AS PartyName,
 
-    b.Qty,
-    b.NetAmt AS Freight,
+      b.Qty,
+      b.NetAmt AS Freight,
 
-    p.ReceiveDate,
+      p.ReceiveDate,
 
-    ISNULL(p.Amount,0) AS Amount,
+      ISNULL(p.Amount,0) AS Amount,
 
-    b.NetAmt - ISNULL(p.Amount,0) AS Balance
+      b.NetAmt - ISNULL(p.Amount,0) AS Balance,
+      
+      @CompanyName AS CompanyName,
+      @FromDate AS FromDate,
+      @ToDate AS ToDate,
+      @FromBilNo AS FromBilNo,
+      @ToBilNo AS ToBilNo
 
-FROM #Bills b
+  FROM #Bills b
 
-LEFT JOIN GLCHART3 g
-    ON g.Id = b.StationId
+  LEFT JOIN GLCHART3 g
+      ON g.Id = b.StationId
 
-LEFT JOIN GLCHART3 c
-    ON c.Id = b.CustomerId
+  LEFT JOIN GLCHART3 c
+      ON c.Id = b.CustomerId
 
-LEFT JOIN #Payments p
-    ON p.BilNo = b.BilNo
-   AND p.BillTiNo = b.BillTiNo
+  LEFT JOIN #Payments p
+      ON p.BilNo = b.BilNo
+     AND p.BillTiNo = b.BillTiNo
 
-ORDER BY
-    b.DocDate,
-    b.BilNo,
-    b.Id
+  ORDER BY
+      b.DocDate,
+      b.BilNo,
+      b.Id
 OPTION (RECOMPILE);
                 ";
 

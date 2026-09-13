@@ -42,7 +42,7 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(string accode, string fromDate, string toDate)
+        public IActionResult Index(string accode, string fromDate, string toDate, string vehicleNo, string biltyNo)
         {
             int companyId = GetCompanyId();
 
@@ -63,11 +63,13 @@ namespace Nskg.Controllers
             ViewBag.Accode = accode;
             ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.ToString("yyyy-MM-dd") : fromDate;
             ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
+            ViewBag.VehicleNo = vehicleNo;
+            ViewBag.BiltyNo = biltyNo;
 
             return View();
         }
 
-        private DataTable GetPartyExpenseLedger(string accode, DateTime fromDate, DateTime toDate, int companyId, int financialYearId)
+        private DataTable GetPartyExpenseLedger(string accode, DateTime fromDate, DateTime toDate, int companyId, int financialYearId, string vehicleNo, string biltyNo)
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
@@ -157,6 +159,8 @@ namespace Nskg.Controllers
                             ROW_NUMBER() OVER (ORDER BY VODATE, VONO) AS RowNum
                         FROM ACCUMULATED
                         WHERE VODATE >= @FromDate AND VODATE <= @ToDate
+                          AND (@VehicleNo IS NULL OR @VehicleNo = '' OR VEHICLENO LIKE '%' + @VehicleNo + '%')
+                          AND (@BiltyNo IS NULL OR @BiltyNo = '' OR CAST(BILNO AS VARCHAR) = @BiltyNo OR CAST(BILLTINO AS VARCHAR) = @BiltyNo)
                     )
                     SELECT 
                         SortOrder,
@@ -188,6 +192,8 @@ namespace Nskg.Controllers
                     cmdData.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
                     cmdData.Parameters.AddWithValue("@AccName", accName);
                     cmdData.Parameters.AddWithValue("@CompanyName", companyName);
+                    cmdData.Parameters.AddWithValue("@VehicleNo", string.IsNullOrEmpty(vehicleNo) ? (object)DBNull.Value : vehicleNo);
+                    cmdData.Parameters.AddWithValue("@BiltyNo", string.IsNullOrEmpty(biltyNo) ? (object)DBNull.Value : biltyNo);
 
                     using (SqlDataReader reader = cmdData.ExecuteReader())
                     {
@@ -200,14 +206,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult GeneratePDF(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult GeneratePDF(string accode, DateTime fromDate, DateTime toDate, string vehicleNo, string biltyNo)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetPartyExpenseLedger(accode, fromDate, toDate, companyId, financialYearId);
+                DataTable dt = GetPartyExpenseLedger(accode, fromDate, toDate, companyId, financialYearId, vehicleNo, biltyNo);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -246,14 +252,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult OnScreenReport(string accode, DateTime fromDate, DateTime toDate, string vehicleNo, string biltyNo)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetPartyExpenseLedger(accode, fromDate, toDate, companyId, financialYearId);
+                DataTable dt = GetPartyExpenseLedger(accode, fromDate, toDate, companyId, financialYearId, vehicleNo, biltyNo);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -299,14 +305,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult ExportExcel(string accode, DateTime fromDate, DateTime toDate, string vehicleNo, string biltyNo)
         {
             int companyId = GetCompanyId();
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetPartyExpenseLedger(accode, fromDate, toDate, companyId, financialYearId);
+                DataTable dt = GetPartyExpenseLedger(accode, fromDate, toDate, companyId, financialYearId, vehicleNo, biltyNo);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {

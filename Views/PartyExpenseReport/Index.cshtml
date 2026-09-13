@@ -4,6 +4,8 @@
     var fromDateValue = ViewBag.FromDate as string;
     var toDateValue = ViewBag.ToDate as string;
     var accodeValue = ViewBag.Accode as string;
+    var vehicleNoValue = ViewBag.VehicleNo as string;
+    var biltyNoValue = ViewBag.BiltyNo as string;
 
     if (string.IsNullOrEmpty(fromDateValue))
     {
@@ -41,7 +43,7 @@
             <form method="get">
                 <div class="row g-3">
                     <!-- Party / Account Selector -->
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label fw-bold">Select Party / Account</label>
                         <select class="form-control select2" id="accodeSelect" name="accode" required>
                             <option value="">-- Select Party / Account --</option>
@@ -58,14 +60,26 @@
                         </select>
                     </div>
 
+                    <!-- Vehicle No -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Vehicle No</label>
+                        <input type="text" class="form-control" name="vehicleNo" value="@vehicleNoValue" placeholder="e.g. TKA-123" />
+                    </div>
+
+                    <!-- Bilty No -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Bilty No</label>
+                        <input type="text" class="form-control" name="biltyNo" value="@biltyNoValue" placeholder="e.g. 5432" />
+                    </div>
+
                     <!-- From Date -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">From Date</label>
                         <input type="date" class="form-control" name="fromDate" value="@fromDateValue" required />
                     </div>
 
                     <!-- To Date -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">To Date</label>
                         <input type="date" class="form-control" name="toDate" value="@toDateValue" required />
                     </div>
@@ -142,6 +156,8 @@
             var accode = $('select[name="accode"]').val();
             var fromDate = $('input[name="fromDate"]').val();
             var toDate = $('input[name="toDate"]').val();
+            var vehicleNo = $('input[name="vehicleNo"]').val();
+            var biltyNo = $('input[name="biltyNo"]').val();
 
             if (!accode) {
                 alert("Please select a Party / Account Code.");
@@ -175,7 +191,9 @@
             var url = '@Url.Action("OnScreenReport", "PartyExpenseReport")'
                 + '?accode=' + encodeURIComponent(accode)
                 + '&fromDate=' + encodeURIComponent(fromDate)
-                + '&toDate=' + encodeURIComponent(toDate);
+                + '&toDate=' + encodeURIComponent(toDate)
+                + '&vehicleNo=' + encodeURIComponent(vehicleNo)
+                + '&biltyNo=' + encodeURIComponent(biltyNo);
 
             $('#reportFrame').off('load');
             $('#reportFrame').attr('src', url);
