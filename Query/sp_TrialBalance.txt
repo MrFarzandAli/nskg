@@ -1,4 +1,4 @@
-﻿select * from GLTrans
+select * from GLTrans
 
 CREATE INDEX IX_Ledger_Accode_Date 
 ON GLTrans (id, Docdate, CompanyId, FinancialYearId);
@@ -10,7 +10,7 @@ EXEC sp_TrialBalance
     @FinancialYearId = 24;
 
    
-CREATE PROCEDURE sp_TrialBalance  
+ALTER PROCEDURE sp_TrialBalance  
 (  
     @FromDate DATE,  
     @ToDate DATE,  
@@ -23,18 +23,34 @@ BEGIN
   
     ;WITH Accounts AS  
     (  
-        -- All accounts that exist in transactions  
+        -- All accounts that exist in transactions or annual closing OpeningBalance
         SELECT DISTINCT Accode  
         FROM GLTrans  
         WHERE CompanyId = @CompanyId  
           AND FinancialYearId = @FinancialYearId  
+        UNION
+        SELECT DISTINCT Accode
+        FROM OpeningBalance
+        WHERE CompanyId = @CompanyId
+          AND FinancialYearId = @FinancialYearId
     ),  
   
-    Opening AS  
+    InitOpening AS
+    (
+        SELECT
+            Accode,
+            SUM(Debit - Credit) AS InitialBalance
+        FROM OpeningBalance
+        WHERE CompanyId = @CompanyId
+          AND FinancialYearId = @FinancialYearId
+        GROUP BY Accode
+    ),
+
+    PeriodOpening AS  
     (  
         SELECT   
             Accode,  
-            SUM(Debit - Credit) AS OpeningBalance  
+            SUM(Debit - Credit) AS PeriodBalance  
         FROM GLTrans  
         WHERE Docdate < @FromDate  
           AND CompanyId = @CompanyId  
@@ -57,19 +73,18 @@ BEGIN
   
     SELECT   
         A.Accode,  
-        ISNULL(O.OpeningBalance, 0) AS OpeningBalance,  
+        ISNULL(I.InitialBalance, 0) + ISNULL(O.PeriodBalance, 0) AS OpeningBalance,  
         ISNULL(P.Debit, 0) AS Debit,  
         ISNULL(P.Credit, 0) AS Credit,  
           
-        (ISNULL(O.OpeningBalance, 0)   
+        (ISNULL(I.InitialBalance, 0) + ISNULL(O.PeriodBalance, 0)   
         + ISNULL(P.Debit, 0)   
         - ISNULL(P.Credit, 0)) AS ClosingBalance  
   
     FROM Accounts A  
-    LEFT JOIN Opening O   
-        ON A.Accode = O.Accode  
-    LEFT JOIN Period P   
-        ON A.Accode = P.Accode  
+    LEFT JOIN InitOpening I ON A.Accode = I.Accode
+    LEFT JOIN PeriodOpening O ON A.Accode = O.Accode  
+    LEFT JOIN Period P ON A.Accode = P.Accode  
   
     ORDER BY A.Accode;  
   

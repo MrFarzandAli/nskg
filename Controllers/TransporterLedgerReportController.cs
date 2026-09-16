@@ -121,9 +121,20 @@ namespace Nskg.Controllers
 
                 // 3. Query Opening Balance and Transactions with Running Balance
                 string query = @"
+                    DECLARE @AnnualOpeningBal DECIMAL(18,2) = 0;
+
+                    IF OBJECT_ID('OpeningBalances', 'U') IS NOT NULL
+                    BEGIN
+                        SELECT @AnnualOpeningBal = ISNULL(SUM(Debit - Credit), 0)
+                        FROM OpeningBalances
+                        WHERE Accode = @Accode
+                          AND CompanyId = @CompanyId
+                          AND FinancialYearId = @FinancialYearId;
+                    END
+
                     DECLARE @OpeningBal DECIMAL(18,2) = 0;
 
-                    SELECT @OpeningBal = ISNULL(SUM(ISNULL(DRAMT, 0) - ISNULL(CRAMT, 0)), 0)
+                    SELECT @OpeningBal = @AnnualOpeningBal + ISNULL(SUM(ISNULL(DRAMT, 0) - ISNULL(CRAMT, 0)), 0)
                     FROM ACCUMULATED
                     WHERE VODATE < @FromDate
                       AND (@VehicleNo = '' OR RTRIM(LTRIM(ISNULL(VEHICLENO, ''))) = RTRIM(LTRIM(@VehicleNo)));
@@ -202,6 +213,8 @@ namespace Nskg.Controllers
                     cmdData.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
                     cmdData.Parameters.AddWithValue("@AccName", accName);
                     cmdData.Parameters.AddWithValue("@CompanyName", companyName);
+                    cmdData.Parameters.AddWithValue("@CompanyId", companyId);
+                    cmdData.Parameters.AddWithValue("@FinancialYearId", financialYearId);
                     cmdData.Parameters.AddWithValue("@VehicleNo", string.IsNullOrWhiteSpace(vehicleNo) ? "" : vehicleNo.Trim());
 
                     using (SqlDataReader reader = cmdData.ExecuteReader())

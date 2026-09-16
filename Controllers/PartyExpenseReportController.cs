@@ -111,9 +111,20 @@ namespace Nskg.Controllers
 
                 // 3. Query Opening Balance and Transactions with Running Balance from ACCUMULATED
                 string query = @"
+                    DECLARE @AnnualOpeningBal DECIMAL(18,2) = 0;
+
+                    IF OBJECT_ID('OpeningBalances', 'U') IS NOT NULL
+                    BEGIN
+                        SELECT @AnnualOpeningBal = ISNULL(SUM(Debit - Credit), 0)
+                        FROM OpeningBalances
+                        WHERE Accode = @Accode
+                          AND CompanyId = @CompanyId
+                          AND FinancialYearId = @FinancialYearId;
+                    END
+
                     DECLARE @OpeningBal DECIMAL(18,2) = 0;
 
-                    SELECT @OpeningBal = ISNULL(SUM(ISNULL(DRAMT, 0) - ISNULL(CRAMT, 0)), 0)
+                    SELECT @OpeningBal = @AnnualOpeningBal + ISNULL(SUM(ISNULL(DRAMT, 0) - ISNULL(CRAMT, 0)), 0)
                     FROM ACCUMULATED
                     WHERE VODATE < @FromDate;
 
@@ -192,6 +203,8 @@ namespace Nskg.Controllers
                     cmdData.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
                     cmdData.Parameters.AddWithValue("@AccName", accName);
                     cmdData.Parameters.AddWithValue("@CompanyName", companyName);
+                    cmdData.Parameters.AddWithValue("@CompanyId", companyId);
+                    cmdData.Parameters.AddWithValue("@FinancialYearId", financialYearId);
                     cmdData.Parameters.AddWithValue("@VehicleNo", string.IsNullOrEmpty(vehicleNo) ? (object)DBNull.Value : vehicleNo);
                     cmdData.Parameters.AddWithValue("@BiltyNo", string.IsNullOrEmpty(biltyNo) ? (object)DBNull.Value : biltyNo);
 
@@ -332,7 +345,7 @@ namespace Nskg.Controllers
                     string votype = EscapeCsv(row["Votype"]?.ToString() ?? "");
                     string biltiNo = EscapeCsv(row["BillTiNo"]?.ToString() ?? "");
                     string bilNo = EscapeCsv(row["BilNo"]?.ToString() ?? "");
-                    string vehicleNo = EscapeCsv(row["VehicleNo"]?.ToString() ?? "");
+                    string vNo = EscapeCsv(row["VehicleNo"]?.ToString() ?? "");
                     string station = EscapeCsv(row["Station"]?.ToString() ?? "");
                     string iname = EscapeCsv(row["INAME"]?.ToString() ?? "");
                     string qty = row["Qty"] != DBNull.Value && row["Qty"] != null ? Convert.ToDecimal(row["Qty"]).ToString("#,##0") : "";
@@ -340,7 +353,7 @@ namespace Nskg.Controllers
                     string credit = row["Credit"] != DBNull.Value && row["Credit"] != null ? Convert.ToDecimal(row["Credit"]).ToString("#,##0.00") : "0.00";
                     string balance = row["Balance"] != DBNull.Value && row["Balance"] != null ? Convert.ToDecimal(row["Balance"]).ToString("#,##0.00") : "0.00";
 
-                    sb.AppendLine($"{docDate},{docNo},{votype},{biltiNo},{bilNo},{vehicleNo},{station},{iname},{qty},{debit},{credit},{balance}");
+                    sb.AppendLine($"{docDate},{docNo},{votype},{biltiNo},{bilNo},{vNo},{station},{iname},{qty},{debit},{credit},{balance}");
                 }
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
