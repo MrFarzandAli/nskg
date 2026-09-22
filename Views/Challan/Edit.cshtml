@@ -69,13 +69,20 @@
         <div>
             <button type="button"
                     class="btn btn-outline-primary btn-sm me-2"
-                    onclick="openBiltyModal()"
-                    id="addBiltyBtn"
+                    onclick="openBiltyModal('ToPay')"
+                    id="addToPayBiltyBtn"
                     tabindex="8">
-                <i class="fa fa-plus"></i> Add Bilty
+                <i class="fa fa-hand-holding-usd me-1"></i> To Pay Bilty
             </button>
-            <button type="button" class="btn btn-outline-primary  btn-sm me-2" onclick="addRow()" id="addChallanBtn">
-                <i class="fa fa-plus"></i> Add Challan
+            <button type="button"
+                    class="btn btn-outline-success btn-sm me-2"
+                    onclick="openBiltyModal('Paid')"
+                    id="addPaidBiltyBtn"
+                    tabindex="9">
+                <i class="fa fa-check-circle me-1"></i> Paid Bilty
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="addRow()" id="addChallanBtn">
+                <i class="fa fa-plus"></i> Add Empty Row
             </button>
 
             <button type="submit" class="btn btn-warning btn-sm" id="btnUpdate">
@@ -357,6 +364,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="fw-semibold text-muted"><i class="fa fa-filter me-1"></i> Filter Bilty Type:</span>
+                    <div class="btn-group" role="group" id="biltyTypeFilterGroup">
+                        <button type="button" class="btn btn-sm btn-outline-secondary active" id="filterBtnAll" onclick="setBiltyFilterType('All')">All Bilties</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="filterBtnToPay" onclick="setBiltyFilterType('ToPay')"><i class="fa fa-hand-holding-usd me-1"></i> To Pay Bilty</button>
+                        <button type="button" class="btn btn-sm btn-outline-success" id="filterBtnPaid" onclick="setBiltyFilterType('Paid')"><i class="fa fa-check-circle me-1"></i> Paid Bilty</button>
+                    </div>
+                </div>
                 <table class="table table-bordered table-sm">
                     <thead>
                         <tr>
@@ -587,9 +602,13 @@
         // ============================================
 
         let i = @(Model.Details?.Count ?? 0);
+        var currentBiltyFilterType = 'All';
 
         // Open bilty modal after verifying station is selected
-        function openBiltyModal() {
+        function openBiltyModal(type) {
+            type = type || 'All';
+            currentBiltyFilterType = type;
+
             var stationId = $('#Head_StationId').val();
             if (!stationId || stationId === "" || stationId === "0") {
                 alert("Please select Station first.");
@@ -598,7 +617,8 @@
                 return;
             }
 
-            filterBiltiesByStation(stationId);
+            updateBiltyFilterButtons(type);
+            filterBiltiesByStation(stationId, type);
 
             isModalClosing = true;
             focusTarget = '#PartyStationCode';
@@ -609,8 +629,23 @@
             }
         }
 
-        // Filter modal bilty rows by selected station
-        function filterBiltiesByStation(stationId) {
+        function setBiltyFilterType(type) {
+            currentBiltyFilterType = type;
+            var stationId = $('#Head_StationId').val();
+            updateBiltyFilterButtons(type);
+            filterBiltiesByStation(stationId, type);
+        }
+
+        function updateBiltyFilterButtons(type) {
+            $('#biltyTypeFilterGroup button').removeClass('active');
+            if (type === 'ToPay') $('#filterBtnToPay').addClass('active');
+            else if (type === 'Paid') $('#filterBtnPaid').addClass('active');
+            else $('#filterBtnAll').addClass('active');
+        }
+
+        // Filter modal bilty rows by selected station and bilty type
+        function filterBiltiesByStation(stationId, biltyType) {
+            biltyType = biltyType || currentBiltyFilterType || 'All';
             var selectedText = $("#Head_StationId option:selected").text().toLowerCase().trim();
             var stationName = selectedText.replace(/\s*\([^)]*\)/g, '').trim();
 
@@ -621,15 +656,23 @@
 
                 var rowStationId = $tr.data('stationid') || $tr.find('.bilty-check').data('stationid');
                 var rowFooder = ($tr.data('fooder') || $tr.find('.bilty-check').data('fooder') || '').toString().toLowerCase().trim();
+                var ptype = ($tr.find('.bilty-check').data('ptype') || '').toString().toLowerCase().trim();
 
-                var matches = false;
+                var stationMatches = false;
                 if (rowStationId && stationId && rowStationId.toString() === stationId.toString()) {
-                    matches = true;
+                    stationMatches = true;
                 } else if (stationName && rowFooder && (rowFooder === stationName || rowFooder.indexOf(stationName) !== -1 || stationName.indexOf(rowFooder) !== -1)) {
-                    matches = true;
+                    stationMatches = true;
                 }
 
-                if (matches) {
+                var typeMatches = true;
+                if (biltyType === 'ToPay') {
+                    typeMatches = (ptype === 'topay' || ptype === 'pay');
+                } else if (biltyType === 'Paid') {
+                    typeMatches = (ptype === 'paid' || ptype === '' || !ptype);
+                }
+
+                if (stationMatches && typeMatches) {
                     $tr.show();
                     visibleCount++;
                 } else {
@@ -640,10 +683,11 @@
 
             $("#noBiltyMatchRow").remove();
             if (visibleCount === 0) {
+                var typeLabel = biltyType === 'ToPay' ? 'To Pay' : (biltyType === 'Paid' ? 'Paid' : '');
                 $("#biltyModal tbody").append(`
                     <tr id="noBiltyMatchRow">
                         <td colspan="8" class="text-center text-muted py-3">
-                            <i class="fa fa-info-circle me-1 text-warning"></i> No pending bilties found for the selected station.
+                            <i class="fa fa-info-circle me-1 text-warning"></i> No pending ${typeLabel} bilties found for the selected station.
                         </td>
                     </tr>
                 `);

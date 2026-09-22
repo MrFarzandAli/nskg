@@ -48,7 +48,19 @@ namespace Nskg.Controllers
             ViewBag.PartyCode = partyCode ?? "";
             ViewBag.ReportType = string.IsNullOrEmpty(reportType) ? "Godown" : reportType;
 
-            return View();
+            return View("Index");
+        }
+
+        [HttpGet]
+        public IActionResult ChallanList(string fromDate, string toDate, string partyCode)
+        {
+            return Index(fromDate, toDate, partyCode, "Godown");
+        }
+
+        [HttpGet]
+        public IActionResult ChallanReport(string fromDate, string toDate, string partyCode)
+        {
+            return Index(fromDate, toDate, partyCode, "Adda");
         }
 
         /// <summary>

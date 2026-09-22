@@ -100,14 +100,21 @@ namespace Nskg.Controllers
                 }
 
                 // 2. Fetch Account Name & Company Name
-                string accName = "";
-                using (SqlCommand cmdAcc = new SqlCommand(
-                    "SELECT TOP 1 Name FROM GLCHART3 WHERE (CompanyId = @CompanyId OR CompanyId = 0 OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
+                string accName = "ALL TRANSPORTERS";
+                if (!string.IsNullOrWhiteSpace(accode))
                 {
-                    cmdAcc.Parameters.AddWithValue("@CompanyId", companyId);
-                    cmdAcc.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
-                    var res = cmdAcc.ExecuteScalar();
-                    if (res != null && res != DBNull.Value) accName = res.ToString();
+                    using (SqlCommand cmdAcc = new SqlCommand(
+                        "SELECT TOP 1 Name FROM GLCHART3 WHERE (CompanyId = @CompanyId OR CompanyId = 0 OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
+                    {
+                        cmdAcc.Parameters.AddWithValue("@CompanyId", companyId);
+                        cmdAcc.Parameters.AddWithValue("@Accode", accode.Trim());
+                        var res = cmdAcc.ExecuteScalar();
+                        if (res != null && res != DBNull.Value) accName = res.ToString();
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(vehicleNo))
+                {
+                    accName += $" (VEHICLE: {vehicleNo.Trim()})";
                 }
 
                 string companyName = "West Wharf-New Shadab Karachi Goods Transports";
@@ -127,7 +134,7 @@ namespace Nskg.Controllers
                     BEGIN
                         SELECT @AnnualOpeningBal = ISNULL(SUM(Debit - Credit), 0)
                         FROM OpeningBalances
-                        WHERE Accode = @Accode
+                        WHERE (@Accode = '' OR Accode = @Accode)
                           AND CompanyId = @CompanyId
                           AND FinancialYearId = @FinancialYearId;
                     END
@@ -137,6 +144,7 @@ namespace Nskg.Controllers
                     SELECT @OpeningBal = @AnnualOpeningBal + ISNULL(SUM(ISNULL(DRAMT, 0) - ISNULL(CRAMT, 0)), 0)
                     FROM ACCUMULATED
                     WHERE VODATE < @FromDate
+                      AND (@Accode = '' OR RTRIM(LTRIM(ISNULL(ACC, ''))) = @Accode OR (RTRIM(LTRIM(ISNULL(AC1, ''))) + RTRIM(LTRIM(ISNULL(AC3, '')))) = @Accode)
                       AND (@VehicleNo = '' OR RTRIM(LTRIM(ISNULL(VEHICLENO, ''))) = RTRIM(LTRIM(@VehicleNo)));
 
                     ;WITH RawData AS
@@ -168,9 +176,16 @@ namespace Nskg.Controllers
                             ISNULL(VOTYPE, '') AS Votype,
                             CASE WHEN BILLTINO IS NOT NULL AND BILLTINO <> 0 THEN CAST(CAST(BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BillTiNo,
                             CASE WHEN BILNO IS NOT NULL AND BILNO <> 0 THEN CAST(CAST(BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BilNo,
-                            ISNULL(VEHICLENO, '') AS VehicleNo,
+                            CASE 
+                                WHEN NULLIF(RTRIM(LTRIM(VEHICLENO)), '') IS NOT NULL THEN RTRIM(LTRIM(VEHICLENO))
+                                WHEN VOTYPE = 'CL' AND NULLIF(RTRIM(LTRIM(NARRATION)), '') IS NOT NULL THEN RTRIM(LTRIM(NARRATION))
+                                ELSE ''
+                            END AS VehicleNo,
                             ISNULL(STATION, '') AS Station,
-                            ISNULL(INAME, ISNULL(NARRATION, '')) AS IName,
+                            CASE 
+                                WHEN VOTYPE = 'CL' THEN ISNULL(INAME, '')
+                                ELSE ISNULL(INAME, ISNULL(NARRATION, ''))
+                            END AS IName,
                             QTY AS Qty,
                             ISNULL(DRAMT, 0) AS Debit,
                             ISNULL(CRAMT, 0) AS Credit,
@@ -181,7 +196,12 @@ namespace Nskg.Controllers
                             ROW_NUMBER() OVER (ORDER BY VODATE, VONO) AS RowNum
                         FROM ACCUMULATED
                         WHERE VODATE >= @FromDate AND VODATE <= @ToDate
-                          AND (@VehicleNo = '' OR RTRIM(LTRIM(ISNULL(VEHICLENO, ''))) = RTRIM(LTRIM(@VehicleNo)))
+                          AND (@Accode = '' OR RTRIM(LTRIM(ISNULL(ACC, ''))) = @Accode OR (RTRIM(LTRIM(ISNULL(AC1, ''))) + RTRIM(LTRIM(ISNULL(AC3, '')))) = @Accode)
+                          AND (
+                              @VehicleNo = '' 
+                              OR RTRIM(LTRIM(ISNULL(VEHICLENO, ''))) = RTRIM(LTRIM(@VehicleNo))
+                              OR (VOTYPE = 'CL' AND RTRIM(LTRIM(ISNULL(NARRATION, ''))) = RTRIM(LTRIM(@VehicleNo)))
+                          )
                     )
                     SELECT 
                         SortOrder,
@@ -210,7 +230,7 @@ namespace Nskg.Controllers
                     cmdData.CommandTimeout = 180;
                     cmdData.Parameters.AddWithValue("@FromDate", fromDate.Date);
                     cmdData.Parameters.AddWithValue("@ToDate", toDate.Date);
-                    cmdData.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
+                    cmdData.Parameters.AddWithValue("@Accode", string.IsNullOrWhiteSpace(accode) ? "" : accode.Trim());
                     cmdData.Parameters.AddWithValue("@AccName", accName);
                     cmdData.Parameters.AddWithValue("@CompanyName", companyName);
                     cmdData.Parameters.AddWithValue("@CompanyId", companyId);

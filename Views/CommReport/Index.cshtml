@@ -1,5 +1,7 @@
 @{
-    ViewData["Title"] = "Commission Report";
+    var isChallanReport = string.Equals(ViewBag.ReportType as string, "Adda", StringComparison.OrdinalIgnoreCase);
+    var pageHeading = isChallanReport ? "Challan Report (Adda)" : "Challan List (Godown)";
+    ViewData["Title"] = pageHeading;
 
     var fromDateValue = ViewBag.FromDate as string;
     var toDateValue = ViewBag.ToDate as string;
@@ -28,7 +30,7 @@
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold"><i class="fa fa-file-text-o me-2 text-warning"></i> Commission Report</h3>
+        <h3 class="fw-bold"><i class="fa fa-file-text-o me-2 text-warning"></i> @pageHeading</h3>
     </div>
 
     <!-- Filter Card -->

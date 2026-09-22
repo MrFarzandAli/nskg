@@ -45,7 +45,7 @@
                     <!-- Party / Account Selector -->
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Select Party / Account</label>
-                        <select class="form-control select2" id="accodeSelect" name="accode" required>
+                        <select class="form-control select2" id="accodeSelect" name="accode">
                             <option value="">-- Select Party / Account --</option>
                             @if (ViewBag.AccountList != null)
                             {
@@ -60,10 +60,22 @@
                         </select>
                     </div>
 
-                    <!-- Vehicle No -->
-                    <div class="col-md-2">
+                    <!-- Vehicle No Filter -->
+                    <div class="col-md-3">
                         <label class="form-label fw-bold">Vehicle No</label>
-                        <input type="text" class="form-control" name="vehicleNo" value="@vehicleNoValue" placeholder="e.g. TKA-123" />
+                        <select class="form-control select2" id="vehicleNoSelect" name="vehicleNo">
+                            <option value="">-- All Vehicles --</option>
+                            @if (ViewBag.VehicleList != null)
+                            {
+                                foreach (var item in ViewBag.VehicleList)
+                                {
+                                    <option value="@item" 
+                                            selected="@(item == vehicleNoValue ? "selected" : null)">
+                                        @item
+                                    </option>
+                                }
+                            }
+                        </select>
                     </div>
 
                     <!-- Bilty No -->
@@ -85,16 +97,14 @@
                     </div>
 
                     <!-- Actions -->
-                    <div class="col-md-2 d-flex align-items-end gap-2">
+                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                         <!-- VIEW ON SCREEN -->
                         <button type="button"
-                                class="btn btn-danger btn-md flex-fill text-white shadow-sm"
+                                class="btn btn-danger btn-md text-white shadow-sm px-4"
                                 onclick="loadOnScreenReport()">
-                            <i class="fa fa-desktop me-1"></i> View
+                            <i class="fa fa-desktop me-1"></i> View Report
                         </button>
-                    </div>
 
-                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                         <!-- EXCEL EXPORT -->
                         <button type="submit"
                                 class="btn btn-success btn-sm px-3 shadow-sm"
@@ -144,23 +154,31 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            $('.select2').select2({
+            $('#accodeSelect').select2({
                 theme: 'bootstrap-5',
                 placeholder: "-- Select Party / Account --",
                 allowClear: true,
                 width: '100%'
             });
+
+            $('#vehicleNoSelect').select2({
+                theme: 'bootstrap-5',
+                placeholder: "-- All Vehicles --",
+                allowClear: true,
+                tags: true,
+                width: '100%'
+            });
         });
 
         function loadOnScreenReport() {
-            var accode = $('select[name="accode"]').val();
+            var accode = $('select[name="accode"]').val() || '';
+            var vehicleNo = $('select[name="vehicleNo"]').val() || $('input[name="vehicleNo"]').val() || '';
+            var biltyNo = $('input[name="biltyNo"]').val() || '';
             var fromDate = $('input[name="fromDate"]').val();
             var toDate = $('input[name="toDate"]').val();
-            var vehicleNo = $('input[name="vehicleNo"]').val();
-            var biltyNo = $('input[name="biltyNo"]').val();
 
-            if (!accode) {
-                alert("Please select a Party / Account Code.");
+            if (!accode && !vehicleNo && !biltyNo) {
+                alert("Please select a Party / Account, Vehicle No, or enter a Bilty No.");
                 return;
             }
 

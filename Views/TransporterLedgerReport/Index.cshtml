@@ -44,7 +44,7 @@
                     <!-- Account Code Selector -->
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Select Transporter Account</label>
-                        <select class="form-control select2" id="accodeSelect" name="accode" required>
+                        <select class="form-control select2" id="accodeSelect" name="accode">
                             <option value="">-- Select Transporter --</option>
                             @if (ViewBag.AccountList != null)
                             {
@@ -166,13 +166,13 @@
         });
 
         function loadOnScreenReport() {
-            var accode = $('select[name="accode"]').val();
+            var accode = $('select[name="accode"]').val() || '';
             var vehicleNo = $('select[name="vehicleNo"]').val() || '';
             var fromDate = $('input[name="fromDate"]').val();
             var toDate = $('input[name="toDate"]').val();
 
-            if (!accode) {
-                alert("Please select a Transporter Account.");
+            if (!accode && !vehicleNo) {
+                alert("Please select a Transporter Account or a Vehicle No.");
                 return;
             }
 
