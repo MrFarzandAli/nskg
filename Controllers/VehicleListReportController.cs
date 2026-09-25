@@ -7,18 +7,19 @@ using Nskg.Extensions;
 using System;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Nskg.Controllers
 {
     [Authorize]
-    public class CommReportController : Controller
+    public class VehicleListReportController : Controller
     {
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
 
-        public CommReportController(ApplicationDbContext context, IConfiguration config, IWebHostEnvironment env)
+        public VehicleListReportController(ApplicationDbContext context, IConfiguration config, IWebHostEnvironment env)
         {
             _context = context;
             _config = config;
@@ -26,14 +27,9 @@ namespace Nskg.Controllers
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         }
 
-        private int GetCompanyId(int? companyId = null, string? pcocode = null)
+        private int GetCompanyId(int? companyId = null)
         {
             if (companyId.HasValue && companyId.Value > 0) return companyId.Value;
-            if (!string.IsNullOrWhiteSpace(pcocode))
-            {
-                var comp = _context.Companies.FirstOrDefault(c => c.Cocode == pcocode.Trim() && !c.IsDeleted);
-                if (comp != null) return comp.Id;
-            }
             var compId = User.FindFirst("CompanyId")?.Value;
             if (int.TryParse(compId, out int id) && id > 0) return id;
             return 1006;
@@ -47,9 +43,41 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(string? fromDate, string? toDate, string? partyCode, string? reportType, decimal? biltyNo, string? vehicleNo, string? station, int? companyId, string? pchalno, string? pcocode, string? fdate, string? tdate, string? mode)
+        public IActionResult GetAccountsByCompany(int companyId)
         {
-            int selectedCompanyId = GetCompanyId(companyId, pcocode);
+            var accounts = _context.GLChart3
+                .Where(x => (x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null))
+                .Where(x => x.AC1 == "067" || x.AC1 == "068" || (x.Name != null && (x.Name.Contains("GODOWN") || x.Name.Contains("ADDA"))) || x.AC1 == "060")
+                .Select(x => new
+                {
+                    code = (x.AC1 ?? "") + (x.AC3 ?? ""),
+                    name = x.Name,
+                    type = (x.AC1 == "068" || (x.Name != null && x.Name.ToUpper().Contains("GODOWN"))) ? "Godown" : "Adda"
+                })
+                .OrderBy(x => x.name)
+                .ToList();
+
+            if (!accounts.Any())
+            {
+                accounts = _context.GLChart3
+                    .Where(x => (x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null))
+                    .Select(x => new
+                    {
+                        code = (x.AC1 ?? "") + (x.AC3 ?? ""),
+                        name = x.Name,
+                        type = (x.Name != null && x.Name.ToUpper().Contains("GODOWN")) ? "Godown" : "Adda"
+                    })
+                    .OrderBy(x => x.name)
+                    .ToList();
+            }
+
+            return Json(accounts);
+        }
+
+        [HttpGet]
+        public IActionResult Index(string? fromDate, string? toDate, string? accode, int? companyId)
+        {
+            int selectedCompanyId = GetCompanyId(companyId);
 
             var companies = _context.Companies
                 .Where(c => !c.IsDeleted)
@@ -62,55 +90,115 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            string effectiveFromDate = !string.IsNullOrEmpty(fdate) ? fdate : fromDate;
-            string effectiveToDate = !string.IsNullOrEmpty(tdate) ? tdate : toDate;
+            var accounts = _context.GLChart3
+                .Where(x => (x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null))
+                .Where(x => x.AC1 == "067" || x.AC1 == "068" || (x.Name != null && (x.Name.Contains("GODOWN") || x.Name.Contains("ADDA"))) || x.AC1 == "060")
+                .Select(x => new
+                {
+                    Code = (x.AC1 ?? "") + (x.AC3 ?? ""),
+                    Name = x.Name,
+                    Type = (x.AC1 == "068" || (x.Name != null && x.Name.ToUpper().Contains("GODOWN"))) ? "Godown" : "Adda"
+                })
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            if (!accounts.Any())
+            {
+                accounts = _context.GLChart3
+                    .Where(x => (x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null))
+                    .Select(x => new
+                    {
+                        Code = (x.AC1 ?? "") + (x.AC3 ?? ""),
+                        Name = x.Name,
+                        Type = (x.Name != null && x.Name.ToUpper().Contains("GODOWN")) ? "Godown" : "Adda"
+                    })
+                    .OrderBy(x => x.Name)
+                    .ToList();
+            }
 
             ViewBag.CompanyList = companies;
             ViewBag.SelectedCompanyId = selectedCompanyId;
-            ViewBag.Pcocode = pcocode ?? "";
-            ViewBag.Pchalno = pchalno ?? "";
-            ViewBag.FromDate = string.IsNullOrEmpty(effectiveFromDate) ? DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd") : effectiveFromDate;
-            ViewBag.ToDate = string.IsNullOrEmpty(effectiveToDate) ? DateTime.Now.ToString("yyyy-MM-dd") : effectiveToDate;
-            ViewBag.PartyCode = partyCode ?? "";
-            ViewBag.ReportType = string.IsNullOrEmpty(reportType) ? "Godown" : reportType;
-            ViewBag.BiltyNo = biltyNo;
-            ViewBag.VehicleNo = vehicleNo;
-            ViewBag.Station = station;
-            ViewBag.Mode = string.IsNullOrEmpty(mode) ? (string.IsNullOrEmpty(pchalno) ? "Report" : "List") : mode;
+            ViewBag.AccountList = accounts;
+            ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd") : fromDate;
+            ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
+            ViewBag.Accode = accode ?? "";
 
-            return View("Index");
+            return View();
         }
 
-        [HttpGet]
-        public IActionResult ChallanList(string? pchalno, string? pcocode, int? companyId)
+        private void RunVehicleListProcedure(SqlConnection con, int companyId, DateTime toDate, string accode)
         {
-            return Index(null, null, null, "Godown", null, null, null, companyId, pchalno, pcocode, null, null, "List");
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.PROCESSDETAIL_Station", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandTimeout = 180;
+                    cmd.Parameters.AddWithValue("@CompanyId", companyId);
+                    cmd.Parameters.AddWithValue("@TDATE", toDate.Date);
+                    cmd.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch
+            {
+                try
+                {
+                    using (SqlCommand cmd2 = new SqlCommand("dbo.PROCESSDETAIL", con))
+                    {
+                        cmd2.CommandType = CommandType.StoredProcedure;
+                        cmd2.CommandTimeout = 180;
+                        cmd2.Parameters.AddWithValue("@CompanyId", companyId);
+                        cmd2.Parameters.AddWithValue("@TDATE", toDate.Date);
+                        cmd2.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                        cmd2.ExecuteNonQuery();
+                    }
+                }
+                catch
+                {
+                    // Fallback handled silently
+                }
+            }
         }
 
-        [HttpGet]
-        public IActionResult ChallanReport(string? fdate, string? tdate, string? pcocode, string? fromDate, string? toDate, int? companyId)
+        private string ResolveReportType(string? accode, int companyId)
         {
-            return Index(fromDate, toDate, null, "Adda", null, null, null, companyId, null, pcocode, fdate, tdate, "Report");
+            if (!string.IsNullOrWhiteSpace(accode))
+            {
+                var acc = _context.GLChart3.FirstOrDefault(x =>
+                    (x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null) &&
+                    ((x.AC1 + x.AC3) == accode.Trim() || x.ACC == accode.Trim()));
+
+                if (acc != null)
+                {
+                    if (acc.AC1 == "068" || (!string.IsNullOrEmpty(acc.Name) && acc.Name.ToUpper().Contains("GODOWN")))
+                    {
+                        return "Godown";
+                    }
+                    if (acc.AC1 == "067" || (!string.IsNullOrEmpty(acc.Name) && acc.Name.ToUpper().Contains("ADDA")))
+                    {
+                        return "Adda";
+                    }
+                }
+            }
+
+            return "Godown";
         }
 
-        /// <summary>
-        /// Challan List / Report Data Retrieval
-        /// </summary>
-        private DataTable GetCommReportData(DateTime? fromDate, DateTime? toDate, string? partyCode, string? reportType, decimal? biltyNo, string? vehicleNo, string? station, int companyId, string? pchalno = null)
+        private DataTable GetVehicleListData(DateTime? fromDate, DateTime? toDate, string? accode, out string resolvedReportType, int companyId)
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
-
-            bool hasSpecificFilter = !string.IsNullOrWhiteSpace(pchalno)
-                                  || (biltyNo.HasValue && biltyNo.Value > 0)
-                                  || !string.IsNullOrWhiteSpace(vehicleNo)
-                                  || !string.IsNullOrWhiteSpace(station);
 
             using (SqlConnection con = new SqlConnection(connString))
             {
                 con.Open();
 
-                // Fetch Company Name
+                // 1. Run Vehicle List Procedure prior to querying
+                DateTime effectiveToDate = toDate.HasValue ? toDate.Value : DateTime.Now;
+                RunVehicleListProcedure(con, companyId, effectiveToDate, accode ?? "");
+
+                // 2. Fetch Company Name
                 string companyName = "West Wharf-New Shadab Karachi Goods Transports";
                 using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
                 {
@@ -120,18 +208,17 @@ namespace Nskg.Controllers
                         companyName = res.ToString();
                 }
 
-                // Filter by location type (Godown vs Adda) if station name or type is passed
+                // 3. Resolve Report Type (Godown vs Adda)
+                resolvedReportType = ResolveReportType(accode, companyId);
+
                 string locationFilter = "";
-                if (!string.IsNullOrWhiteSpace(reportType))
+                if (resolvedReportType == "Godown")
                 {
-                    if (reportType.Equals("Godown", StringComparison.OrdinalIgnoreCase))
-                    {
-                        locationFilter = " AND (h.Station LIKE '%Godown%' OR h.Station NOT LIKE '%Adda%') ";
-                    }
-                    else if (reportType.Equals("Adda", StringComparison.OrdinalIgnoreCase))
-                    {
-                        locationFilter = " AND (h.Station LIKE '%Adda%' OR h.Station NOT LIKE '%Godown%') ";
-                    }
+                    locationFilter = " AND (h.Station LIKE '%Godown%' OR h.Station NOT LIKE '%Adda%') ";
+                }
+                else
+                {
+                    locationFilter = " AND (h.Station LIKE '%Adda%' OR h.Station NOT LIKE '%Godown%') ";
                 }
 
                 string query = $@"
@@ -199,61 +286,33 @@ namespace Nskg.Controllers
                     WHERE (h.CompanyId = @CompanyId OR @CompanyId = 0)
                       AND ISNULL(h.IsDeleted, 0) = 0";
 
-                if (!string.IsNullOrWhiteSpace(pchalno))
-                {
-                    query += " AND (CAST(ISNULL(h.ChalNo, 0) AS VARCHAR(50)) = @Pchalno OR CAST(ISNULL(d.BillTiNo, 0) AS VARCHAR(50)) = @Pchalno OR h.DocNo LIKE '%' + @Pchalno + '%')";
-                }
-
-                if (biltyNo.HasValue && biltyNo.Value > 0)
-                    query += " AND d.BillTiNo = @BiltyNo";
-
-                if (!string.IsNullOrWhiteSpace(vehicleNo))
-                    query += " AND COALESCE(d.VehicleNo, h.VehicleNo) LIKE @VehicleNo";
-
-                if (!string.IsNullOrWhiteSpace(station))
-                    query += " AND h.Station LIKE @Station";
-
-                if (fromDate.HasValue && !hasSpecificFilter)
+                if (fromDate.HasValue)
                     query += " AND h.DocDate >= @FromDate";
 
-                if (toDate.HasValue && !hasSpecificFilter)
+                if (toDate.HasValue)
                     query += " AND h.DocDate <= @ToDate";
 
-                query += @"
-                      AND (
-                            @PartyCode IS NULL
-                            OR @PartyCode = ''
-                            OR (ISNULL(g.AC1, '') + ISNULL(g.AC3, '')) = @PartyCode
-                          )
-                      " + locationFilter + @"
-                    ORDER BY h.DocDate, d.BillTiNo";
+                if (!string.IsNullOrWhiteSpace(accode))
+                {
+                    query += @" AND (
+                        (ISNULL(g.AC1, '') + ISNULL(g.AC3, '')) = @Accode 
+                        OR g.ACC = @Accode 
+                        OR h.Station LIKE '%' + @Accode + '%'
+                        OR EXISTS (SELECT 1 FROM GLChart3 g2 WHERE g2.Id = h.StationId AND ((g2.AC1 + g2.AC3) = @Accode OR g2.ACC = @Accode))
+                    )";
+                }
+
+                query += locationFilter;
+                query += " ORDER BY h.DocDate, d.BillTiNo";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@CompanyId", companyId);
                     cmd.Parameters.AddWithValue("@CompanyName", companyName);
-                    cmd.Parameters.AddWithValue("@Pchalno", string.IsNullOrWhiteSpace(pchalno) ? (object)DBNull.Value : pchalno.Trim());
-                    cmd.Parameters.AddWithValue("@PartyCode", string.IsNullOrWhiteSpace(partyCode) ? (object)DBNull.Value : partyCode.Trim());
-                    cmd.Parameters.AddWithValue("@ReportType", string.IsNullOrWhiteSpace(reportType) ? "Godown" : reportType);
-
-                    if (biltyNo.HasValue && biltyNo.Value > 0)
-                        cmd.Parameters.AddWithValue("@BiltyNo", biltyNo.Value);
-
-                    if (!string.IsNullOrWhiteSpace(vehicleNo))
-                        cmd.Parameters.AddWithValue("@VehicleNo", "%" + vehicleNo.Trim() + "%");
-
-                    if (!string.IsNullOrWhiteSpace(station))
-                        cmd.Parameters.AddWithValue("@Station", "%" + station.Trim() + "%");
-
-                    if (fromDate.HasValue && !hasSpecificFilter)
-                        cmd.Parameters.AddWithValue("@FromDate", fromDate.Value.Date);
-                    else
-                        cmd.Parameters.AddWithValue("@FromDate", DBNull.Value);
-
-                    if (toDate.HasValue && !hasSpecificFilter)
-                        cmd.Parameters.AddWithValue("@ToDate", toDate.Value.Date);
-                    else
-                        cmd.Parameters.AddWithValue("@ToDate", DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Accode", string.IsNullOrWhiteSpace(accode) ? (object)DBNull.Value : accode.Trim());
+                    cmd.Parameters.AddWithValue("@ReportType", resolvedReportType);
+                    cmd.Parameters.AddWithValue("@FromDate", fromDate.HasValue ? (object)fromDate.Value.Date : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@ToDate", toDate.HasValue ? (object)toDate.Value.Date : DBNull.Value);
 
                     using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                     {
@@ -266,22 +325,21 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult GeneratePDF(DateTime? fromDate, DateTime? toDate, string? partyCode, string? reportType, decimal? biltyNo, string? vehicleNo, string? station, int? companyId, string? pchalno, string? pcocode, string? fdate, string? tdate)
+        public IActionResult GeneratePDF(DateTime? fromDate, DateTime? toDate, string? accode, int? companyId)
         {
-            int selectedCompanyId = GetCompanyId(companyId, pcocode);
-            DateTime? effFromDate = !string.IsNullOrEmpty(fdate) && DateTime.TryParse(fdate, out DateTime fd) ? fd : fromDate;
-            DateTime? effToDate = !string.IsNullOrEmpty(tdate) && DateTime.TryParse(tdate, out DateTime td) ? td : toDate;
+            int selectedCompanyId = GetCompanyId(companyId);
 
             try
             {
-                DataTable dt = GetCommReportData(effFromDate, effToDate, partyCode, reportType, biltyNo, vehicleNo, station, selectedCompanyId, pchalno);
+                DataTable dt = GetVehicleListData(fromDate, toDate, accode, out string resolvedType, selectedCompanyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
-                    return Content("No data found for the selected filter criteria.");
+                    return Content("No data found for the selected vehicle list parameters.");
                 }
 
-                string rdlcFile = (reportType == "Adda") ? "CommReportAddarpt.rdlc" : "CommReportrpt.rdlc";
+                // Godown: CommReportrpt.rdlc (commreportall_1) | Adda: CommReportAddarpt.rdlc (commreport_all12)
+                string rdlcFile = (resolvedType == "Adda") ? "CommReportAddarpt.rdlc" : "CommReportrpt.rdlc";
                 string reportPath = Path.Combine(_env.WebRootPath, "Reports", rdlcFile);
 
                 if (!System.IO.File.Exists(reportPath))
@@ -304,8 +362,7 @@ namespace Nskg.Controllers
                         return Content("PDF generation failed or returned empty output.");
                     }
 
-                    string typeName = reportType ?? "Godown";
-                    string fileName = $"CommReport_{typeName}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                    string fileName = $"VehicleList_{resolvedType}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                     return File(pdfBytes, "application/pdf", fileName, enableRangeProcessing: true);
                 }
             }
@@ -316,23 +373,21 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(DateTime? fromDate, DateTime? toDate, string? partyCode, string? reportType, decimal? biltyNo, string? vehicleNo, string? station, int? companyId, string? pchalno, string? pcocode, string? fdate, string? tdate)
+        public IActionResult OnScreenReport(DateTime? fromDate, DateTime? toDate, string? accode, int? companyId)
         {
-            int selectedCompanyId = GetCompanyId(companyId, pcocode);
-            DateTime? effFromDate = !string.IsNullOrEmpty(fdate) && DateTime.TryParse(fdate, out DateTime fd) ? fd : fromDate;
-            DateTime? effToDate = !string.IsNullOrEmpty(tdate) && DateTime.TryParse(tdate, out DateTime td) ? td : toDate;
+            int selectedCompanyId = GetCompanyId(companyId);
 
             try
             {
-                DataTable dt = GetCommReportData(effFromDate, effToDate, partyCode, reportType, biltyNo, vehicleNo, station, selectedCompanyId, pchalno);
+                DataTable dt = GetVehicleListData(fromDate, toDate, accode, out string resolvedType, selectedCompanyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
-                    return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No data found for the selected filter criteria.</strong></div>", "text/html");
+                    return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No data found for the selected vehicle list filter criteria.</strong></div>", "text/html");
                 }
 
                 string compName = dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() ?? "Company" : "Company";
-                string title = (reportType == "Adda") ? "COMMISSION REPORT (ADDA - commreport_all12)" : "COMMISSION REPORT (GODOWN - commreport_all1)";
+                string title = (resolvedType == "Adda") ? "VEHICLE LIST REPORT (ADDA - commreport_all12)" : "VEHICLE LIST REPORT (GODOWN - commreportall_1)";
                 string headerBg = "#0d6efd";
 
                 decimal grandAmount = 0, grandDrAmt = 0, grandCrAmt = 0, grandDelivery = 0;
@@ -360,9 +415,9 @@ namespace Nskg.Controllers
                 sb.Append("<div class='header-box'>");
                 sb.Append($"<h2>{compName}</h2>");
                 sb.Append($"<h3>{title}</h3>");
-                string periodText = (effFromDate.HasValue && effToDate.HasValue) ? $"Period: <b>{effFromDate.Value:dd-MMM-yyyy}</b> to <b>{effToDate.Value:dd-MMM-yyyy}</b>" : "All Dates";
-                string challanText = !string.IsNullOrWhiteSpace(pchalno) ? $" &nbsp;|&nbsp; Challan No: <b>{pchalno}</b>" : "";
-                sb.Append($"<p>{periodText}{challanText} &nbsp;|&nbsp; Type: <b>{reportType}</b></p>");
+                string periodText = (fromDate.HasValue && toDate.HasValue) ? $"Period: <b>{fromDate.Value:dd-MMM-yyyy}</b> to <b>{toDate.Value:dd-MMM-yyyy}</b>" : "All Dates";
+                string accText = !string.IsNullOrWhiteSpace(accode) ? $" &nbsp;|&nbsp; Account: <b>{accode}</b>" : "";
+                sb.Append($"<p>{periodText}{accText}</p>");
                 sb.Append("</div>");
 
                 sb.Append("<table><thead><tr>");
@@ -440,15 +495,13 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(DateTime? fromDate, DateTime? toDate, string? partyCode, string? reportType, decimal? biltyNo, string? vehicleNo, string? station, int? companyId, string? pchalno, string? pcocode, string? fdate, string? tdate)
+        public IActionResult ExportExcel(DateTime? fromDate, DateTime? toDate, string? accode, int? companyId)
         {
-            int selectedCompanyId = GetCompanyId(companyId, pcocode);
-            DateTime? effFromDate = !string.IsNullOrEmpty(fdate) && DateTime.TryParse(fdate, out DateTime fd) ? fd : fromDate;
-            DateTime? effToDate = !string.IsNullOrEmpty(tdate) && DateTime.TryParse(tdate, out DateTime td) ? td : toDate;
+            int selectedCompanyId = GetCompanyId(companyId);
 
             try
             {
-                DataTable dt = GetCommReportData(effFromDate, effToDate, partyCode, reportType, biltyNo, vehicleNo, station, selectedCompanyId, pchalno);
+                DataTable dt = GetVehicleListData(fromDate, toDate, accode, out string resolvedType, selectedCompanyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -457,10 +510,10 @@ namespace Nskg.Controllers
 
                 var sb = new StringBuilder();
                 string compName = (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "Company";
-                string reportTitle = (reportType == "Adda") ? "COMMISSION REPORT (ADDA - commreport_all12)" : "COMMISSION REPORT (GODOWN - commreport_all1)";
+                string reportTitle = (resolvedType == "Adda") ? "VEHICLE LIST REPORT (ADDA - commreport_all12)" : "VEHICLE LIST REPORT (GODOWN - commreportall_1)";
                 sb.AppendLine($"\"{compName}\"");
                 sb.AppendLine($"\"{reportTitle}\"");
-                sb.AppendLine($"\"Date From:\",\"{effFromDate:dd-MM-yyyy}\",\"Date To:\",\"{effToDate:dd-MM-yyyy}\",\"Challan No:\",\"{pchalno}\",\"Type:\",\"{reportType}\"");
+                sb.AppendLine($"\"Date From:\",\"{fromDate:dd-MM-yyyy}\",\"Date To:\",\"{toDate:dd-MM-yyyy}\",\"Account:\",\"{accode}\"");
                 sb.AppendLine();
 
                 sb.AppendLine("Date,Bill Ti No,Station,Rate,Amount,Vehicle No,Dr Amt,Cr Amt,Delivery Amt,S.Tax Amt,Delivery Amt2,Item Name,Branch,Party Code,Pay,Qty");
@@ -478,7 +531,6 @@ namespace Nskg.Controllers
                     decimal delivery2 = row["DeliveryAmt2"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt2"]) : 0;
                     decimal pay = row["Pay"] != DBNull.Value ? Convert.ToDecimal(row["Pay"]) : 0;
                     decimal qty = row["Qty"] != DBNull.Value ? Convert.ToDecimal(row["Qty"]) : 0;
-                    decimal rate = row["Rate"] != DBNull.Value ? Convert.ToDecimal(row["Rate"]) : 0;
 
                     totAmt += amount;
                     totDr += drAmt;
@@ -495,7 +547,7 @@ namespace Nskg.Controllers
                 sb.AppendLine($"\"TOTAL\",,,,{totAmt},,{totDr},{totCr},{totDel},{totSTax},{totDel2},,,,{totPay},{totQty}");
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
-                return File(bytes, "text/csv", $"CommReport_{reportType}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+                return File(bytes, "text/csv", $"VehicleList_{resolvedType}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
             }
             catch (Exception ex)
             {
@@ -503,14 +555,15 @@ namespace Nskg.Controllers
             }
         }
 
-        private string EscapeCsv(string text)
+        private string EscapeCsv(string? text)
         {
             if (string.IsNullOrEmpty(text)) return "";
             if (text.Contains(",") || text.Contains("\"") || text.Contains("\n") || text.Contains("\r"))
             {
-                return $"\"{text.Replace("\"", "\"\"")}\"";
+                return "\"" + text.Replace("\"", "\"\"") + "\"";
             }
             return text;
         }
     }
 }
+

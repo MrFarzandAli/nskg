@@ -41,50 +41,76 @@
         <div class="card-body p-4 bg-light">
             <form method="get" id="filterForm">
                 <div class="row g-3">
-                    <!-- From Date -->
+                    <!-- Company Selector -->
                     <div class="col-md-3">
+                        <label class="form-label fw-bold">Company</label>
+                        <select class="form-control select2" id="companySelect" name="companyId">
+                            @if (ViewBag.CompanyList != null)
+                            {
+                                foreach (var comp in ViewBag.CompanyList)
+                                {
+                                    <option value="@comp.Id" selected="@(comp.Id == ViewBag.SelectedCompanyId ? "selected" : null)">
+                                        @comp.Name
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- From Date -->
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">From Date</label>
-                        <input type="date" class="form-control" name="fromDate" id="fromDate" value="@fromDateValue" />
+                        <input type="date" class="form-control" name="fromDate" id="fromDate" value="@ViewBag.FromDate" />
                     </div>
 
                     <!-- To Date -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">To Date</label>
-                        <input type="date" class="form-control" name="toDate" id="toDate" value="@toDateValue" />
+                        <input type="date" class="form-control" name="toDate" id="toDate" value="@ViewBag.ToDate" />
+                    </div>
+
+                    <!-- From Bilty No -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">From Bilty No</label>
+                        <input type="number" class="form-control" name="fromBiltyNo" id="fromBiltyNo" placeholder="From Bilty" value="@ViewBag.FromBiltyNo" min="0" />
+                    </div>
+
+                    <!-- To Bilty No -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">To Bilty No</label>
+                        <input type="number" class="form-control" name="toBiltyNo" id="toBiltyNo" placeholder="To Bilty" value="@ViewBag.ToBiltyNo" min="0" />
                     </div>
 
                     <!-- From Bill No -->
                     <div class="col-md-2">
                         <label class="form-label fw-bold">From Bill No</label>
-                        <input type="number" class="form-control" name="fromBilNo" id="fromBilNo" placeholder="From B.No" value="@fromBilNoValue" min="0" />
+                        <input type="number" class="form-control" name="fromBilNo" id="fromBilNo" placeholder="From Bill" value="@ViewBag.FromBilNo" min="0" />
                     </div>
 
                     <!-- To Bill No -->
                     <div class="col-md-2">
                         <label class="form-label fw-bold">To Bill No</label>
-                        <input type="number" class="form-control" name="toBilNo" id="toBilNo" placeholder="To B.No" value="@toBilNoValue" min="0" />
-                    </div>
-
-                    <!-- View on Screen Button -->
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="button"
-                                class="btn btn-primary btn-md w-100 text-white shadow-sm"
-                                onclick="loadOnScreenReport()">
-                            <i class="fa fa-desktop me-1"></i> View
-                        </button>
+                        <input type="number" class="form-control" name="toBilNo" id="toBilNo" placeholder="To Bill" value="@ViewBag.ToBilNo" min="0" />
                     </div>
 
                     <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                        <!-- VIEW ON SCREEN -->
+                        <button type="button"
+                                class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold"
+                                onclick="loadOnScreenReport()">
+                            <i class="fa fa-desktop me-1"></i> View Report
+                        </button>
+
                         <!-- EXCEL EXPORT -->
                         <button type="submit"
-                                class="btn btn-success btn-sm px-3 shadow-sm"
+                                class="btn btn-success btn-sm px-3 shadow-sm fw-semibold"
                                 asp-action="ExportExcel">
                             <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
                         </button>
 
                         <!-- PDF DOWNLOAD -->
                         <button type="submit"
-                                class="btn btn-danger btn-sm px-3 shadow-sm"
+                                class="btn btn-danger btn-sm px-3 shadow-sm fw-semibold"
                                 asp-action="GeneratePDF"
                                 formtarget="_blank">
                             <i class="fa fa-file-pdf-o me-1"></i> Open / Print PDF
@@ -123,11 +149,21 @@
 
 @section Scripts {
     <script>
+        $(document).ready(function () {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
+            });
+        });
+
         function loadOnScreenReport() {
+            var companyId = $('select[name="companyId"]').val() || '';
             var fromDate = $('input[name="fromDate"]').val();
             var toDate = $('input[name="toDate"]').val();
             var fromBilNo = $('input[name="fromBilNo"]').val() || '';
             var toBilNo = $('input[name="toBilNo"]').val() || '';
+            var fromBiltyNo = $('input[name="fromBiltyNo"]').val() || '';
+            var toBiltyNo = $('input[name="toBiltyNo"]').val() || '';
 
             if (fromDate && toDate && fromDate > toDate) {
                 alert("From Date cannot be greater than To Date.");
@@ -147,7 +183,10 @@
                 + '?fromDate=' + encodeURIComponent(fromDate)
                 + '&toDate=' + encodeURIComponent(toDate)
                 + '&fromBilNo=' + encodeURIComponent(fromBilNo)
-                + '&toBilNo=' + encodeURIComponent(toBilNo);
+                + '&toBilNo=' + encodeURIComponent(toBilNo)
+                + '&fromBiltyNo=' + encodeURIComponent(fromBiltyNo)
+                + '&toBiltyNo=' + encodeURIComponent(toBiltyNo)
+                + '&companyId=' + encodeURIComponent(companyId);
 
             $('#reportFrame').off('load');
             $('#reportFrame').attr('src', url);

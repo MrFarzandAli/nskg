@@ -61,7 +61,45 @@ namespace Nskg.Controllers
                     );
                 }
 
-                int filterRecords = string.IsNullOrWhiteSpace(searchValue) ? totalRecords : query.Count();
+                // Column-wise Searching
+                var col0Search = Request.Form["columns[0][search][value]"].FirstOrDefault();
+                var col1Search = Request.Form["columns[1][search][value]"].FirstOrDefault();
+                var col2Search = Request.Form["columns[2][search][value]"].FirstOrDefault();
+                var col3Search = Request.Form["columns[3][search][value]"].FirstOrDefault();
+
+                if (!string.IsNullOrWhiteSpace(col0Search))
+                {
+                    var val0 = col0Search.Trim().ToLower();
+                    query = query.Where(x => x.DocNo != null && x.DocNo.ToLower().Contains(val0));
+                }
+
+                if (!string.IsNullOrWhiteSpace(col1Search))
+                {
+                    var val1 = col1Search.Trim();
+                    if (DateTime.TryParse(val1, out var parsedDate))
+                    {
+                        var targetDate = parsedDate.Date;
+                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.Date == targetDate);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.ToString().Contains(val1));
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(col2Search))
+                {
+                    var val2 = col2Search.Trim().ToLower();
+                    query = query.Where(x => x.Station != null && x.Station.ToLower().Contains(val2));
+                }
+
+                if (!string.IsNullOrWhiteSpace(col3Search))
+                {
+                    var val3 = col3Search.Trim().ToLower();
+                    query = query.Where(x => x.Transporter != null && x.Transporter.ToLower().Contains(val3));
+                }
+
+                int filterRecords = query.Count();
 
                 // Sorting
                 switch (sortColumnIndex)

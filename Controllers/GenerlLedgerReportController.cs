@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -29,43 +29,76 @@ namespace Nskg.Controllers
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
         }
-        private int GetCompanyId()
+        private int GetCompanyId(int? companyId = null)
         {
-            return int.Parse(User.FindFirst("CompanyId")?.Value ?? "0");
+            if (companyId.HasValue && companyId.Value > 0) return companyId.Value;
+            var compId = User.FindFirst("CompanyId")?.Value;
+            if (int.TryParse(compId, out int id) && id > 0) return id;
+            return 1006;
         }
 
         private int GetFinancialYearId()
         {
-            return int.Parse(User.FindFirst("FinancialYearId")?.Value ?? "0");
+            var fyId = User.FindFirst("FinancialYearId")?.Value;
+            if (int.TryParse(fyId, out int id) && id > 0) return id;
+            return 4;
         }
-        // GET: Display form
+
         [HttpGet]
-        //public IActionResult Index()
-        //{
-        //    return View();
-        //}
-        public IActionResult Index(string accode, string fromDate, string toDate)
+        public IActionResult GetAccountsByCompany(int companyId)
         {
             var accounts = _context.GLChart3
+                .Where(x => x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null)
                 .Select(x => new
                 {
-                    Code = x.ACC,          // ya SCode agar wo use kar rahe ho
+                    Code = x.ACC ?? (x.AC1 + x.AC3),
                     Name = x.Name
+                })
+                .OrderBy(x => x.Code)
+                .ToList();
+
+            return Json(accounts);
+        }
+
+        [HttpGet]
+        public IActionResult Index(string? accode, string? fromDate, string? toDate, int? companyId)
+        {
+            int selectedCompanyId = GetCompanyId(companyId);
+
+            var companies = _context.Companies
+                .Where(c => !c.IsDeleted)
+                .OrderBy(c => c.Cocode)
+                .Select(c => new
+                {
+                    Id = c.Id,
+                    Code = c.Cocode,
+                    Name = (!string.IsNullOrEmpty(c.Cocode) ? c.Cocode + " - " : "") + c.Name
                 })
                 .ToList();
 
-            ViewBag.AccountList = accounts;
+            var accounts = _context.GLChart3
+                .Where(x => x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null)
+                .Select(x => new
+                {
+                    Code = x.ACC ?? (x.AC1 + x.AC3),
+                    Name = x.Name
+                })
+                .OrderBy(x => x.Code)
+                .ToList();
 
+            ViewBag.CompanyList = companies;
+            ViewBag.SelectedCompanyId = selectedCompanyId;
+            ViewBag.AccountList = accounts;
             ViewBag.Accode = accode;
             ViewBag.FromDate = fromDate;
             ViewBag.ToDate = toDate;
 
             return View();
         }
+
         private DataTable GetGeneralLedger(string accode, DateTime fromDate, DateTime toDate, int companyId, int financialYearId)
         {
             DataTable dt = new DataTable();
-
             string connString = _config.GetConnectionString("DefaultConnection");
 
             using (SqlConnection con = new SqlConnection(connString))
@@ -85,7 +118,7 @@ namespace Nskg.Controllers
 
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
-                        dt.Load(reader); // 🔥 Load data into DataTable
+                        dt.Load(reader); // Load data into DataTable
                     }
                 }
             }
@@ -94,13 +127,13 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult GeneratePDF(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult GeneratePDF(string accode, DateTime fromDate, DateTime toDate, int? companyId)
         {
-            int companyId = GetCompanyId();
+            int selectedCompanyId = GetCompanyId(companyId);
             int financialYearId = GetFinancialYearId();
             try
             {
-                DataTable dt = GetGeneralLedger( accode,  fromDate, toDate,  companyId,  financialYearId);
+                DataTable dt = GetGeneralLedger(accode, fromDate, toDate, selectedCompanyId, financialYearId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -177,40 +210,108 @@ namespace Nskg.Controllers
 
 
         [HttpGet]
-        public IActionResult OnScreenReport(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult OnScreenReport(string accode, DateTime fromDate, DateTime toDate, int? companyId)
         {
-            int companyId = GetCompanyId();
+            int selectedCompanyId = GetCompanyId(companyId);
             int financialYearId = GetFinancialYearId();
-            var dt = GetGeneralLedger(accode, fromDate, toDate, companyId, financialYearId);
+            var dt = GetGeneralLedger(accode, fromDate, toDate, selectedCompanyId, financialYearId);
 
             if (dt == null || dt.Rows.Count == 0)
             {
-                return Content("<h4 style='color:red;'>No data found</h4>", "text/html");
+                return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No data found for selected date range.</strong></div>", "text/html");
             }
 
-            string reportPath = Path.Combine(_env.WebRootPath, "Reports", "GeneralLedgerrpt.rdlc");
+            string compName = (dt.Columns.Contains("CompanyName") && dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "Company";
+            string accName = (dt.Columns.Contains("AccName") && dt.Rows.Count > 0 ? dt.Rows[0]["AccName"]?.ToString() : null) ?? "";
 
-            using (LocalReport report = new LocalReport())
+            var sb = new StringBuilder();
+            sb.Append(@"<!DOCTYPE html><html><head><meta charset='utf-8'>
+            <style>
+                body{font-family:Arial,sans-serif;font-size:12px;margin:12px;color:#333;}
+                .header-box{text-align:center;margin-bottom:12px;}
+                .header-box h2{margin:0 0 4px;color:#0d6efd;font-size:18px;}
+                .header-box h3{margin:0 0 4px;font-size:14px;color:#495057;}
+                .header-box p{margin:0;font-size:11px;color:#6c757d;}
+                table{width:100%;border-collapse:collapse;margin-top:8px;}
+                th{background:#0d6efd;color:#fff;padding:7px 6px;text-align:left;font-size:11px;border:1px solid #0b5ed7;}
+                td{padding:5px 6px;border:1px solid #dee2e6;font-size:11px;}
+                tr:nth-child(even){background:#f8f9fa;}
+                tr:hover{background:#e9ecef;}
+                .num{text-align:right;}
+                .center{text-align:center;}
+                .bold{font-weight:bold;}
+                tfoot tr{background:#d0e2ff;font-weight:bold;}
+            </style></head><body>");
+
+            sb.Append($"<div class='header-box'>");
+            sb.Append($"<h2>{compName}</h2>");
+            sb.Append($"<h3>GENERAL LEDGER REPORT</h3>");
+            sb.Append($"<p>Account: <b>{(string.IsNullOrEmpty(accode) ? "ALL ACCOUNTS" : accode + " - " + accName)}</b> &nbsp;|&nbsp; Period: <b>{fromDate:dd-MMM-yyyy}</b> to <b>{toDate:dd-MMM-yyyy}</b></p>");
+            sb.Append("</div>");
+
+            sb.Append("<table><thead><tr>");
+            sb.Append("<th style='width:35px;' class='center'>#</th>");
+            foreach (DataColumn col in dt.Columns)
             {
-                report.ReportPath = reportPath;
+                if (col.ColumnName.Equals("CompanyName", StringComparison.OrdinalIgnoreCase) ||
+                    col.ColumnName.Equals("AccName", StringComparison.OrdinalIgnoreCase) ||
+                    col.ColumnName.Equals("Accode", StringComparison.OrdinalIgnoreCase) ||
+                    col.ColumnName.Equals("SortOrder", StringComparison.OrdinalIgnoreCase) ||
+                    col.ColumnName.Equals("RowNum", StringComparison.OrdinalIgnoreCase))
+                    continue;
 
-                dt.TableName = "DSGeneralLedger";
-                report.DataSources.Clear();
-                report.DataSources.Add(new ReportDataSource("DSGeneralLedger", dt));
-
-                // HTML output for iframe
-                byte[] htmlBytes = report.Render("HTML5");
-
-                return File(htmlBytes, "text/html");
+                bool isNum = col.DataType == typeof(decimal) || col.DataType == typeof(double) || col.DataType == typeof(int);
+                sb.Append($"<th {(isNum ? "class='num'" : "")}>{col.ColumnName}</th>");
             }
+            sb.Append("</tr></thead><tbody>");
+
+            int sr = 1;
+            foreach (DataRow row in dt.Rows)
+            {
+                sb.Append("<tr>");
+                sb.Append($"<td class='center'>{sr++}</td>");
+                foreach (DataColumn col in dt.Columns)
+                {
+                    if (col.ColumnName.Equals("CompanyName", StringComparison.OrdinalIgnoreCase) ||
+                        col.ColumnName.Equals("AccName", StringComparison.OrdinalIgnoreCase) ||
+                        col.ColumnName.Equals("Accode", StringComparison.OrdinalIgnoreCase) ||
+                        col.ColumnName.Equals("SortOrder", StringComparison.OrdinalIgnoreCase) ||
+                        col.ColumnName.Equals("RowNum", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var val = row[col];
+                    if (val == DBNull.Value || val == null)
+                    {
+                        sb.Append("<td></td>");
+                    }
+                    else if (col.DataType == typeof(DateTime))
+                    {
+                        sb.Append($"<td>{Convert.ToDateTime(val):dd-MMM-yyyy}</td>");
+                    }
+                    else if (col.DataType == typeof(decimal) || col.DataType == typeof(double))
+                    {
+                        decimal dVal = Convert.ToDecimal(val);
+                        sb.Append($"<td class='num'>{(dVal != 0 ? dVal.ToString("#,##0.00") : "")}</td>");
+                    }
+                    else
+                    {
+                        sb.Append($"<td>{val}</td>");
+                    }
+                }
+                sb.Append("</tr>");
+            }
+
+            sb.Append("</tbody></table></body></html>");
+
+            return Content(sb.ToString(), "text/html");
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(string accode, DateTime fromDate, DateTime toDate)
+        public IActionResult ExportExcel(string accode, DateTime fromDate, DateTime toDate, int? companyId)
         {
-            int companyId = GetCompanyId();
+            int selectedCompanyId = GetCompanyId(companyId);
             int financialYearId = GetFinancialYearId();
-            var dt = GetGeneralLedger(accode, fromDate, toDate, companyId, financialYearId);
+            var dt = GetGeneralLedger(accode, fromDate, toDate, selectedCompanyId, financialYearId);
 
             if (dt == null || dt.Rows.Count == 0)
             {

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -150,24 +150,67 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
 
             if (dt == null || dt.Rows.Count == 0)
             {
-                return Content("<h4 style='color:red;'>No data found</h4>", "text/html");
+                return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No data found for selected date range.</strong></div>", "text/html");
             }
 
-            string reportPath = Path.Combine(_env.WebRootPath, "Reports", "AuditLogrpt.rdlc");
+            var sb = new StringBuilder();
+            sb.Append(@"<!DOCTYPE html><html><head><meta charset='utf-8'>
+            <style>
+                body{font-family:Arial,sans-serif;font-size:12px;margin:12px;color:#333;}
+                .header-box{text-align:center;margin-bottom:12px;}
+                .header-box h2{margin:0 0 4px;color:#0d6efd;font-size:18px;}
+                .header-box h3{margin:0 0 4px;font-size:14px;color:#495057;}
+                .header-box p{margin:0;font-size:11px;color:#6c757d;}
+                table{width:100%;border-collapse:collapse;margin-top:8px;}
+                th{background:#0d6efd;color:#fff;padding:7px 6px;text-align:left;font-size:11px;border:1px solid #0b5ed7;}
+                td{padding:5px 6px;border:1px solid #dee2e6;font-size:11px;}
+                tr:nth-child(even){background:#f8f9fa;}
+                tr:hover{background:#e9ecef;}
+                .num{text-align:right;}
+                .center{text-align:center;}
+                .bold{font-weight:bold;}
+            </style></head><body>");
 
-            using (LocalReport report = new LocalReport())
+            sb.Append($"<div class='header-box'>");
+            sb.Append($"<h2>AUDIT LOG REPORT</h2>");
+            sb.Append($"<p>Period: <b>{fromDate:dd-MMM-yyyy}</b> to <b>{toDate:dd-MMM-yyyy}</b></p>");
+            sb.Append("</div>");
+
+            sb.Append("<table><thead><tr>");
+            sb.Append("<th style='width:35px;' class='center'>#</th>");
+            foreach (DataColumn col in dt.Columns)
             {
-                report.ReportPath = reportPath;
-
-                dt.TableName = "DSAuditLog";
-                report.DataSources.Clear();
-                report.DataSources.Add(new ReportDataSource("DSAuditLog", dt));
-
-                // HTML output for iframe
-                byte[] htmlBytes = report.Render("HTML5");
-
-                return File(htmlBytes, "text/html");
+                sb.Append($"<th>{col.ColumnName}</th>");
             }
+            sb.Append("</tr></thead><tbody>");
+
+            int sr = 1;
+            foreach (DataRow row in dt.Rows)
+            {
+                sb.Append("<tr>");
+                sb.Append($"<td class='center'>{sr++}</td>");
+                foreach (DataColumn col in dt.Columns)
+                {
+                    var val = row[col];
+                    if (val == DBNull.Value || val == null)
+                    {
+                        sb.Append("<td></td>");
+                    }
+                    else if (col.DataType == typeof(DateTime))
+                    {
+                        sb.Append($"<td>{Convert.ToDateTime(val):dd-MMM-yyyy HH:mm}</td>");
+                    }
+                    else
+                    {
+                        sb.Append($"<td>{val}</td>");
+                    }
+                }
+                sb.Append("</tr>");
+            }
+
+            sb.Append("</tbody></table></body></html>");
+
+            return Content(sb.ToString(), "text/html");
         }
 
         [HttpGet]

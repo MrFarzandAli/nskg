@@ -4,6 +4,8 @@
     var fromDateValue = ViewBag.FromDate as string;
     var toDateValue = ViewBag.ToDate as string;
     var accodeValue = ViewBag.Accode as string;
+    var selectedCompanyId = ViewBag.SelectedCompanyId != null ? (int)ViewBag.SelectedCompanyId : 0;
+    var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
 
     if (string.IsNullOrEmpty(fromDateValue))
     {
@@ -40,8 +42,29 @@
         <div class="card-body p-4 bg-light">
             <form method="get">
                 <div class="row g-3">
+                    <!-- Company Dropdown -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Company</label>
+                        <select class="form-select select2" name="companyId" id="companySelect">
+                            @if (companyList != null)
+                            {
+                                foreach (var comp in companyList)
+                                {
+                                    if (comp.Id == selectedCompanyId)
+                                    {
+                                        <option value="@comp.Id" selected="selected">@comp.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@comp.Id">@comp.Name</option>
+                                    }
+                                }
+                            }
+                        </select>
+                    </div>
+
                     <!-- Account Code Selector -->
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label fw-bold">Select Station Account</label>
                         <select class="form-control select2" id="accodeSelect" name="accode" required>
                             <option value="">-- Select Station Account --</option>
@@ -71,26 +94,24 @@
                     </div>
 
                     <!-- Actions -->
-                    <div class="col-md-2 d-flex align-items-end gap-2">
+                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                         <!-- VIEW ON SCREEN -->
                         <button type="button"
-                                class="btn btn-primary btn-md flex-fill text-white shadow-sm"
+                                class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold"
                                 onclick="loadOnScreenReport()">
-                            <i class="fa fa-desktop me-1"></i> View
+                            <i class="fa fa-desktop me-1"></i> View Report
                         </button>
-                    </div>
 
-                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                         <!-- EXCEL EXPORT -->
                         <button type="submit"
-                                class="btn btn-success btn-sm px-3 shadow-sm"
+                                class="btn btn-success btn-sm px-3 shadow-sm fw-semibold"
                                 asp-action="ExportExcel">
                             <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
                         </button>
 
                         <!-- PDF DOWNLOAD -->
                         <button type="submit"
-                                class="btn btn-danger btn-sm px-3 shadow-sm"
+                                class="btn btn-danger btn-sm px-3 shadow-sm fw-semibold"
                                 asp-action="GeneratePDF"
                                 formtarget="_blank">
                             <i class="fa fa-file-pdf-o me-1"></i> Open / Print PDF
@@ -115,13 +136,13 @@
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <div class="mt-3 fw-bold text-muted">Generating station ledger report via PROCESSDETAIL_Station, please wait...</div>
+            <div class="mt-3 fw-bold text-muted">Generating station ledger report, please wait...</div>
         </div>
 
         <!-- REPORT IFRAME -->
         <div class="card-body p-0">
             <iframe id="reportFrame"
-                    style="width:100%; height:750px; border:none; display:none;"></iframe>
+                    style="width:100%; height:750px; border:none;"></iframe>
         </div>
     </div>
 
@@ -130,16 +151,35 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            $('.select2').select2({
-                theme: 'bootstrap-5',
-                placeholder: "-- Select Station Account --",
-                allowClear: true,
-                width: '100%'
+            if ($.fn.select2) {
+                $('#companySelect').select2({ theme: 'bootstrap-5', width: '100%' });
+
+                $('#accodeSelect').select2({
+                    theme: 'bootstrap-5',
+                    placeholder: "-- Select Station Account --",
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+
+            $('#companySelect').on('change', function () {
+                var compId = $(this).val();
+                if (!compId) return;
+
+                $.getJSON('@Url.Action("GetAccountsByCompany", "StationLedgerReport")', { companyId: compId }, function (data) {
+                    var $acc = $('#accodeSelect');
+                    $acc.empty().append('<option value="">-- Select Station Account --</option>');
+                    $.each(data, function (i, item) {
+                        $acc.append('<option value="' + item.code + '">' + item.code + ' - ' + item.name + '</option>');
+                    });
+                    $acc.trigger('change');
+                });
             });
         });
 
         function loadOnScreenReport() {
-            var accode = $('select[name="accode"]').val();
+            var companyId = $('#companySelect').val() || '';
+            var accode = $('#accodeSelect').val() || '';
             var fromDate = $('input[name="fromDate"]').val();
             var toDate = $('input[name="toDate"]').val();
 
@@ -165,7 +205,7 @@
 
             $('#reportCard').show();
             $('#reportLoader').show();
-            $('#reportFrame').hide();
+            $('#reportFrame').show();
 
             // Smooth scroll down to preview
             $('html, body').animate({
@@ -173,17 +213,22 @@
             }, 400);
 
             var url = '@Url.Action("OnScreenReport", "StationLedgerReport")'
-                + '?accode=' + encodeURIComponent(accode)
+                + '?companyId=' + encodeURIComponent(companyId)
+                + '&accode=' + encodeURIComponent(accode)
                 + '&fromDate=' + encodeURIComponent(fromDate)
                 + '&toDate=' + encodeURIComponent(toDate);
 
-            $('#reportFrame').off('load');
-            $('#reportFrame').attr('src', url);
+            var frame = document.getElementById('reportFrame');
+            if (frame) {
+                frame.onload = function () {
+                    $('#reportLoader').hide();
+                };
+                frame.src = url;
+            }
 
-            $('#reportFrame').on('load', function () {
+            setTimeout(function () {
                 $('#reportLoader').hide();
-                $('#reportFrame').show();
-            });
+            }, 2500);
         }
     </script>
 }

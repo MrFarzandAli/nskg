@@ -45,6 +45,12 @@
                                 <th>Customer</th>
                                 <th class="text-end">Action</th>
                             </tr>
+                            <tr class="filters">
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Doc No" data-column="0" /></th>
+                                <th><input type="date" class="form-control form-control-sm column-search" placeholder="Search Date" data-column="1" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Customer" data-column="2" /></th>
+                                <th></th>
+                            </tr>
                         </thead>
                         <tbody>
                         </tbody>
@@ -63,9 +69,10 @@
         $(document).ready(function () {
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
 
-            $('#voucherTable').DataTable({
+            var table = $('#voucherTable').DataTable({
                 "processing": true,
                 "serverSide": true,
+                "orderCellsTop": true,
                 "ajax": {
                     "url": "@Url.Action("GetBiltyList", "ToPayBilty")",
                     "type": "POST",
@@ -108,6 +115,14 @@
                 "info": true,
                 "autoWidth": false,
                 "responsive": true
+            });
+
+            // Column-wise search input events
+            $('.column-search').on('keyup change clear', function () {
+                var colIdx = $(this).data('column');
+                if (table.column(colIdx).search() !== this.value) {
+                    table.column(colIdx).search(this.value).draw();
+                }
             });
 
             setTimeout(function() {

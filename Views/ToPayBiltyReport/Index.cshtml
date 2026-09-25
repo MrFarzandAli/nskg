@@ -5,6 +5,10 @@
     var toDateValue = ViewBag.ToDate as string;
     var fromBilNoValue = ViewBag.FromBilNo != null ? ViewBag.FromBilNo.ToString() : "";
     var toBilNoValue = ViewBag.ToBilNo != null ? ViewBag.ToBilNo.ToString() : "";
+    var fromBiltyNoValue = ViewBag.FromBiltyNo != null ? ViewBag.FromBiltyNo.ToString() : "";
+    var toBiltyNoValue = ViewBag.ToBiltyNo != null ? ViewBag.ToBiltyNo.ToString() : "";
+    var selectedCompanyId = ViewBag.SelectedCompanyId != null ? (int)ViewBag.SelectedCompanyId : 0;
+    var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
 
     if (string.IsNullOrEmpty(fromDateValue))
         fromDateValue = DateTime.Now.ToString("yyyy-MM-dd");
@@ -37,50 +41,81 @@
         <div class="card-body p-4 bg-light">
             <form method="get" id="filterForm">
                 <div class="row g-3">
+                    <!-- Company Dropdown -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Company</label>
+                        <select class="form-select select2" name="companyId" id="companySelect">
+                            @if (companyList != null)
+                            {
+                                foreach (var comp in companyList)
+                                {
+                                    if (comp.Id == selectedCompanyId)
+                                    {
+                                        <option value="@comp.Id" selected="selected">@comp.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@comp.Id">@comp.Name</option>
+                                    }
+                                }
+                            }
+                        </select>
+                    </div>
+
                     <!-- From Date -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">From Date</label>
                         <input type="date" class="form-control" name="fromDate" id="fromDate" value="@fromDateValue" />
                     </div>
 
                     <!-- To Date -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">To Date</label>
                         <input type="date" class="form-control" name="toDate" id="toDate" value="@toDateValue" />
+                    </div>
+
+                    <!-- From Bilty No (BillTiNo) -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">From Bilty No</label>
+                        <input type="number" class="form-control" name="fromBiltyNo" id="fromBiltyNo" placeholder="From Bilty" value="@fromBiltyNoValue" min="0" />
+                    </div>
+
+                    <!-- To Bilty No (BillTiNo) -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">To Bilty No</label>
+                        <input type="number" class="form-control" name="toBiltyNo" id="toBiltyNo" placeholder="To Bilty" value="@toBiltyNoValue" min="0" />
                     </div>
 
                     <!-- From Bill No -->
                     <div class="col-md-2">
                         <label class="form-label fw-bold">From Bill No</label>
-                        <input type="number" class="form-control" name="fromBilNo" id="fromBilNo" placeholder="From B.No" value="@fromBilNoValue" min="0" />
+                        <input type="number" class="form-control" name="fromBilNo" id="fromBilNo" placeholder="From Bill No" value="@fromBilNoValue" min="0" />
                     </div>
 
                     <!-- To Bill No -->
                     <div class="col-md-2">
                         <label class="form-label fw-bold">To Bill No</label>
-                        <input type="number" class="form-control" name="toBilNo" id="toBilNo" placeholder="To B.No" value="@toBilNoValue" min="0" />
-                    </div>
-
-                    <!-- View on Screen Button -->
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="button"
-                                class="btn btn-warning btn-md w-100 text-white shadow-sm"
-                                onclick="loadOnScreenReport()">
-                            <i class="fa fa-desktop me-1"></i> View
-                        </button>
+                        <input type="number" class="form-control" name="toBilNo" id="toBilNo" placeholder="To Bill No" value="@toBilNoValue" min="0" />
                     </div>
 
                     <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                        <!-- VIEW ON SCREEN -->
+                        <button type="button"
+                                class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold"
+                                onclick="loadOnScreenReport()">
+                            <i class="fa fa-desktop me-1"></i> View Report
+                        </button>
+
                         <!-- EXCEL EXPORT -->
                         <button type="submit"
-                                class="btn btn-success btn-sm px-3 shadow-sm"
+                                class="btn btn-success btn-sm px-3 shadow-sm fw-semibold"
                                 asp-action="ExportExcel">
                             <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
                         </button>
 
                         <!-- PDF DOWNLOAD -->
                         <button type="submit"
-                                class="btn btn-danger btn-sm px-3 shadow-sm"
+                                class="btn btn-danger btn-sm px-3 shadow-sm fw-semibold"
                                 asp-action="GeneratePDF"
                                 formtarget="_blank">
                             <i class="fa fa-file-pdf-o me-1"></i> Open / Print PDF
@@ -102,10 +137,10 @@
 
         <!-- LOADER -->
         <div id="reportLoader" style="display:none; padding:40px; text-align:center;">
-            <div class="spinner-border text-warning" role="status" style="width: 3rem; height: 3rem;">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <div class="mt-3 fw-bold text-muted">Generating To Pay Bilty report, please wait...</div>
+            <div class="mt-3 fw-bold text-muted">Generating to-pay bilty report, please wait...</div>
         </div>
 
         <!-- REPORT IFRAME -->
@@ -119,13 +154,22 @@
 
 @section Scripts {
     <script>
+        $(document).ready(function() {
+            if ($.fn.select2) {
+                $('#companySelect').select2({ theme: 'bootstrap-5', width: '100%' });
+            }
+        });
+
         function loadOnScreenReport() {
-            var fromDate = $('input[name="fromDate"]').val();
-            var toDate = $('input[name="toDate"]').val();
+            var companyId = $('#companySelect').val() || '';
+            var fromDate = $('input[name="fromDate"]').val() || '';
+            var toDate = $('input[name="toDate"]').val() || '';
             var fromBilNo = $('input[name="fromBilNo"]').val() || '';
             var toBilNo = $('input[name="toBilNo"]').val() || '';
+            var fromBiltyNo = $('input[name="fromBiltyNo"]').val() || '';
+            var toBiltyNo = $('input[name="toBiltyNo"]').val() || '';
 
-            if (fromDate && toDate && fromDate > toDate) {
+            if (fromDate && toDate && fromDate > toDate && !fromBilNo && !toBilNo && !fromBiltyNo && !toBiltyNo) {
                 alert("From Date cannot be greater than To Date.");
                 return;
             }
@@ -140,10 +184,13 @@
             }, 400);
 
             var url = '@Url.Action("OnScreenReport", "ToPayBiltyReport")'
-                + '?fromDate=' + encodeURIComponent(fromDate)
+                + '?companyId=' + encodeURIComponent(companyId)
+                + '&fromDate=' + encodeURIComponent(fromDate)
                 + '&toDate=' + encodeURIComponent(toDate)
                 + '&fromBilNo=' + encodeURIComponent(fromBilNo)
-                + '&toBilNo=' + encodeURIComponent(toBilNo);
+                + '&toBilNo=' + encodeURIComponent(toBilNo)
+                + '&fromBiltyNo=' + encodeURIComponent(fromBiltyNo)
+                + '&toBiltyNo=' + encodeURIComponent(toBiltyNo);
 
             $('#reportFrame').off('load');
             $('#reportFrame').attr('src', url);

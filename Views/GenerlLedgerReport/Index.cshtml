@@ -1,10 +1,11 @@
 @{
-ViewData["Title"] = "General Ledger Report";
+    ViewData["Title"] = "General Ledger Report";
 
-
-var fromDateValue = ViewBag.FromDate as string;
-var toDateValue = ViewBag.ToDate as string;
-var accodeValue = ViewBag.Accode as string;
+    var fromDateValue = ViewBag.FromDate as string;
+    var toDateValue = ViewBag.ToDate as string;
+    var accodeValue = ViewBag.Accode as string;
+    var selectedCompanyId = ViewBag.SelectedCompanyId != null ? (int)ViewBag.SelectedCompanyId : 0;
+    var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
 
     if (string.IsNullOrEmpty(fromDateValue))
     {
@@ -24,174 +25,206 @@ var accodeValue = ViewBag.Accode as string;
     iframe { border-radius: 8px; }
 </style>
 
-<div class="container mt-4">
+<div class="container-fluid mt-4">
 
-<!-- Header -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="fw-bold">General Ledger Report</h3>
-</div>
-
-<!-- Filter Card -->
-<div class="card custom-card mb-4">
-
-    <div class="card-header">
-        <h5 class="mb-0 heading-glow">
-            <i class="fa fa-filter me-2"></i> Filter Report
-        </h5>
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold"><i class="fa fa-book me-2 text-primary"></i> General Ledger Report</h3>
     </div>
-   <div class="card-body">
 
-    <form method="get">
+    <!-- Filter Card -->
+    <div class="card custom-card mb-4 shadow-sm border-0">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-semibold">
+                <i class="fa fa-filter me-2"></i> Filter Parameters
+            </h5>
+        </div>
+        <div class="card-body p-4 bg-light">
+            <form method="get">
+                <div class="row g-3">
+                    <!-- Company Dropdown -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Company</label>
+                        <select class="form-select select2" name="companyId" id="companySelect">
+                            @if (companyList != null)
+                            {
+                                foreach (var comp in companyList)
+                                {
+                                    if (comp.Id == selectedCompanyId)
+                                    {
+                                        <option value="@comp.Id" selected="selected">@comp.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@comp.Id">@comp.Name</option>
+                                    }
+                                }
+                            }
+                        </select>
+                    </div>
 
-        <div class="row g-3">
+                    <!-- Account Code -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Account Code</label>
+                        <select class="form-control select2" id="accodeSelect" name="accode" required>
+                            <option value="">-- Select Account --</option>
+                            @if (ViewBag.AccountList != null)
+                            {
+                                foreach (var item in ViewBag.AccountList)
+                                {
+                                    <option value="@item.Code" 
+                                            selected="@(item.Code == accodeValue ? "selected" : null)">
+                                        @item.Code - @item.Name
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
 
-            <!-- LEFT SIDE FILTERS -->
-            <div class="col-md-3">
-                <label class="form-label">Account Code</label>
-<select class="form-control select2" id="accodeSelect" name="accode" required>
-    <option value="">-- Select Account --</option>
+                    <!-- From Date -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">From Date</label>
+                        <input type="date" class="form-control" name="fromDate" value="@fromDateValue" required />
+                    </div>
 
-    @foreach (var item in ViewBag.AccountList)
-    {
-        <option value="@item.Code" 
-                selected="@(item.Code == accodeValue ? "selected" : null)">
-            @item.Code - @item.Name
-        </option>
-    }
-</select>            </div>
+                    <!-- To Date -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">To Date</label>
+                        <input type="date" class="form-control" name="toDate" value="@toDateValue" required />
+                    </div>
 
-            <div class="col-md-3">
-                <label class="form-label">From Date</label>
-                <input type="date" class="form-control" name="fromDate" value="@fromDateValue" required />
-            </div>
+                    <!-- Actions -->
+                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                        <!-- ON SCREEN -->
+                        <button type="button"
+                                class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold"
+                                onclick="loadOnScreenReport()">
+                            <i class="fa fa-desktop me-1"></i> View Report
+                        </button>
 
-            <div class="col-md-3">
-                <label class="form-label">To Date</label>
-                <input type="date" class="form-control" name="toDate" value="@toDateValue" required />
-            </div>
+                        <!-- EXCEL -->
+                        <button type="submit"
+                                class="btn btn-success btn-sm px-3 shadow-sm fw-semibold"
+                                asp-action="ExportExcel">
+                            <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
+                        </button>
 
-           
+                        <!-- PDF -->
+                        <button type="submit"
+                                class="btn btn-danger btn-sm px-3 shadow-sm fw-semibold"
+                                asp-action="GeneratePDF"
+                                formtarget="_blank">
+                            <i class="fa fa-file-pdf-o me-1"></i> Open / Print PDF
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
-            <!-- BUTTON ROW (RIGHT SIDE CLEAN) -->
-
-            <div class="col-md-12 d-flex justify-content-end gap-2 mt-2">
-
-    <!-- EXCEL -->
-    <button type="submit"
-            class="btn btn-success btn-sm"
-            asp-action="ExportExcel">
-        <i class="fa fa-file-excel-o me-1"></i> Excel
-    </button>
-
-    <!-- PDF -->
-    <button type="submit"
-            class="btn btn-danger btn-sm"
-            asp-action="GeneratePDF"
-            formtarget="_blank">
-        <i class="fa fa-file-pdf-o me-1"></i> PDF
-    </button>
-
-    <!-- ON SCREEN -->
-    <button type="button"
-            class="btn btn-info btn-sm text-white"
-            onclick="loadOnScreenReport()">
-        <i class="fa fa-desktop me-1"></i> View
-    </button>
-
-</div>
-
+    <!-- ON SCREEN REPORT PREVIEW -->
+    <div id="reportCard" class="card shadow border-0" style="display:none;">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="mb-0 fs-6"><i class="fa fa-file-text-o me-2"></i> Report Preview</h5>
+            <button type="button" class="btn btn-sm btn-outline-light" onclick="$('#reportCard').hide()">
+                <i class="fa fa-times"></i> Close
+            </button>
         </div>
 
-    </form>
+        <!-- LOADER -->
+        <div id="reportLoader" style="display:none; padding:40px; text-align:center;">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="mt-3 fw-bold text-muted">Generating general ledger report, please wait...</div>
+        </div>
 
-</div>
-
-
-
-</div>
-
-<!-- 🔵 ON SCREEN REPORT -->
-<div id="reportCard" class="card shadow-sm" style="display:none;">
-
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">On Screen Report</h5>
+        <!-- REPORT IFRAME -->
+        <div class="card-body p-0">
+            <iframe id="reportFrame"
+                    style="width:100%; height:750px; border:none; display:none;"></iframe>
+        </div>
     </div>
-
-    <!-- LOADER -->
-    <div id="reportLoader" style="display:none; padding:20px; text-align:center;">
-        <div class="spinner-border text-primary"></div>
-        <div class="mt-2">Loading report...</div>
-    </div>
-
-    <!-- REPORT -->
-    <div class="card-body p-0">
-        <iframe id="reportFrame"
-                style="width:100%; height:650px; display:none;"></iframe>
-    </div>
-
-</div>
 
 </div>
 
 @section Scripts {
     <script>
         $(document).ready(function () {
-            $('.select2').select2({
-                theme: 'bootstrap-5',
-                placeholder: "-- Select Account --",
-                allowClear: true,
-                width: '100%'
+            if ($.fn.select2) {
+                $('#companySelect').select2({ theme: 'bootstrap-5', width: '100%' });
+
+                $('#accodeSelect').select2({
+                    theme: 'bootstrap-5',
+                    placeholder: "-- Select Account --",
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+
+            $('#companySelect').on('change', function () {
+                var compId = $(this).val();
+                if (!compId) return;
+
+                $.getJSON('@Url.Action("GetAccountsByCompany", "GenerlLedgerReport")', { companyId: compId }, function (data) {
+                    var $acc = $('#accodeSelect');
+                    $acc.empty().append('<option value="">-- Select Account --</option>');
+                    $.each(data, function (i, item) {
+                        $acc.append('<option value="' + item.code + '">' + item.code + ' - ' + item.name + '</option>');
+                    });
+                    $acc.trigger('change');
+                });
             });
         });
+
+        function loadOnScreenReport() {
+            var companyId = $('#companySelect').val() || '';
+            var acccode = $('select[name="accode"]').val();
+            var fromDate = $('input[name="fromDate"]').val();
+            var toDate = $('input[name="toDate"]').val();
+
+            if (!accode) {
+                alert("Please select Account Code");
+                return;
+            }
+
+            if (!fromDate) {
+                alert("Please select From Date");
+                return;
+            }
+
+            if (!toDate) {
+                alert("Please select To Date");
+                return;
+            }
+
+            if (fromDate > toDate) {
+                alert("From Date cannot be greater than To Date");
+                return;
+            }
+
+            $('#reportCard').show();
+            $('#reportLoader').show();
+            $('#reportFrame').hide();
+
+            $('html, body').animate({
+                scrollTop: $("#reportCard").offset().top - 20
+            }, 400);
+
+            var url = '@Url.Action("OnScreenReport", "GenerlLedgerReport")'
+                + '?companyId=' + encodeURIComponent(companyId)
+                + '&accode=' + encodeURIComponent(accode)
+                + '&fromDate=' + encodeURIComponent(fromDate)
+                + '&toDate=' + encodeURIComponent(toDate);
+
+            $('#reportFrame').off('load');
+            $('#reportFrame').attr('src', url);
+
+            $('#reportFrame').on('load', function () {
+                $('#reportLoader').hide();
+                $('#reportFrame').show();
+            });
+        }
     </script>
 }
 
-<script>
-    function loadOnScreenReport() {
-
-    var accode = $('select[name="accode"]').val();
-    var fromDate = $('input[name="fromDate"]').val();
-    var toDate = $('input[name="toDate"]').val();
-
-    // ✅ VALIDATION
-    if (!accode) {
-        alert("Please select Account Code");
-        return;
-    }
-
-    if (!fromDate) {
-        alert("Please select From Date");
-        return;
-    }
-
-    if (!toDate) {
-        alert("Please select To Date");
-        return;
-    }
-
-    // Optional: Date validation (From > To)
-    if (fromDate > toDate) {
-        alert("From Date cannot be greater than To Date");
-        return;
-    }
-
-    // ✅ SHOW LOADER
-    $('#reportCard').show();
-    $('#reportLoader').show();
-    $('#reportFrame').hide();
-
-    var url = '/GenerlLedgerReport/OnScreenReport'
-        + '?accode=' + accode
-        + '&fromDate=' + fromDate
-        + '&toDate=' + toDate;
-
-    $('#reportFrame').off('load');
-
-    $('#reportFrame').attr('src', url);
-
-    $('#reportFrame').on('load', function () {
-        $('#reportLoader').hide();
-        $('#reportFrame').show();
-    });
-}
-</script>

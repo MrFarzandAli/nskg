@@ -44,12 +44,12 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(string rcocode, string fromDate, string toDate)
+        public IActionResult Index(string? rcocode, string? year)
         {
-            string defaultCoCode = GetCompanyCode();
-            string selectedRco = !string.IsNullOrEmpty(rcocode) ? rcocode : defaultCoCode;
+            string selectedRco = rcocode ?? "";
+            string selectedYear = string.IsNullOrEmpty(year) ? "All" : year;
 
-            // Load Companies
+            // Load Companies with "All Companies / Branches" option
             var companies = _context.Companies
                 .Where(c => !c.IsDeleted)
                 .OrderBy(c => c.Cocode)
@@ -61,15 +61,40 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
+            // Load Available Financial Years / Yearly Closures
+            var yearList = new List<string> { "All" };
+            var fyList = _context.FinancialYears
+                .Where(f => !f.IsDeleted && !string.IsNullOrEmpty(f.YearName))
+                .OrderByDescending(f => f.StartDate)
+                .Select(f => f.YearName)
+                .Distinct()
+                .ToList();
+
+            var standardYears = new[] { 
+                "2026-2027", "2025-2026", "2024-2025", "2023-2024", "2022-2023", 
+                "2021-2022", "2020-2021", "2019-2020", "2018-2019", "2017-2018", 
+                "2016-2017", "2015-2016", "2014-2015", "2013-2014", "2012-2013", 
+                "2011-2012", "2010-2011" 
+            };
+
+            foreach (var fy in fyList)
+            {
+                if (!yearList.Contains(fy)) yearList.Add(fy);
+            }
+            foreach (var sy in standardYears)
+            {
+                if (!yearList.Contains(sy)) yearList.Add(sy);
+            }
+
             ViewBag.CompanyList = companies;
             ViewBag.Rcocode = selectedRco;
-            ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.ToString("yyyy-01-01") : fromDate;
-            ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
+            ViewBag.YearList = yearList;
+            ViewBag.SelectedYear = selectedYear;
 
             return View();
         }
 
-        private DataTable GetTrialBalanceData(string rcocode, DateTime? fromDate, DateTime? toDate, int companyId)
+        private DataTable GetTrialBalanceData(string? rcocode, string? year, int companyId)
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
@@ -78,8 +103,8 @@ namespace Nskg.Controllers
             {
                 con.Open();
 
-                string companyName = "West Wharf-New Shadab Karachi Goods Transports";
-                int targetCompanyId = companyId;
+                string companyName = "West Wharf-New Shadab Karachi Goods Transports (All Branches)";
+                int targetCompanyId = 0;
 
                 if (!string.IsNullOrWhiteSpace(rcocode))
                 {
@@ -98,66 +123,105 @@ namespace Nskg.Controllers
                         }
                     }
                 }
-                else
+
+                // Parse the year parameter to get date range
+                // Format: "2025-2026" means July 1, 2025 to June 30, 2026
+                DateTime? yearStartDate = null;
+                DateTime? yearEndDate = null;
+                bool filterByYear = false;
+
+                if (!string.IsNullOrEmpty(year) && !year.Equals("All", StringComparison.OrdinalIgnoreCase))
                 {
-                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
+                    var parts = year.Split('-');
+                    if (parts.Length == 2 && int.TryParse(parts[0], out int startYear) && int.TryParse(parts[1], out int endYear))
                     {
-                        cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
-                        var res = cmdComp.ExecuteScalar();
-                        if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
-                            companyName = res.ToString();
+                        yearStartDate = new DateTime(startYear, 7, 1);
+                        yearEndDate = new DateTime(endYear, 6, 30);
+                        filterByYear = true;
                     }
                 }
 
-                // Translated Oracle Report Builder Queries (Q_1 and Q_2):
-                // Q_1: GLCHART1 where opening <> 0 and actype not in ('C') and ac1 not in ('040','074')
-                // Q_2: GLCHART3 where ac1 in ('040','074') and opening <> 0
+                // Trial Balance Query:
+                // Opening balances from GLChart1/GLChart3 (static Opening column)
+                // + VoDet transactions summed by AC1 (filtered by year if selected)
+                // The combined result gives the trial balance per account head
                 string query = @"
+                    ;WITH ChartAccounts AS (
+                        -- Q_1: GLChart1 accounts (non-party, non-expense heads)
+                        SELECT 
+                            AC1 AS Code, 
+                            Name AS TitleOfAccount, 
+                            CoCode,
+                            CompanyId,
+                            ISNULL(Opening, 0) AS Opening
+                        FROM GLChart1
+                        WHERE (AcType IS NULL OR AcType NOT IN ('C'))
+                          AND AC1 NOT IN ('040', '074')
+                          AND (
+                                (@Rcocode <> '' AND (CoCode = @Rcocode OR CompanyId = @TargetCompanyId))
+                                OR (@Rcocode = '')
+                              )
+
+                        UNION ALL
+
+                        -- Q_2: GLChart3 sub-accounts for party/expense heads
+                        SELECT 
+                            AC1 AS Code, 
+                            Name AS TitleOfAccount, 
+                            CoCode,
+                            CompanyId,
+                            ISNULL(Opening, 0) AS Opening
+                        FROM GLChart3
+                        WHERE AC1 IN ('040', '074')
+                          AND (
+                                (@Rcocode <> '' AND (CoCode = @Rcocode OR CompanyId = @TargetCompanyId))
+                                OR (@Rcocode = '')
+                              )
+                    ),
+                    VoDetTotals AS (
+                        -- Sum of VoDet transactions per AC1, filtered by year if applicable
+                        SELECT 
+                            AC1,
+                            COCODE,
+                            SUM(ISNULL(DRAMT, 0)) AS TotalDr,
+                            SUM(ISNULL(CRAMT, 0)) AS TotalCr
+                        FROM VoDet
+                        WHERE ISNULL(IsDeleted, 0) = 0
+                          AND (
+                                (@FilterByYear = 1 AND VODATE >= @YearStartDate AND VODATE <= @YearEndDate)
+                                OR (@FilterByYear = 0)
+                              )
+                          AND (
+                                (@Rcocode <> '' AND (COCODE = @Rcocode OR COCODE = CAST(@TargetCompanyId AS VARCHAR)))
+                                OR (@Rcocode = '')
+                              )
+                        GROUP BY AC1, COCODE
+                    ),
+                    Combined AS (
+                        SELECT 
+                            ca.Code,
+                            ca.TitleOfAccount,
+                            CASE ca.CoCode 
+                                WHEN '01' THEN 'W.H' 
+                                WHEN '02' THEN 'M.P' 
+                                WHEN '03' THEN 'N.K' 
+                                WHEN '04' THEN 'R.W' 
+                                ELSE ISNULL(ca.CoCode, 'W.H') 
+                            END AS CompanyBranch,
+                            ca.Opening + ISNULL(v.TotalDr, 0) - ISNULL(v.TotalCr, 0) AS NetBalance,
+                            @CompanyName AS CompanyName
+                        FROM ChartAccounts ca
+                        LEFT JOIN VoDetTotals v ON v.AC1 = ca.Code AND v.COCODE = ca.CoCode
+                    )
                     SELECT 
-                        AC1 AS Code, 
-                        Name AS TitleOfAccount, 
-                        CASE CoCode 
-                            WHEN '01' THEN 'W.H' 
-                            WHEN '02' THEN 'M.P' 
-                            WHEN '03' THEN 'N.K' 
-                            WHEN '04' THEN 'R.W' 
-                            ELSE ISNULL(CoCode, 'W.H') 
-                        END AS CompanyBranch,
-                        CASE WHEN ISNULL(Opening, 0) > 0 THEN ISNULL(Opening, 0) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
-                        CASE WHEN ISNULL(Opening, 0) < 0 THEN ABS(ISNULL(Opening, 0)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
-                        @CompanyName AS CompanyName
-                    FROM GLChart1
-                    WHERE ISNULL(Opening, 0) <> 0 
-                      AND (AcType IS NULL OR AcType NOT IN ('C'))
-                      AND AC1 NOT IN ('040', '074')
-                      AND (
-                            (@Rcocode <> '' AND (CoCode = @Rcocode OR CompanyId = @TargetCompanyId))
-                            OR (@Rcocode = '' AND (CompanyId = @TargetCompanyId OR @TargetCompanyId = 0 OR CompanyId IS NULL))
-                          )
-
-                    UNION ALL
-
-                    SELECT 
-                        AC1 AS Code, 
-                        Name AS TitleOfAccount, 
-                        CASE CoCode 
-                            WHEN '01' THEN 'W.H' 
-                            WHEN '02' THEN 'M.P' 
-                            WHEN '03' THEN 'N.K' 
-                            WHEN '04' THEN 'R.W' 
-                            ELSE ISNULL(CoCode, 'W.H') 
-                        END AS CompanyBranch,
-                        CASE WHEN ISNULL(Opening, 0) > 0 THEN ISNULL(Opening, 0) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
-                        CASE WHEN ISNULL(Opening, 0) < 0 THEN ABS(ISNULL(Opening, 0)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
-                        @CompanyName AS CompanyName
-                    FROM GLChart3
-                    WHERE AC1 IN ('040', '074')
-                      AND ISNULL(Opening, 0) <> 0 
-                      AND (
-                            (@Rcocode <> '' AND (CoCode = @Rcocode OR CompanyId = @TargetCompanyId))
-                            OR (@Rcocode = '' AND (CompanyId = @TargetCompanyId OR @TargetCompanyId = 0 OR CompanyId IS NULL))
-                          )
-
+                        Code,
+                        TitleOfAccount,
+                        CompanyBranch,
+                        CASE WHEN NetBalance > 0 THEN NetBalance ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
+                        CASE WHEN NetBalance < 0 THEN ABS(NetBalance) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
+                        CompanyName
+                    FROM Combined
+                    WHERE NetBalance <> 0
                     ORDER BY Code, TitleOfAccount;";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
@@ -166,6 +230,9 @@ namespace Nskg.Controllers
                     cmd.Parameters.AddWithValue("@Rcocode", string.IsNullOrWhiteSpace(rcocode) ? "" : rcocode.Trim());
                     cmd.Parameters.AddWithValue("@TargetCompanyId", targetCompanyId);
                     cmd.Parameters.AddWithValue("@CompanyName", companyName);
+                    cmd.Parameters.AddWithValue("@FilterByYear", filterByYear ? 1 : 0);
+                    cmd.Parameters.AddWithValue("@YearStartDate", (object?)yearStartDate ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@YearEndDate", (object?)yearEndDate ?? DBNull.Value);
 
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
@@ -178,13 +245,13 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(string rcocode, DateTime? fromDate, DateTime? toDate)
+        public IActionResult OnScreenReport(string? rcocode, string? year)
         {
             int companyId = GetCompanyId();
 
             try
             {
-                DataTable dt = GetTrialBalanceData(rcocode, fromDate, toDate, companyId);
+                DataTable dt = GetTrialBalanceData(rcocode, year, companyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -192,11 +259,14 @@ namespace Nskg.Controllers
                 }
 
                 string companyName = dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() ?? "W. W" : "W. W";
-                string branchCode = dt.Rows.Count > 0 ? dt.Rows[0]["CompanyBranch"]?.ToString() ?? "W.H" : "W.H";
+                string branchCode = string.IsNullOrWhiteSpace(rcocode) ? "ALL BRANCHES" : (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyBranch"]?.ToString() ?? "W.H" : "W.H");
 
-                DateTime refDate = toDate ?? DateTime.Now;
-                string periodText = $"For The Period of {refDate:MMMM yyyy}";
-                string printDateText = $"Print Date {DateTime.Now:dd-MMM-yy HH:mm:ss}";
+                string selectedYearText = string.IsNullOrEmpty(year) || year.Equals("All", StringComparison.OrdinalIgnoreCase)
+                    ? "Up to Current Financial Year"
+                    : $"Yearly Closure: {year}";
+
+                string periodText = $"For The Period: {selectedYearText}";
+                string printDateText = $"Print Date: {DateTime.Now:dd-MMM-yy HH:mm:ss}";
 
                 decimal totalDebit = 0;
                 decimal totalCredit = 0;
@@ -303,22 +373,26 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(string rcocode, DateTime? fromDate, DateTime? toDate)
+        public IActionResult ExportExcel(string? rcocode, string? year)
         {
             int companyId = GetCompanyId();
 
             try
             {
-                DataTable dt = GetTrialBalanceData(rcocode, fromDate, toDate, companyId);
+                DataTable dt = GetTrialBalanceData(rcocode, year, companyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
                     return Content("No data found to export.");
                 }
 
+                string selectedYearText = string.IsNullOrEmpty(year) || year.Equals("All", StringComparison.OrdinalIgnoreCase)
+                    ? "Up to Current Financial Year"
+                    : year;
+
                 var sb = new StringBuilder();
                 sb.AppendLine("\"TRAIL BALANCE\"");
-                sb.AppendLine($"\"For The Period:\",\"{toDate:MMMM yyyy}\",\"Company Code:\",\"{(!string.IsNullOrEmpty(rcocode) ? rcocode : "ALL")}\"");
+                sb.AppendLine($"\"Yearly Closure:\",\"{selectedYearText}\",\"Company Code:\",\"{(!string.IsNullOrEmpty(rcocode) ? rcocode : "ALL")}\"");
                 sb.AppendLine();
                 sb.AppendLine("Code,Title Of Account,Company,Debit,Credit");
 

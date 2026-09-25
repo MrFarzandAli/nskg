@@ -38,8 +38,24 @@
             </h5>
         </div>
         <div class="card-body p-4 bg-light">
-            <form method="get">
+            <form method="get" id="ledgerForm">
                 <div class="row g-3">
+                    <!-- Company Selector -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Company</label>
+                        <select class="form-control select2" id="companySelect" name="companyId">
+                            @if (ViewBag.CompanyList != null)
+                            {
+                                foreach (var comp in ViewBag.CompanyList)
+                                {
+                                    <option value="@comp.Id" selected="@(comp.Id == ViewBag.SelectedCompanyId ? "selected" : null)">
+                                        @comp.Name
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
                     <!-- Account Code Selector -->
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Select Account</label>
@@ -59,7 +75,7 @@
                     </div>
 
                     <!-- From Date -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">From Date</label>
                         <input type="date" class="form-control" name="fromDate" value="@fromDateValue" required />
                     </div>
@@ -70,27 +86,24 @@
                         <input type="date" class="form-control" name="toDate" value="@toDateValue" required />
                     </div>
 
-                    <!-- Actions -->
-                    <div class="col-md-2 d-flex align-items-end gap-2">
+                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                         <!-- VIEW ON SCREEN -->
                         <button type="button"
-                                class="btn btn-primary btn-md flex-fill text-white shadow-sm"
+                                class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold"
                                 onclick="loadOnScreenReport()">
-                            <i class="fa fa-desktop me-1"></i> View
+                            <i class="fa fa-desktop me-1"></i> View Report
                         </button>
-                    </div>
 
-                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                         <!-- EXCEL EXPORT -->
                         <button type="submit"
-                                class="btn btn-success btn-sm px-3 shadow-sm"
+                                class="btn btn-success btn-sm px-3 shadow-sm fw-semibold"
                                 asp-action="ExportExcel">
                             <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
                         </button>
 
                         <!-- PDF DOWNLOAD -->
                         <button type="submit"
-                                class="btn btn-danger btn-sm px-3 shadow-sm"
+                                class="btn btn-danger btn-sm px-3 shadow-sm fw-semibold"
                                 asp-action="GeneratePDF"
                                 formtarget="_blank">
                             <i class="fa fa-file-pdf-o me-1"></i> Open / Print PDF
@@ -136,9 +149,32 @@
                 allowClear: true,
                 width: '100%'
             });
+
+            $('#companySelect').on('change', function () {
+                var compId = $(this).val();
+                if (!compId) return;
+
+                $.ajax({
+                    url: '@Url.Action("GetAccountsByCompany", "AccountLedgerReport")',
+                    type: 'GET',
+                    data: { companyId: compId },
+                    success: function (data) {
+                        var $acc = $('#accodeSelect');
+                        $acc.empty();
+                        $acc.append('<option value="">-- Select Account --</option>');
+                        if (data && data.length > 0) {
+                            $.each(data, function (i, item) {
+                                $acc.append('<option value="' + item.code + '">' + item.code + ' - ' + item.name + '</option>');
+                            });
+                        }
+                        $acc.trigger('change');
+                    }
+                });
+            });
         });
 
         function loadOnScreenReport() {
+            var companyId = $('select[name="companyId"]').val() || '';
             var accode = $('select[name="accode"]').val();
             var fromDate = $('input[name="fromDate"]').val();
             var toDate = $('input[name="toDate"]').val();
@@ -175,7 +211,8 @@
             var url = '@Url.Action("OnScreenReport", "AccountLedgerReport")'
                 + '?accode=' + encodeURIComponent(accode)
                 + '&fromDate=' + encodeURIComponent(fromDate)
-                + '&toDate=' + encodeURIComponent(toDate);
+                + '&toDate=' + encodeURIComponent(toDate)
+                + '&companyId=' + encodeURIComponent(companyId);
 
             $('#reportFrame').off('load');
             $('#reportFrame').attr('src', url);

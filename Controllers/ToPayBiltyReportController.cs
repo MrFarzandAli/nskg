@@ -24,8 +24,9 @@ namespace Nskg.Controllers
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         }
 
-        private int GetCompanyId()
+        private int GetCompanyId(int? companyId = null)
         {
+            if (companyId.HasValue && companyId.Value > 0) return companyId.Value;
             var compId = User.FindFirst("CompanyId")?.Value;
             if (int.TryParse(compId, out int id) && id > 0) return id;
             return 1006;
@@ -39,16 +40,33 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(string fromDate, string toDate, decimal? fromBilNo, decimal? toBilNo)
+        public IActionResult Index(string fromDate, string toDate, decimal? fromBilNo, decimal? toBilNo, decimal? fromBiltyNo, decimal? toBiltyNo, int? companyId)
         {
-            ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.ToString("yyyy-MM-dd") : fromDate;
-            ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
+            int selectedCompanyId = GetCompanyId(companyId);
+
+            var companies = _context.Companies
+                .Where(c => !c.IsDeleted)
+                .OrderBy(c => c.Cocode)
+                .Select(c => new
+                {
+                    Id = c.Id,
+                    Code = c.Cocode,
+                    Name = (!string.IsNullOrEmpty(c.Cocode) ? c.Cocode + " - " : "") + c.Name
+                })
+                .ToList();
+
+            ViewBag.CompanyList = companies;
+            ViewBag.SelectedCompanyId = selectedCompanyId;
+            ViewBag.FromDate = fromDate;
+            ViewBag.ToDate = toDate;
             ViewBag.FromBilNo = fromBilNo;
             ViewBag.ToBilNo = toBilNo;
+            ViewBag.FromBiltyNo = fromBiltyNo;
+            ViewBag.ToBiltyNo = toBiltyNo;
             return View();
         }
 
-        private DataTable GetToPayBiltyList(DateTime? fromDate, DateTime? toDate, decimal? fromBilNo, decimal? toBilNo, int companyId, int financialYearId)
+        private DataTable GetToPayBiltyList(DateTime? fromDate, DateTime? toDate, decimal? fromBilNo, decimal? toBilNo, decimal? fromBiltyNo, decimal? toBiltyNo, int companyId, int financialYearId)
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
@@ -76,13 +94,15 @@ namespace Nskg.Controllers
                         b.NetAmt
                     INTO #ToPayBills
                     FROM ISSHEAD b
-                    WHERE b.CompanyId = @CompanyId
+                    WHERE (b.CompanyId = @CompanyId OR @CompanyId = 0)
                       AND ISNULL(b.IsDeleted, 0) = 0
                       AND b.PType = 'ToPay'
                       AND (@FromDate IS NULL OR b.DocDate >= @FromDate)
                       AND (@ToDate IS NULL OR b.DocDate <= @ToDate)
                       AND (@FromBilNo IS NULL OR b.BilNo >= @FromBilNo)
-                      AND (@ToBilNo IS NULL OR b.BilNo <= @ToBilNo);
+                      AND (@ToBilNo IS NULL OR b.BilNo <= @ToBilNo)
+                      AND (@FromBiltyNo IS NULL OR b.BillTiNo >= @FromBiltyNo)
+                      AND (@ToBiltyNo IS NULL OR b.BillTiNo <= @ToBiltyNo);
 
                     SELECT
                         CAST(b.BilNo AS VARCHAR(50)) AS BilNo,
@@ -108,6 +128,8 @@ namespace Nskg.Controllers
                     cmd.Parameters.AddWithValue("@ToDate", toDate.HasValue ? (object)toDate.Value.Date.AddDays(1).AddSeconds(-1) : DBNull.Value);
                     cmd.Parameters.AddWithValue("@FromBilNo", fromBilNo.HasValue && fromBilNo.Value > 0 ? (object)fromBilNo.Value : DBNull.Value);
                     cmd.Parameters.AddWithValue("@ToBilNo", toBilNo.HasValue && toBilNo.Value > 0 ? (object)toBilNo.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@FromBiltyNo", fromBiltyNo.HasValue && fromBiltyNo.Value > 0 ? (object)fromBiltyNo.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@ToBiltyNo", toBiltyNo.HasValue && toBiltyNo.Value > 0 ? (object)toBiltyNo.Value : DBNull.Value);
 
                     using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                         da.Fill(dt);
@@ -118,14 +140,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult GeneratePDF(DateTime? fromDate, DateTime? toDate, decimal? fromBilNo, decimal? toBilNo)
+        public IActionResult GeneratePDF(DateTime? fromDate, DateTime? toDate, decimal? fromBilNo, decimal? toBilNo, decimal? fromBiltyNo, decimal? toBiltyNo, int? companyId)
         {
-            int companyId = GetCompanyId();
+            int selectedCompanyId = GetCompanyId(companyId);
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetToPayBiltyList(fromDate, toDate, fromBilNo, toBilNo, companyId, financialYearId);
+                DataTable dt = GetToPayBiltyList(fromDate, toDate, fromBilNo, toBilNo, fromBiltyNo, toBiltyNo, selectedCompanyId, financialYearId);
 
                 if (dt == null || dt.Rows.Count == 0)
                     return Content("No data found for the selected filter criteria.");
@@ -158,44 +180,98 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(DateTime? fromDate, DateTime? toDate, decimal? fromBilNo, decimal? toBilNo)
+        public IActionResult OnScreenReport(DateTime? fromDate, DateTime? toDate, decimal? fromBilNo, decimal? toBilNo, decimal? fromBiltyNo, decimal? toBiltyNo, int? companyId)
         {
-            int companyId = GetCompanyId();
+            int selectedCompanyId = GetCompanyId(companyId);
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetToPayBiltyList(fromDate, toDate, fromBilNo, toBilNo, companyId, financialYearId);
+                DataTable dt = GetToPayBiltyList(fromDate, toDate, fromBilNo, toBilNo, fromBiltyNo, toBiltyNo, selectedCompanyId, financialYearId);
 
                 if (dt == null || dt.Rows.Count == 0)
                     return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No data found for the selected filter criteria.</strong></div>", "text/html");
 
-                string reportPath = Path.Combine(_env.WebRootPath, "Reports", "BiltyListrpt.rdlc");
+                string compName = (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "Company";
+                decimal totQty = 0, totFreight = 0, totBalance = 0;
 
-                if (!System.IO.File.Exists(reportPath))
-                    return Content($"Report definition file not found: {reportPath}");
+                var sb = new StringBuilder();
+                sb.Append(@"<!DOCTYPE html><html><head><meta charset='utf-8'>
+                <style>
+                    body{font-family:Arial,sans-serif;font-size:12px;margin:12px;color:#333;}
+                    .header-box{text-align:center;margin-bottom:12px;}
+                    .header-box h2{margin:0 0 4px;color:#0d6efd;font-size:18px;}
+                    .header-box h3{margin:0 0 4px;font-size:14px;color:#495057;}
+                    .header-box p{margin:0;font-size:11px;color:#6c757d;}
+                    table{width:100%;border-collapse:collapse;margin-top:8px;}
+                    th{background:#0d6efd;color:#fff;padding:7px 6px;text-align:left;font-size:11px;border:1px solid #0b5ed7;}
+                    td{padding:5px 6px;border:1px solid #dee2e6;font-size:11px;}
+                    tr:nth-child(even){background:#f8f9fa;}
+                    tr:hover{background:#e9ecef;}
+                    .num{text-align:right;}
+                    .center{text-align:center;}
+                    .bold{font-weight:bold;}
+                    tfoot tr{background:#d0e2ff;font-weight:bold;}
+                </style></head><body>");
 
-                using (LocalReport report = new LocalReport())
+                sb.Append($"<div class='header-box'>");
+                sb.Append($"<h2>{compName}</h2>");
+                sb.Append($"<h3>TO PAY BILTY REPORT</h3>");
+
+                string filterText = "";
+                if (fromDate.HasValue && toDate.HasValue) filterText += $"Date: <b>{fromDate.Value:dd-MMM-yyyy}</b> to <b>{toDate.Value:dd-MMM-yyyy}</b> ";
+                if (fromBilNo.HasValue && fromBilNo > 0) filterText += $" | Bill No: <b>{fromBilNo} - {toBilNo}</b> ";
+                if (fromBiltyNo.HasValue && fromBiltyNo > 0) filterText += $" | Bilty No: <b>{fromBiltyNo} - {toBiltyNo}</b>";
+                if (string.IsNullOrEmpty(filterText)) filterText = "All Records";
+                sb.Append($"<p>{filterText}</p>");
+                sb.Append("</div>");
+
+                sb.Append("<table><thead><tr>");
+                sb.Append("<th style='width:35px;' class='center'>#</th>");
+                sb.Append("<th style='width:70px;'>Bill No</th>");
+                sb.Append("<th style='width:75px;'>Bilty No</th>");
+                sb.Append("<th style='width:80px;'>Date</th>");
+                sb.Append("<th>Station</th>");
+                sb.Append("<th>Party Name</th>");
+                sb.Append("<th class='num' style='width:60px;'>Qty</th>");
+                sb.Append("<th class='num' style='width:90px;'>Freight</th>");
+                sb.Append("<th class='num' style='width:95px;'>Balance</th>");
+                sb.Append("</tr></thead><tbody>");
+
+                int sr = 1;
+                foreach (DataRow row in dt.Rows)
                 {
-                    report.ReportPath = reportPath;
-                    report.DataSources.Clear();
-                    dt.TableName = "DSBiltyList";
-                    report.DataSources.Add(new ReportDataSource("DSBiltyList", dt));
+                    decimal qty = row["Qty"] != DBNull.Value ? Convert.ToDecimal(row["Qty"]) : 0;
+                    decimal freight = row["Freight"] != DBNull.Value ? Convert.ToDecimal(row["Freight"]) : 0;
+                    decimal balance = row["Balance"] != DBNull.Value ? Convert.ToDecimal(row["Balance"]) : 0;
 
-                    try
-                    {
-                        byte[] htmlBytes = report.Render("HTML5");
-                        if (htmlBytes != null && htmlBytes.Length > 0)
-                            return File(htmlBytes, "text/html");
-                    }
-                    catch
-                    {
-                        // Fallback to PDF display in iframe
-                    }
+                    totQty += qty;
+                    totFreight += freight;
+                    totBalance += balance;
 
-                    byte[] pdfBytes = report.Render("PDF");
-                    return File(pdfBytes, "application/pdf");
+                    string docDate = row["DocDate"] != DBNull.Value ? Convert.ToDateTime(row["DocDate"]).ToString("dd-MMM-yy") : "";
+
+                    sb.Append("<tr>");
+                    sb.Append($"<td class='center'>{sr++}</td>");
+                    sb.Append($"<td class='bold'>{row["BilNo"]}</td>");
+                    sb.Append($"<td>{row["BillTiNo"]}</td>");
+                    sb.Append($"<td>{docDate}</td>");
+                    sb.Append($"<td>{row["Station"]}</td>");
+                    sb.Append($"<td>{row["PartyName"]}</td>");
+                    sb.Append($"<td class='num'>{(qty != 0 ? qty.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(freight != 0 ? freight.ToString("#,##0.00") : "")}</td>");
+                    sb.Append($"<td class='num bold'>{balance:#,##0.00}</td>");
+                    sb.Append("</tr>");
                 }
+
+                sb.Append("</tbody><tfoot><tr>");
+                sb.Append($"<td colspan='6' class='bold' style='text-align:right;'>TOTAL:</td>");
+                sb.Append($"<td class='num bold'>{totQty:#,##0}</td>");
+                sb.Append($"<td class='num bold'>{totFreight:#,##0.00}</td>");
+                sb.Append($"<td class='num bold'>{totBalance:#,##0.00}</td>");
+                sb.Append("</tr></tfoot></table></body></html>");
+
+                return Content(sb.ToString(), "text/html");
             }
             catch (Exception ex)
             {
@@ -204,14 +280,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(DateTime? fromDate, DateTime? toDate, decimal? fromBilNo, decimal? toBilNo)
+        public IActionResult ExportExcel(DateTime? fromDate, DateTime? toDate, decimal? fromBilNo, decimal? toBilNo, decimal? fromBiltyNo, decimal? toBiltyNo, int? companyId)
         {
-            int companyId = GetCompanyId();
+            int selectedCompanyId = GetCompanyId(companyId);
             int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetToPayBiltyList(fromDate, toDate, fromBilNo, toBilNo, companyId, financialYearId);
+                DataTable dt = GetToPayBiltyList(fromDate, toDate, fromBilNo, toBilNo, fromBiltyNo, toBiltyNo, selectedCompanyId, financialYearId);
 
                 if (dt == null || dt.Rows.Count == 0)
                     return Content("No data found to export.");

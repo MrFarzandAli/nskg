@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Nskg.Data;
 using System.Data;
 using System.Text;
 
@@ -9,33 +10,61 @@ namespace Nskg.Controllers
     [Authorize]
     public class AdvanceReportController : Controller
     {
+        private readonly ApplicationDbContext _context;
         private readonly IConfiguration _config;
 
-        public AdvanceReportController(IConfiguration config)
+        public AdvanceReportController(ApplicationDbContext context, IConfiguration config)
         {
+            _context = context;
             _config = config;
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         }
 
-        private int GetCompanyId()
+        private int GetCompanyId(int? companyId = null)
         {
+            if (companyId.HasValue && companyId.Value > 0) return companyId.Value;
             var compId = User.FindFirst("CompanyId")?.Value;
             if (int.TryParse(compId, out int id) && id > 0) return id;
             return 1006;
         }
 
         [HttpGet]
-        public IActionResult Index(string fromDate, string toDate)
+        public IActionResult Index(string? fromDate, string? toDate, decimal? docNo, decimal? chalNo, string? vehicleNo, string? transporter, int? companyId)
         {
+            int selectedCompanyId = GetCompanyId(companyId);
+
+            var companies = _context.Companies
+                .Where(c => !c.IsDeleted)
+                .OrderBy(c => c.Cocode)
+                .Select(c => new
+                {
+                    Id = c.Id,
+                    Code = c.Cocode,
+                    Name = (!string.IsNullOrEmpty(c.Cocode) ? c.Cocode + " - " : "") + c.Name
+                })
+                .ToList();
+
+            ViewBag.CompanyList = companies;
+            ViewBag.SelectedCompanyId = selectedCompanyId;
             ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.ToString("yyyy-MM-dd") : fromDate;
             ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
+            ViewBag.DocNo = docNo;
+            ViewBag.ChalNo = chalNo;
+            ViewBag.VehicleNo = vehicleNo;
+            ViewBag.Transporter = transporter;
+
             return View();
         }
 
-        private DataTable GetAdvanceData(DateTime? fromDate, DateTime? toDate, int companyId)
+        private DataTable GetAdvanceData(DateTime? fromDate, DateTime? toDate, decimal? docNo, decimal? chalNo, string? vehicleNo, string? transporter, int companyId)
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
+
+            bool hasSpecificFilter = (docNo.HasValue && docNo.Value > 0)
+                                  || (chalNo.HasValue && chalNo.Value > 0)
+                                  || !string.IsNullOrWhiteSpace(vehicleNo)
+                                  || !string.IsNullOrWhiteSpace(transporter);
 
             using (SqlConnection con = new SqlConnection(connString))
             {
@@ -55,16 +84,50 @@ namespace Nskg.Controllers
                     FROM CommHead h
                     WHERE h.CompanyId = @CompanyId
                       AND ISNULL(h.IsDeleted, 0) = 0
-                      AND ISNULL(h.AdvanceAmt, 0) > 0
-                      AND (@FromDate IS NULL OR h.DocDate >= @FromDate)
-                      AND (@ToDate   IS NULL OR h.DocDate <= @ToDate)
-                    ORDER BY h.DocDate DESC, h.Id DESC";
+                      AND ISNULL(h.AdvanceAmt, 0) > 0";
+
+                if (docNo.HasValue && docNo.Value > 0)
+                    query += " AND h.DocNo = @DocNo";
+
+                if (chalNo.HasValue && chalNo.Value > 0)
+                    query += " AND h.ChalNo = @ChalNo";
+
+                if (!string.IsNullOrWhiteSpace(vehicleNo))
+                    query += " AND h.VehicleNo LIKE @VehicleNo";
+
+                if (!string.IsNullOrWhiteSpace(transporter))
+                    query += " AND h.Transporter LIKE @Transporter";
+
+                if (fromDate.HasValue && !hasSpecificFilter)
+                    query += " AND h.DocDate >= @FromDate";
+
+                if (toDate.HasValue && !hasSpecificFilter)
+                    query += " AND h.DocDate <= @ToDate";
+
+                query += " ORDER BY h.DocDate DESC, h.Id DESC";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@CompanyId", companyId);
-                    cmd.Parameters.AddWithValue("@FromDate", fromDate.HasValue ? (object)fromDate.Value.Date : DBNull.Value);
-                    cmd.Parameters.AddWithValue("@ToDate", toDate.HasValue ? (object)toDate.Value.Date.AddDays(1).AddSeconds(-1) : DBNull.Value);
+
+                    if (docNo.HasValue && docNo.Value > 0)
+                        cmd.Parameters.AddWithValue("@DocNo", docNo.Value);
+
+                    if (chalNo.HasValue && chalNo.Value > 0)
+                        cmd.Parameters.AddWithValue("@ChalNo", chalNo.Value);
+
+                    if (!string.IsNullOrWhiteSpace(vehicleNo))
+                        cmd.Parameters.AddWithValue("@VehicleNo", "%" + vehicleNo.Trim() + "%");
+
+                    if (!string.IsNullOrWhiteSpace(transporter))
+                        cmd.Parameters.AddWithValue("@Transporter", "%" + transporter.Trim() + "%");
+
+                    if (fromDate.HasValue && !hasSpecificFilter)
+                        cmd.Parameters.AddWithValue("@FromDate", fromDate.Value.Date);
+
+                    if (toDate.HasValue && !hasSpecificFilter)
+                        cmd.Parameters.AddWithValue("@ToDate", toDate.Value.Date.AddDays(1).AddSeconds(-1));
+
                     using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                         da.Fill(dt);
                 }
@@ -73,12 +136,12 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(DateTime? fromDate, DateTime? toDate)
+        public IActionResult OnScreenReport(DateTime? fromDate, DateTime? toDate, decimal? docNo, decimal? chalNo, string? vehicleNo, string? transporter, int? companyId)
         {
-            int companyId = GetCompanyId();
+            int selectedCompanyId = GetCompanyId(companyId);
             try
             {
-                DataTable dt = GetAdvanceData(fromDate, toDate, companyId);
+                DataTable dt = GetAdvanceData(fromDate, toDate, docNo, chalNo, vehicleNo, transporter, selectedCompanyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                     return Content("<div style='font-family:Arial;padding:30px;text-align:center;color:#721c24;background:#f8d7da;border:1px solid #f5c6cb;border-radius:6px;margin:20px'><strong>No advance data found.</strong></div>", "text/html");
@@ -98,7 +161,11 @@ namespace Nskg.Controllers
                     .num{text-align:right;}
                 </style></head><body>");
                 sb.Append($"<h2>ADVANCE REPORT</h2>");
-                sb.Append($"<p>From: <b>{fromDate:dd-MMM-yyyy}</b> &nbsp; To: <b>{toDate:dd-MMM-yyyy}</b></p>");
+
+                string dateSubtitle = (fromDate.HasValue && toDate.HasValue)
+                    ? $"From: <b>{fromDate:dd-MMM-yyyy}</b> &nbsp; To: <b>{toDate:dd-MMM-yyyy}</b>"
+                    : "All Dates";
+                sb.Append($"<p>{dateSubtitle}</p>");
                 sb.Append("<table><thead><tr>");
                 sb.Append("<th>#</th><th>Doc No</th><th>Date</th><th>Chal No</th><th>Station</th><th>Transporter</th><th>Vehicle No</th><th>Advance Account</th><th class='num'>Advance Amt</th><th>Narration</th>");
                 sb.Append("</tr></thead><tbody>");
@@ -124,19 +191,18 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult GeneratePDF(DateTime? fromDate, DateTime? toDate)
+        public IActionResult GeneratePDF(DateTime? fromDate, DateTime? toDate, decimal? docNo, decimal? chalNo, string? vehicleNo, string? transporter, int? companyId)
         {
-            // Redirect to on-screen with _blank target (browser print)
-            return RedirectToAction("OnScreenReport", new { fromDate, toDate });
+            return RedirectToAction("OnScreenReport", new { fromDate, toDate, docNo, chalNo, vehicleNo, transporter, companyId });
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(DateTime? fromDate, DateTime? toDate)
+        public IActionResult ExportExcel(DateTime? fromDate, DateTime? toDate, decimal? docNo, decimal? chalNo, string? vehicleNo, string? transporter, int? companyId)
         {
-            int companyId = GetCompanyId();
+            int selectedCompanyId = GetCompanyId(companyId);
             try
             {
-                DataTable dt = GetAdvanceData(fromDate, toDate, companyId);
+                DataTable dt = GetAdvanceData(fromDate, toDate, docNo, chalNo, vehicleNo, transporter, selectedCompanyId);
                 if (dt == null || dt.Rows.Count == 0)
                     return Content("No data found to export.");
 

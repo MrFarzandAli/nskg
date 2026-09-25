@@ -1,20 +1,9 @@
 @{
-    ViewData["Title"] = "Trail Balance Report";
+    ViewData["Title"] = "Trial Balance Report";
     var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
-    var selectedRcocode = ViewBag.Rcocode as string ?? "01";
-
-    var fromDateValue = ViewBag.FromDate as string;
-    var toDateValue = ViewBag.ToDate as string;
-
-    if (string.IsNullOrEmpty(fromDateValue))
-    {
-        fromDateValue = DateTime.Now.ToString("yyyy-01-01");
-    }
-
-    if (string.IsNullOrEmpty(toDateValue))
-    {
-        toDateValue = DateTime.Now.ToString("yyyy-MM-dd");
-    }
+    var selectedRcocode = ViewBag.Rcocode as string ?? "";
+    var yearList = ViewBag.YearList as List<string> ?? new List<string> { "All" };
+    var selectedYear = ViewBag.SelectedYear as string ?? "All";
 }
 
 <style>
@@ -28,25 +17,26 @@
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold">Trail Balance Report</h3>
+        <h3 class="fw-bold"><i class="fa fa-balance-scale me-2 text-primary"></i> Trial Balance Report</h3>
     </div>
 
     <!-- Filter Card / Report Parameters -->
     <div class="card custom-card mb-4 shadow-sm border-0">
-        <div class="card-header bg-light d-flex align-items-center justify-content-between">
-            <h5 class="mb-0 heading-glow text-dark">
-                <i class="fa fa-sliders me-2 text-primary"></i> Report Parameters
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-semibold">
+                <i class="fa fa-sliders me-2"></i> Report Parameters & Yearly Closure
             </h5>
-            <small class="text-muted">Enter values for the parameters</small>
+            <small class="text-white-50">Filter by Company / Branch or select Yearly Closure to view historical balances</small>
         </div>
-        <div class="card-body">
+        <div class="card-body bg-light p-4">
             <form id="reportForm" method="get">
                 <div class="row g-3 align-items-end">
 
                     <!-- Company / Rcocode -->
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">Company (Rcocode)</label>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Company / Branch</label>
                         <select class="form-select select2" id="rcocodeSelect" name="rcocode">
+                            <option value="" selected="@(string.IsNullOrEmpty(selectedRcocode) ? "selected" : null)">-- All Companies / Branches --</option>
                             @if (companyList != null && companyList.Any())
                             {
                                 foreach (var comp in companyList)
@@ -61,46 +51,48 @@
                                     }
                                 }
                             }
-                            else
+                        </select>
+                    </div>
+
+                    <!-- Yearly Closure Filter -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Yearly Closure / Period</label>
+                        <select class="form-select select2" id="yearSelect" name="year">
+                            @foreach (var yr in yearList)
                             {
-                                <option value="01" selected="selected">01 - Karachi Head Office</option>
+                                if (yr == "All")
+                                {
+                                    <option value="All" selected="@(selectedYear == "All" ? "selected" : null)">All Years (Up to Current)</option>
+                                }
+                                else
+                                {
+                                    <option value="@yr" selected="@(selectedYear == yr ? "selected" : null)">Up to Year: @yr</option>
+                                }
                             }
                         </select>
                     </div>
 
-                    <!-- From Date -->
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">From Date</label>
-                        <input type="date" class="form-control" id="fromDateInput" name="fromDate" value="@fromDateValue" required />
-                    </div>
-
-                    <!-- To Date -->
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">To Date</label>
-                        <input type="date" class="form-control" id="toDateInput" name="toDate" value="@toDateValue" required />
-                    </div>
-
                     <!-- BUTTON ROW -->
-                    <div class="col-md-3 d-flex justify-content-end gap-2">
+                    <div class="col-md-4 d-flex justify-content-end gap-2">
                         <!-- EXCEL -->
                         <button type="submit"
-                                class="btn btn-success btn-sm custom-btn px-3"
+                                class="btn btn-success btn-sm custom-btn px-3 shadow-sm fw-semibold"
                                 asp-action="ExportExcel">
-                            <i class="fa fa-file-excel-o me-1"></i> Excel
+                            <i class="fa fa-file-excel-o me-1"></i> Export Excel
                         </button>
 
                         <!-- PRINT -->
                         <button type="button"
-                                class="btn btn-secondary btn-sm custom-btn px-3"
+                                class="btn btn-secondary btn-sm custom-btn px-3 shadow-sm fw-semibold"
                                 onclick="printReportFrame()">
                             <i class="fa fa-print me-1"></i> Print
                         </button>
 
                         <!-- ON SCREEN -->
                         <button type="button"
-                                class="btn btn-primary btn-sm custom-btn px-3 fw-semibold"
+                                class="btn btn-primary btn-sm custom-btn px-3 shadow-sm fw-semibold"
                                 onclick="loadOnScreenReport()">
-                            <i class="fa fa-desktop me-1"></i> View
+                            <i class="fa fa-desktop me-1"></i> View Report
                         </button>
                     </div>
 
@@ -110,24 +102,29 @@
     </div>
 
     <!-- 🔵 ON SCREEN REPORT -->
-    <div id="reportCard" class="card shadow-sm mb-4" style="display:none;">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fa fa-file-text-o me-2"></i> Report Preview</h5>
-            <button type="button" class="btn btn-light btn-sm fw-bold" onclick="printReportFrame()">
-                <i class="fa fa-print me-1"></i> Print
-            </button>
+    <div id="reportCard" class="card shadow border-0 mb-4" style="display:none;">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="mb-0 fs-6"><i class="fa fa-file-text-o me-2"></i> Trial Balance Preview</h5>
+            <div>
+                <button type="button" class="btn btn-sm btn-outline-light me-2" onclick="printReportFrame()">
+                    <i class="fa fa-print me-1"></i> Print
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-light" onclick="$('#reportCard').hide()">
+                    <i class="fa fa-times"></i> Close
+                </button>
+            </div>
         </div>
 
         <!-- LOADER -->
         <div id="reportLoader" style="display:none; padding:40px; text-align:center;">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-            <div class="mt-3 fw-bold text-secondary">Loading Report Data...</div>
+            <div class="mt-3 fw-bold text-secondary">Loading Trial Balance Data...</div>
         </div>
 
         <!-- REPORT FRAME -->
         <div class="card-body p-0">
             <iframe id="reportFrame"
-                    style="width:100%; height:750px; display:none;"></iframe>
+                    style="width:100%; height:780px; border:none;"></iframe>
         </div>
     </div>
 
@@ -137,42 +134,53 @@
     <script>
         $(document).ready(function () {
             if ($.fn.select2) {
-                $('.select2').select2({
+                $('#rcocodeSelect').select2({
+                    theme: 'bootstrap-5',
                     width: '100%',
+                    allowClear: false
+                });
+
+                $('#yearSelect').select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    tags: true,
+                    placeholder: "Select or type year (e.g. 2024-2025)",
                     allowClear: false
                 });
             }
 
-            // Auto load report on first view
+            // Auto load report on first view without needing manual search
             loadOnScreenReport();
+
+            // Auto reload when company or year changes
+            $('#rcocodeSelect, #yearSelect').on('change', function () {
+                loadOnScreenReport();
+            });
         });
 
         function loadOnScreenReport() {
             var rcocode = $('#rcocodeSelect').val() || '';
-            var fromDate = $('#fromDateInput').val();
-            var toDate = $('#toDateInput').val();
-
-            if (!fromDate || !toDate) {
-                alert("Please select valid dates");
-                return;
-            }
+            var year = $('#yearSelect').val() || 'All';
 
             $('#reportCard').show();
             $('#reportLoader').show();
-            $('#reportFrame').hide();
+            $('#reportFrame').show();
 
-            var url = '/TrailBalanceReport/OnScreenReport'
+            var url = '@Url.Action("OnScreenReport", "TrailBalanceReport")'
                 + '?rcocode=' + encodeURIComponent(rcocode)
-                + '&fromDate=' + encodeURIComponent(fromDate)
-                + '&toDate=' + encodeURIComponent(toDate);
+                + '&year=' + encodeURIComponent(year);
 
-            $('#reportFrame').off('load');
-            $('#reportFrame').attr('src', url);
+            var frame = document.getElementById('reportFrame');
+            if (frame) {
+                frame.onload = function () {
+                    $('#reportLoader').hide();
+                };
+                frame.src = url;
+            }
 
-            $('#reportFrame').on('load', function () {
+            setTimeout(function () {
                 $('#reportLoader').hide();
-                $('#reportFrame').show();
-            });
+            }, 3000);
         }
 
         function printReportFrame() {
