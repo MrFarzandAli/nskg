@@ -1,4 +1,4 @@
-﻿@* @using Nskg.Models.ViewModels
+@* @using Nskg.Models.ViewModels
 @model VoucherVM
 
 <form method="post">
@@ -499,8 +499,8 @@
 
                 ${vehicleCol}
 
-                <td><input name="Details[${i}].Dramt" onkeyup="calc()" class="form-control"/></td>
-                <td><input name="Details[${i}].Cramt" onkeyup="calc()" class="form-control"/></td>
+                <td><input name="Details[${i}].Dramt" oninput="calc()" class="form-control"/></td>
+                <td><input name="Details[${i}].Cramt" oninput="calc()" class="form-control"/></td>
 
                 ${chequeCols}
 
@@ -550,11 +550,31 @@
 
             document.getElementById("dr").innerText = dr.toFixed(2);
             document.getElementById("cr").innerText = cr.toFixed(2);
-            document.getElementById("df").innerText = diff.toFixed(2);
+            document.getElementById("df").innerText = (type === "JV" ? diff : 0).toFixed(2);
             document.getElementById("entries").innerText = entries;
 
-            // Optionally disable submit button if not balanced
-            // document.querySelector("button[type='submit']").disabled = diff !== 0 || entries === 0;
+            const btn = document.querySelector("button[type='submit']");
+            if (btn) {
+                let isValid = false;
+                if (type === "JV") {
+                    isValid = (entries > 0 && diff === 0 && (dr > 0 || cr > 0));
+                } else if (type === "CP" || type === "BP") {
+                    isValid = (entries > 0 && dr > 0);
+                } else if (type === "CR" || type === "BR") {
+                    isValid = (entries > 0 && cr > 0);
+                } else {
+                    isValid = (entries > 0 && (dr > 0 || cr > 0));
+                }
+
+                btn.disabled = !isValid;
+                if (type === "JV") {
+                    btn.classList.toggle("btn-danger", !isValid && entries > 0 && diff !== 0);
+                    btn.classList.toggle("btn-success", isValid);
+                } else {
+                    btn.classList.remove("btn-danger");
+                    btn.classList.add("btn-success");
+                }
+            }
         }
 
         function removeRow(btn) {
@@ -1137,22 +1157,39 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small text-muted">Transaction Date</label>
-                    <input asp-for="Head.Vodate" type="date" class="form-control form-control-sm" />
+                    <input asp-for="Head.Vodate" type="date" value="@(Model?.Head?.Vodate?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small text-muted">Entry Date</label>
-                    <input asp-for="Head.EntryDate" type="date" class="form-control form-control-sm" readonly />
+                    <input asp-for="Head.EntryDate" type="date" value="@(Model?.Head?.EntryDate?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" readonly />
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small text-muted">Account</label>
-                    <select asp-for="Head.gl3Id" class="form-select form-select-sm"
-                            asp-items="@(new SelectList(ViewBag.HeaderAccounts, "Value", "Text"))">
+                    <select asp-for="Head.gl3Id" class="form-select form-select-sm">
+                        <option value="">Select Account</option>
+                        @if (ViewBag.HeaderAccounts != null)
+                        {
+                            foreach (var acc in (IEnumerable<SelectListItem>)ViewBag.HeaderAccounts)
+                            {
+                                bool isSelected = acc.Value == Model?.Head?.gl3Id?.ToString() || (!string.IsNullOrEmpty(Model?.Head?.Haccode) && acc.Text.Contains("(" + Model?.Head?.Haccode + ")"));
+                                <option value="@acc.Value" selected="@(isSelected ? "selected" : null)">@acc.Text</option>
+                            }
+                        }
                     </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small text-muted">Pay / Receive</label>
-                    <select asp-for="Head.Partycode" class="form-select form-select-sm"
-                            asp-items="@(new SelectList(ViewBag.PartyAccounts, "Value", "Text"))">
+                    <select asp-for="Head.Partycode" class="form-select form-select-sm">
+                        <option value="">-- Select Party Account --</option>
+                        @if (ViewBag.PartyAccounts != null)
+                        {
+                            foreach (var acc in (IEnumerable<SelectListItem>)ViewBag.PartyAccounts)
+                            {
+                                if (string.IsNullOrEmpty(acc.Value)) { continue; }
+                                bool isSelected = acc.Value == Model?.Head?.Partycode || (!string.IsNullOrEmpty(Model?.Head?.Partycode) && acc.Text.Contains("(" + Model?.Head?.Partycode + ")"));
+                                <option value="@acc.Value" selected="@(isSelected ? "selected" : null)">@acc.Text</option>
+                            }
+                        }
                     </select>
                 </div>
                 <div class="col-md-5">
@@ -1222,7 +1259,8 @@
                                             <option value="">Select Account</option>
                                             @foreach (var acc in ViewBag.Accounts)
                                             {
-                                                if (acc.Value == d.gl3Id?.ToString())
+                                                bool isSelected = acc.Value == d.gl3Id?.ToString() || (!string.IsNullOrEmpty(d.Acc) && acc.Text.Contains("(" + d.Acc + ")"));
+                                                if (isSelected)
                                                 {
                                                     <option value="@acc.Value" selected>@acc.Text</option>
                                                 }
@@ -1241,7 +1279,8 @@
                                                 <option value="">Select Transport</option>
                                                 @foreach (var acc in ViewBag.transporterList)
                                                 {
-                                                    if (acc.Value == d.Transcode?.ToString())
+                                                    bool isSelected = acc.Value == d.Transcode?.ToString() || (!string.IsNullOrEmpty(d.Transcode) && acc.Text.Contains("(" + d.Transcode + ")"));
+                                                    if (isSelected)
                                                     {
                                                         <option value="@acc.Value" selected>@acc.Text</option>
                                                     }

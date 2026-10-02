@@ -1,22 +1,14 @@
 @{
-    ViewData["Title"] = "Vehicle List Report (Processing Report)";
+    ViewData["Title"] = "Vehicle List Report";
 
     var fromDateValue = ViewBag.FromDate as string;
     var toDateValue = ViewBag.ToDate as string;
     var accodeValue = ViewBag.Accode as string ?? "";
     var selectedCompanyId = ViewBag.SelectedCompanyId != null ? (int)ViewBag.SelectedCompanyId : 0;
     var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
-    var accountList = ViewBag.AccountList as IEnumerable<dynamic>;
 
-    if (string.IsNullOrEmpty(fromDateValue))
-    {
-        fromDateValue = DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd");
-    }
-
-    if (string.IsNullOrEmpty(toDateValue))
-    {
-        toDateValue = DateTime.Now.ToString("yyyy-MM-dd");
-    }
+    fromDateValue = fromDateValue ?? "";
+    toDateValue = toDateValue ?? "";
 }
 
 <style>
@@ -30,7 +22,7 @@
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold"><i class="fa fa-truck me-2 text-primary"></i> Vehicle List Report <small class="text-muted fs-6">(Processing Report - Account Process)</small></h3>
+        <h3 class="fw-bold"><i class="fa fa-truck me-2 text-primary"></i> Vehicle List Report </h3>
     </div>
 
     <!-- Filter Card -->
@@ -47,6 +39,7 @@
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Company Name</label>
                         <select class="form-select select2" name="companyId" id="companySelect">
+                                <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
                             @if (companyList != null)
                             {
                                 foreach (var comp in companyList)
@@ -65,55 +58,36 @@
                     </div>
 
                     <!-- From Date -->
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label fw-bold">From Date</label>
-                        <input type="date" class="form-control" name="fromDate" id="fromDate" value="@fromDateValue" required />
+                        <input type="date" class="form-control" name="fromDate" id="fromDate" value="@fromDateValue" />
                     </div>
 
                     <!-- To Date -->
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label fw-bold">To Date</label>
-                        <input type="date" class="form-control" name="toDate" id="toDate" value="@toDateValue" required />
+                        <input type="date" class="form-control" name="toDate" id="toDate" value="@toDateValue" />
                     </div>
 
-                    <!-- A/c Code (Station / Godown / Adda) -->
-                    <div class="col-md-5">
-                        <label class="form-label fw-bold">A/c Code <small class="text-primary">(Station / Godown / Adda)</small></label>
+                    <!-- Account / Station Dropdown -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Account / Station</label>
                         <select class="form-select select2" name="accode" id="accodeSelect">
                             <option value="">-- All Accounts / Stations --</option>
-                            @if (accountList != null)
-                            {
-                                foreach (var acc in accountList)
-                                {
-                                    <option value="@acc.Code" selected="@(acc.Code == accodeValue ? "selected" : null)" data-type="@acc.Type">
-                                        @acc.Code - @acc.Name
-                                    </option>
-                                }
-                            }
                         </select>
                     </div>
 
                     <!-- Action Buttons Toolbar -->
                     <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
-                        <!-- VIEW ON SCREEN -->
-                        <button type="button" 
-                                class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold" 
-                                onclick="loadOnScreenReport()">
+                        <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold" onclick="loadOnScreenReport()">
                             <i class="fa fa-desktop me-1"></i> View Report
                         </button>
 
-                        <!-- EXCEL EXPORT -->
-                        <button type="submit" 
-                                class="btn btn-success btn-sm px-3 shadow-sm fw-semibold" 
-                                asp-action="ExportExcel">
+                        <button type="submit" class="btn btn-success btn-sm px-3 shadow-sm fw-semibold" asp-action="ExportExcel">
                             <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
                         </button>
 
-                        <!-- PDF DOWNLOAD -->
-                        <button type="submit" 
-                                class="btn btn-danger btn-sm px-3 shadow-sm fw-semibold" 
-                                asp-action="GeneratePDF" 
-                                formtarget="_blank">
+                        <button type="submit" class="btn btn-danger btn-sm px-3 shadow-sm fw-semibold" asp-action="GeneratePDF" formtarget="_blank">
                             <i class="fa fa-file-pdf-o me-1"></i> Open / Print PDF
                         </button>
                     </div>
@@ -141,8 +115,7 @@
 
         <!-- REPORT IFRAME -->
         <div class="card-body p-0">
-            <iframe id="reportFrame" 
-                    style="width:100%; height:750px; border:none; display:none;"></iframe>
+            <iframe id="reportFrame" style="width:100%; height:750px; border:none; display:none;"></iframe>
         </div>
     </div>
 
@@ -156,20 +129,6 @@
                 $('#accodeSelect').select2({ theme: 'bootstrap-5', width: '100%', placeholder: '-- Select Account / Station --', allowClear: true });
             }
 
-            $('#accodeSelect').on('change', function () {
-                var selectedOption = $(this).find('option:selected');
-                var accType = selectedOption.data('type');
-                var accText = selectedOption.text() || '';
-
-                if ($('#reportType').val() === 'Auto') {
-                    if (accType === 'Godown' || accText.toUpperCase().indexOf('GODOWN') !== -1) {
-                        // Godown selected
-                    } else if (accType === 'Adda' || accText.toUpperCase().indexOf('ADDA') !== -1) {
-                        // Adda selected
-                    }
-                }
-            });
-
             $('#companySelect').on('change', function () {
                 var compId = $(this).val();
                 if (!compId) return;
@@ -179,12 +138,14 @@
                     $select.empty().append('<option value="">-- All Accounts / Stations --</option>');
                     if (data && data.length > 0) {
                         $.each(data, function (i, item) {
-                            $select.append('<option value="' + item.code + '" data-type="' + item.type + '">' + item.code + ' - ' + item.name + '</option>');
+                            $select.append('<option value="' + item.code + '" data-type="' + item.type + '">' + item.code + ' - ' + item.name + ' (' + item.type + ')</option>');
                         });
                     }
                     $select.trigger('change');
                 });
             });
+
+            $('#companySelect').trigger('change');
         });
 
         function loadOnScreenReport() {
@@ -192,11 +153,6 @@
             var fromDate = $('#fromDate').val() || '';
             var toDate = $('#toDate').val() || '';
             var accode = $('#accodeSelect').val() || '';
-
-            if (fromDate && toDate && fromDate > toDate) {
-                alert('From Date cannot be greater than To Date.');
-                return;
-            }
 
             $('#reportCard').show();
             $('#reportLoader').show();
@@ -221,4 +177,3 @@
         }
     </script>
 }
-

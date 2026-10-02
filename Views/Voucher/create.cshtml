@@ -1,4 +1,4 @@
-﻿@using Nskg.Models.ViewModels
+@using Nskg.Models.ViewModels
 @model VoucherVM
 
 @*  <form method="post">
@@ -398,8 +398,8 @@
 
                 ${showVehicle ? `<td><input name="Details[${i}].Vehicleno" class="form-control"/></td>` : ""}
 
-                <td><input name="Details[${i}].Dramt" onkeyup="calc()" class="form-control"/></td>
-                <td><input name="Details[${i}].Cramt" onkeyup="calc()" class="form-control"/></td>
+                <td><input name="Details[${i}].Dramt" oninput="calc()" class="form-control"/></td>
+                <td><input name="Details[${i}].Cramt" oninput="calc()" class="form-control"/></td>
 
                 ${showCheque ? `
                 <td><input name="Details[${i}].Chqno" class="form-control"/></td>
@@ -423,6 +423,7 @@
             i++;
 
             $("#tbl .select2").select2();
+            calc();
         }
 
         function calc() {
@@ -454,14 +455,31 @@
 
             document.getElementById("dr").innerText = dr.toFixed(2);
             document.getElementById("cr").innerText = cr.toFixed(2);
-            document.getElementById("df").innerText = diff.toFixed(2);
+            document.getElementById("df").innerText = (type === "JV" ? diff : 0).toFixed(2);
             document.getElementById("entries").innerText = entries;
 
             const btn = document.querySelector("button[type='submit']");
-            btn.disabled = diff !== 0 || entries === 0;
+            if (btn) {
+                let isValid = false;
+                if (type === "JV") {
+                    isValid = (entries > 0 && diff === 0 && (dr > 0 || cr > 0));
+                } else if (type === "CP" || type === "BP") {
+                    isValid = (entries > 0 && dr > 0);
+                } else if (type === "CR" || type === "BR") {
+                    isValid = (entries > 0 && cr > 0);
+                } else {
+                    isValid = (entries > 0 && (dr > 0 || cr > 0));
+                }
 
-            btn.classList.toggle("btn-danger", diff !== 0);
-            btn.classList.toggle("btn-success", diff === 0);
+                btn.disabled = !isValid;
+                if (type === "JV") {
+                    btn.classList.toggle("btn-danger", !isValid && entries > 0 && diff !== 0);
+                    btn.classList.toggle("btn-success", isValid);
+                } else {
+                    btn.classList.remove("btn-danger");
+                    btn.classList.add("btn-success");
+                }
+            }
         }
 
         function removeRow(btn) {

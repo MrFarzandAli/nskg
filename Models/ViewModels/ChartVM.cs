@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Nskg.Models.ViewModels
 {
@@ -7,5 +7,11 @@ namespace Nskg.Models.ViewModels
         public List<GLChart1> Accounts { get; set; }
         public List<GLChart3> Details { get; set; }
         public List<SelectListItem> Categories { get; set; }
+    }
+
+    public class SaveAccountLinksViewModel
+    {
+        public int SourceDetailId { get; set; }
+        public List<int> TargetDetailIds { get; set; } = new();
     }
 }

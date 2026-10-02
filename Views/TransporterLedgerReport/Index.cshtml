@@ -47,6 +47,7 @@
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Company</label>
                         <select class="form-select select2" name="companyId" id="companySelect">
+                                <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
                             @if (companyList != null)
                             {
                                 foreach (var comp in companyList)
@@ -85,19 +86,8 @@
                     <!-- Vehicle No Filter -->
                     <div class="col-md-2">
                         <label class="form-label fw-bold">Vehicle No</label>
-                        <select class="form-control select2" id="vehicleNoSelect" name="vehicleNo">
-                            <option value="">-- All Vehicles --</option>
-                            @if (ViewBag.VehicleList != null)
-                            {
-                                foreach (var item in ViewBag.VehicleList)
-                                {
-                                    <option value="@item" 
-                                            selected="@(item == vehicleNoValue ? "selected" : null)">
-                                        @item
-                                    </option>
-                                }
-                            }
-                        </select>
+                        <input type="text" class="form-control" id="vehicleNoInput" name="vehicleNo"
+                               value="@vehicleNoValue" placeholder="-- All Vehicles --" autocomplete="off" />
                     </div>
 
                     <!-- From Date -->
@@ -179,46 +169,31 @@
                     allowClear: true,
                     width: '100%'
                 });
-
-                $('#vehicleNoSelect').select2({
-                    theme: 'bootstrap-5',
-                    placeholder: "-- All Vehicles --",
-                    allowClear: true,
-                    tags: true,
-                    width: '100%'
-                });
             }
 
             $('#companySelect').on('change', function () {
                 var compId = $(this).val();
-                if (!compId) return;
+                if (compId === null || compId === undefined || compId === "") compId = "0";
 
                 // Load accounts for company
                 $.getJSON('@Url.Action("GetAccountsByCompany", "TransporterLedgerReport")', { companyId: compId }, function (data) {
                     var $acc = $('#accodeSelect');
                     $acc.empty().append('<option value="">-- Select Transporter --</option>');
                     $.each(data, function (i, item) {
-                        $acc.append('<option value="' + item.code + '">' + item.code + ' - ' + item.name + '</option>');
+                        var c = item.code || item.Code || '';
+                        var n = item.name || item.Name || '';
+                        $acc.append('<option value="' + c + '">' + c + ' - ' + n + '</option>');
                     });
                     $acc.trigger('change');
-                });
-
-                // Load vehicles for company
-                $.getJSON('@Url.Action("GetVehiclesByCompany", "TransporterLedgerReport")', { companyId: compId }, function (data) {
-                    var $veh = $('#vehicleNoSelect');
-                    $veh.empty().append('<option value="">-- All Vehicles --</option>');
-                    $.each(data, function (i, item) {
-                        $veh.append('<option value="' + item + '">' + item + '</option>');
-                    });
-                    $veh.trigger('change');
                 });
             });
         });
 
         function loadOnScreenReport() {
-            var companyId = $('#companySelect').val() || '';
+            var companyId = $('#companySelect').val();
+            if (companyId === null || companyId === undefined || companyId === "") companyId = "0";
             var accode = $('#accodeSelect').val() || '';
-            var vehicleNo = $('#vehicleNoSelect').val() || '';
+            var vehicleNo = $('#vehicleNoInput').val().trim() || '';
             var fromDate = $('input[name="fromDate"]').val() || '2010-01-01';
             var toDate = $('input[name="toDate"]').val() || '';
 

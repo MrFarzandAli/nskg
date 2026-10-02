@@ -350,6 +350,67 @@ namespace Nskg.Controllers
                     return RedirectToAction("Index", new { type = "" });
                 }
 
+                // Resolve Head.gl3Id if missing from Haccode or Ac1+Ac3
+                if (data.gl3Id == null || data.gl3Id == 0)
+                {
+                    string hcode = !string.IsNullOrWhiteSpace(data.Haccode) ? data.Haccode.Trim() : ((data.Ac1 ?? "") + (data.Ac3 ?? "")).Trim();
+                    if (!string.IsNullOrEmpty(hcode))
+                    {
+                        var g3 = _context.GLChart3.FirstOrDefault(g =>
+                            (g.CompanyId == data.CompanyId || g.CoCode == data.Cocode || g.CompanyId == 0 || g.CompanyId == null) &&
+                            ((g.AC1 + g.AC3) == hcode || g.ACC == hcode));
+                        if (g3 != null)
+                        {
+                            data.gl3Id = g3.Id;
+                        }
+                    }
+                }
+
+                // Resolve Partycode if code instead of Id
+                if (!string.IsNullOrWhiteSpace(data.Partycode) && !int.TryParse(data.Partycode, out _))
+                {
+                    var partyG3 = _context.GLChart3.FirstOrDefault(g =>
+                        (g.CompanyId == data.CompanyId || g.CoCode == data.Cocode || g.CompanyId == 0 || g.CompanyId == null) &&
+                        ((g.AC1 + g.AC3) == data.Partycode || g.ACC == data.Partycode));
+                    if (partyG3 != null)
+                    {
+                        data.Partycode = partyG3.Id.ToString();
+                    }
+                }
+
+                // Resolve Details.gl3Id and Transcode if missing/code
+                if (data.Details != null)
+                {
+                    foreach (var d in data.Details)
+                    {
+                        if (d.gl3Id == null || d.gl3Id == 0)
+                        {
+                            string dcode = !string.IsNullOrWhiteSpace(d.Acc) ? d.Acc.Trim() : ((d.Ac1 ?? "") + (d.Ac3 ?? "")).Trim();
+                            if (!string.IsNullOrEmpty(dcode))
+                            {
+                                var g3 = _context.GLChart3.FirstOrDefault(g =>
+                                    (g.CompanyId == data.CompanyId || g.CoCode == data.Cocode || g.CompanyId == 0 || g.CompanyId == null) &&
+                                    ((g.AC1 + g.AC3) == dcode || g.ACC == dcode));
+                                if (g3 != null)
+                                {
+                                    d.gl3Id = g3.Id;
+                                }
+                            }
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(d.Transcode) && !int.TryParse(d.Transcode, out _))
+                        {
+                            var transG3 = _context.GLChart3.FirstOrDefault(g =>
+                                (g.CompanyId == data.CompanyId || g.CoCode == data.Cocode || g.CompanyId == 0 || g.CompanyId == null) &&
+                                ((g.AC1 + g.AC3) == d.Transcode || g.ACC == d.Transcode));
+                            if (transG3 != null)
+                            {
+                                d.Transcode = transG3.Id.ToString();
+                            }
+                        }
+                    }
+                }
+
                 // Load all dropdowns same as Create
                 LoadDropdowns(data.Votype);
 
@@ -673,7 +734,7 @@ namespace Nskg.Controllers
 
                 var partyAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == User.GetCompanyId() || g.CompanyId == 0 || g.CompanyId == null) &&
                         g.AcType != "S" &&
                         partylist.Contains(g.AC1)
                     )
@@ -703,7 +764,7 @@ namespace Nskg.Controllers
 
                 ViewBag.transporterList = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == User.GetCompanyId() || g.CompanyId == 0 || g.CompanyId == null) &&
                         g.AcType != "S" &&
                         transporterList.Contains(g.AC1)
                     )
@@ -738,7 +799,7 @@ namespace Nskg.Controllers
 
                 ViewBag.HeaderAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == User.GetCompanyId() || g.CompanyId == 0 || g.CompanyId == null) &&
                         g.AcType != "S" &&
                         ac1List.Contains(g.AC1)
                     )
@@ -752,7 +813,7 @@ namespace Nskg.Controllers
 
                 ViewBag.Accounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == User.GetCompanyId() || g.CompanyId == 0 || g.CompanyId == null) &&
                         g.AcType != "S"
                     )
                     .Select(g => new SelectListItem

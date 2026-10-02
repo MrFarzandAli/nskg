@@ -44,6 +44,7 @@
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Company</label>
                         <select class="form-control select2" id="companySelect" name="companyId">
+                                <option value="0" selected="@(ViewBag.SelectedCompanyId == null || ViewBag.SelectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
                             @if (ViewBag.CompanyList != null)
                             {
                                 foreach (var comp in ViewBag.CompanyList)
@@ -152,7 +153,7 @@
 
             $('#companySelect').on('change', function () {
                 var compId = $(this).val();
-                if (!compId) return;
+                if (compId === null || compId === undefined || compId === "") compId = "0";
 
                 $.ajax({
                     url: '@Url.Action("GetAccountsByCompany", "AccountLedgerReport")',
@@ -174,7 +175,8 @@
         });
 
         function loadOnScreenReport() {
-            var companyId = $('select[name="companyId"]').val() || '';
+            var companyId = $('select[name="companyId"]').val();
+            if (companyId === null || companyId === undefined || companyId === "") companyId = "0";
             var accode = $('select[name="accode"]').val();
             var fromDate = $('input[name="fromDate"]').val();
             var toDate = $('input[name="toDate"]').val();

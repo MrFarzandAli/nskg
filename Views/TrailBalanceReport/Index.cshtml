@@ -2,8 +2,8 @@
     ViewData["Title"] = "Trial Balance Report";
     var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
     var selectedRcocode = ViewBag.Rcocode as string ?? "";
-    var yearList = ViewBag.YearList as List<string> ?? new List<string> { "All" };
-    var selectedYear = ViewBag.SelectedYear as string ?? "All";
+    var financialYears = ViewBag.FinancialYears as IEnumerable<dynamic>;
+    var selectedFyId = ViewBag.SelectedFyId as string ?? "All";
 }
 
 <style>
@@ -24,9 +24,9 @@
     <div class="card custom-card mb-4 shadow-sm border-0">
         <div class="card-header bg-primary text-white py-3">
             <h5 class="mb-0 fw-semibold">
-                <i class="fa fa-sliders me-2"></i> Report Parameters & Yearly Closure
+                <i class="fa fa-sliders me-2"></i> Report Parameters
             </h5>
-            <small class="text-white-50">Filter by Company / Branch or select Yearly Closure to view historical balances</small>
+            <small class="text-white-50">Filter by Company / Branch and Financial Year</small>
         </div>
         <div class="card-body bg-light p-4">
             <form id="reportForm" method="get">
@@ -54,19 +54,25 @@
                         </select>
                     </div>
 
-                    <!-- Yearly Closure Filter -->
+                    <!-- Financial Year Filter -->
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Yearly Closure / Period</label>
-                        <select class="form-select select2" id="yearSelect" name="year">
-                            @foreach (var yr in yearList)
+                        <label class="form-label fw-bold">Financial Year</label>
+                        <select class="form-select select2" id="fyIdSelect" name="fyId" required>
+                            @if (financialYears != null)
                             {
-                                if (yr == "All")
+                                foreach (var fy in financialYears)
                                 {
-                                    <option value="All" selected="@(selectedYear == "All" ? "selected" : null)">All Years (Up to Current)</option>
-                                }
-                                else
-                                {
-                                    <option value="@yr" selected="@(selectedYear == yr ? "selected" : null)">Up to Year: @yr</option>
+                                    string fyVal = fy.Id.ToString();
+                                    string fyDisplay = $"{fy.YearName} ({((DateTime)fy.StartDate).ToString("dd-MMM-yyyy")} to {((DateTime)fy.EndDate).ToString("dd-MMM-yyyy")})";
+                                    if (fy.IsClosed) { fyDisplay += " [Closed]"; }
+                                    if (selectedFyId == fyVal)
+                                    {
+                                        <option value="@fyVal" selected="selected">@fyDisplay</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@fyVal">@fyDisplay</option>
+                                    }
                                 }
                             }
                         </select>
@@ -140,11 +146,9 @@
                     allowClear: false
                 });
 
-                $('#yearSelect').select2({
+                $('#fyIdSelect').select2({
                     theme: 'bootstrap-5',
                     width: '100%',
-                    tags: true,
-                    placeholder: "Select or type year (e.g. 2024-2025)",
                     allowClear: false
                 });
             }
@@ -152,15 +156,15 @@
             // Auto load report on first view without needing manual search
             loadOnScreenReport();
 
-            // Auto reload when company or year changes
-            $('#rcocodeSelect, #yearSelect').on('change', function () {
+            // Auto reload when company or financial year changes
+            $('#rcocodeSelect, #fyIdSelect').on('change', function () {
                 loadOnScreenReport();
             });
         });
 
         function loadOnScreenReport() {
             var rcocode = $('#rcocodeSelect').val() || '';
-            var year = $('#yearSelect').val() || 'All';
+            var fyId = $('#fyIdSelect').val() || 'All';
 
             $('#reportCard').show();
             $('#reportLoader').show();
@@ -168,7 +172,7 @@
 
             var url = '@Url.Action("OnScreenReport", "TrailBalanceReport")'
                 + '?rcocode=' + encodeURIComponent(rcocode)
-                + '&year=' + encodeURIComponent(year);
+                + '&fyId=' + encodeURIComponent(fyId);
 
             var frame = document.getElementById('reportFrame');
             if (frame) {

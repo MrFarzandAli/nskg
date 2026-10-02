@@ -1,398 +1,163 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using Microsoft.Reporting.NETCore;
-using Nskg.Data;
-using Nskg.Extensions;
-using System;
+using Microsoft.Extensions.Configuration;
 using System.Data;
-using System.IO;
-using System.Linq;
 using System.Text;
+using System;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
+using Microsoft.Reporting.NETCore;
+using Nskg.Models;
+using Nskg.Data;
+using System.Linq;
 
 namespace Nskg.Controllers
 {
-    [Authorize]
     public class VehicleListReportController : Controller
     {
-        private readonly ApplicationDbContext _context;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
+        private readonly ApplicationDbContext _context;
 
-        public VehicleListReportController(ApplicationDbContext context, IConfiguration config, IWebHostEnvironment env)
+        public VehicleListReportController(IConfiguration config, IWebHostEnvironment env, ApplicationDbContext context)
         {
-            _context = context;
             _config = config;
             _env = env;
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            _context = context;
         }
 
-        private int GetCompanyId(int? companyId = null)
+        public IActionResult Index()
         {
-            if (companyId.HasValue && companyId.Value > 0) return companyId.Value;
-            var compId = User.FindFirst("CompanyId")?.Value;
-            if (int.TryParse(compId, out int id) && id > 0) return id;
-            return 1006;
-        }
-
-        private int GetFinancialYearId()
-        {
-            var fyId = User.FindFirst("FinancialYearId")?.Value;
-            if (int.TryParse(fyId, out int id) && id > 0) return id;
-            return 4;
+            ViewBag.CompanyList = _context.Companies.Where(c => !c.IsDeleted).Select(c => new { c.Id, c.Name, c.Cocode }).ToList();
+            ViewBag.SelectedCompanyId = 0;
+            return View();
         }
 
         [HttpGet]
         public IActionResult GetAccountsByCompany(int companyId)
         {
-            var accounts = _context.GLChart3
-                .Where(x => (x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null))
-                .Where(x => x.AC1 == "067" || x.AC1 == "068" || (x.Name != null && (x.Name.Contains("GODOWN") || x.Name.Contains("ADDA"))) || x.AC1 == "060")
+            var query = _context.GLChart3.AsQueryable();
+            if (companyId > 0)
+            {
+                query = query.Where(x => x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null);
+            }
+            
+            var accounts = query
+                .Where(x => x.Name != null && (x.Name.Contains("Godown") || x.Name.Contains("Adda") || x.Name.Contains("GODOWN") || x.Name.Contains("ADDA")))
                 .Select(x => new
                 {
-                    code = (x.AC1 ?? "") + (x.AC3 ?? ""),
+                    code = x.ACC ?? (x.AC1 + x.AC3),
                     name = x.Name,
-                    type = (x.AC1 == "068" || (x.Name != null && x.Name.ToUpper().Contains("GODOWN"))) ? "Godown" : "Adda"
+                    type = (x.Name.ToLower().Contains("adda") ? "Adda" : "Godown")
                 })
+                .Distinct()
                 .OrderBy(x => x.name)
                 .ToList();
-
-            if (!accounts.Any())
-            {
-                accounts = _context.GLChart3
-                    .Where(x => (x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null))
-                    .Select(x => new
-                    {
-                        code = (x.AC1 ?? "") + (x.AC3 ?? ""),
-                        name = x.Name,
-                        type = (x.Name != null && x.Name.ToUpper().Contains("GODOWN")) ? "Godown" : "Adda"
-                    })
-                    .OrderBy(x => x.name)
-                    .ToList();
-            }
 
             return Json(accounts);
         }
 
-        [HttpGet]
-        public IActionResult Index(string? fromDate, string? toDate, string? accode, int? companyId)
+        private int GetCompanyId(int? companyId)
         {
-            int selectedCompanyId = GetCompanyId(companyId);
-
-            var companies = _context.Companies
-                .Where(c => !c.IsDeleted)
-                .OrderBy(c => c.Cocode)
-                .Select(c => new
-                {
-                    Id = c.Id,
-                    Code = c.Cocode,
-                    Name = (!string.IsNullOrEmpty(c.Cocode) ? c.Cocode + " - " : "") + c.Name
-                })
-                .ToList();
-
-            var accounts = _context.GLChart3
-                .Where(x => (x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null))
-                .Where(x => x.AC1 == "067" || x.AC1 == "068" || (x.Name != null && (x.Name.Contains("GODOWN") || x.Name.Contains("ADDA"))) || x.AC1 == "060")
-                .Select(x => new
-                {
-                    Code = (x.AC1 ?? "") + (x.AC3 ?? ""),
-                    Name = x.Name,
-                    Type = (x.AC1 == "068" || (x.Name != null && x.Name.ToUpper().Contains("GODOWN"))) ? "Godown" : "Adda"
-                })
-                .OrderBy(x => x.Name)
-                .ToList();
-
-            if (!accounts.Any())
-            {
-                accounts = _context.GLChart3
-                    .Where(x => (x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null))
-                    .Select(x => new
-                    {
-                        Code = (x.AC1 ?? "") + (x.AC3 ?? ""),
-                        Name = x.Name,
-                        Type = (x.Name != null && x.Name.ToUpper().Contains("GODOWN")) ? "Godown" : "Adda"
-                    })
-                    .OrderBy(x => x.Name)
-                    .ToList();
-            }
-
-            ViewBag.CompanyList = companies;
-            ViewBag.SelectedCompanyId = selectedCompanyId;
-            ViewBag.AccountList = accounts;
-            ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd") : fromDate;
-            ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
-            ViewBag.Accode = accode ?? "";
-
-            return View();
+            if (companyId.HasValue)
+                return companyId.Value;
+            return 0;
         }
 
-        private void RunVehicleListProcedure(SqlConnection con, int companyId, DateTime toDate, string accode)
-        {
-            try
-            {
-                using (SqlCommand cmd = new SqlCommand("dbo.PROCESSDETAIL_Station", con))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.CommandTimeout = 180;
-                    cmd.Parameters.AddWithValue("@CompanyId", companyId);
-                    cmd.Parameters.AddWithValue("@TDATE", toDate.Date);
-                    cmd.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                    cmd.ExecuteNonQuery();
-                }
-            }
-            catch
-            {
-                try
-                {
-                    using (SqlCommand cmd2 = new SqlCommand("dbo.PROCESSDETAIL", con))
-                    {
-                        cmd2.CommandType = CommandType.StoredProcedure;
-                        cmd2.CommandTimeout = 180;
-                        cmd2.Parameters.AddWithValue("@CompanyId", companyId);
-                        cmd2.Parameters.AddWithValue("@TDATE", toDate.Date);
-                        cmd2.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                        cmd2.ExecuteNonQuery();
-                    }
-                }
-                catch
-                {
-                    // Fallback handled silently
-                }
-            }
-        }
-
-        private string ResolveReportType(string? accode, int companyId)
-        {
-            if (!string.IsNullOrWhiteSpace(accode))
-            {
-                var acc = _context.GLChart3.FirstOrDefault(x =>
-                    (x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null) &&
-                    ((x.AC1 + x.AC3) == accode.Trim() || x.ACC == accode.Trim()));
-
-                if (acc != null)
-                {
-                    if (acc.AC1 == "068" || (!string.IsNullOrEmpty(acc.Name) && acc.Name.ToUpper().Contains("GODOWN")))
-                    {
-                        return "Godown";
-                    }
-                    if (acc.AC1 == "067" || (!string.IsNullOrEmpty(acc.Name) && acc.Name.ToUpper().Contains("ADDA")))
-                    {
-                        return "Adda";
-                    }
-                }
-            }
-
-            return "Godown";
-        }
-
-        private DataTable GetVehicleListData(DateTime? fromDate, DateTime? toDate, string? accode, out string resolvedReportType, int companyId)
+        private DataTable GetVehicleListData(DateTime? fromDate, DateTime? toDate, string? accode, out string resolvedType, int companyId)
         {
             DataTable dt = new DataTable();
-            string connString = _config.GetConnectionString("DefaultConnection");
+            resolvedType = "Godown"; 
 
+            if (!string.IsNullOrEmpty(accode))
+            {
+                var ac = _context.GLChart3.FirstOrDefault(x => (x.ACC == accode || (x.AC1 + x.AC3) == accode));
+                if (ac != null && ac.Name != null && ac.Name.IndexOf("Adda", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    resolvedType = "Adda";
+                }
+            }
+
+            string connString = _config.GetConnectionString("DefaultConnection");
             using (SqlConnection con = new SqlConnection(connString))
             {
                 con.Open();
+                string query = @"
+                    SELECT 
+                        ch.DocDate AS VoDate,
+                        ch.ChalNo AS BillTiNo,
+                        ch.Station AS Station,
+                        ISNULL(ch.BillTiAmt,0)+ISNULL(ch.PartyExAmt,0)+ISNULL(ch.Lifter2Amt,0)+ISNULL(ch.OtherExAmt,0)+ISNULL(ch.LocalAmt,0)+ISNULL(ch.Tax,0)+ISNULL(ch.Labour,0) AS Rate,
+                        ISNULL(ch.NetAmt,0) AS Amount,
+                        ch.VehicleNo AS VehicleNo,
+                        ISNULL(ch.TotNet,0) AS DrAmt,
+                        ISNULL(ch.LocalAmt,0) AS CrAmt,
+                        ISNULL(ch.DeliveryAmt,0) AS DeliveryAmt,
+                        ISNULL(ch.PaidAmt,0) AS Ndramt,
+                        ISNULL(ch.StationAmt,0) AS Ncramt,
+                        ch.StationCode AS Ac1Ac3,
+                        ISNULL(ch.DeliveryAmt1,0) AS STaxAmt,
+                        ISNULL(ch.DeliveryAmt2,0) AS DeliveryAmt2,
+                        ch.Transporter AS IName,
+                        c.Cocode AS CoCode,
+                        ISNULL(ch.TransporterAmt,0) AS Pay,
+                        ISNULL(ch.AdvanceAmt,0) AS Qty,
+                        c.Name AS CompanyName
+                    FROM CommHead ch
+                    LEFT JOIN Companies c ON c.Id = ch.CompanyId
+                    WHERE ISNULL(ch.IsDeleted, 0) = 0
+                ";
 
-                // 1. Run Vehicle List Procedure prior to querying
-                DateTime effectiveToDate = toDate.HasValue ? toDate.Value : DateTime.Now;
-                RunVehicleListProcedure(con, companyId, effectiveToDate, accode ?? "");
-
-                // 2. Fetch Company Name
-                string companyName = "West Wharf-New Shadab Karachi Goods Transports";
-                using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
-                {
-                    cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
-                    var res = cmdComp.ExecuteScalar();
-                    if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
-                        companyName = res.ToString();
-                }
-
-                // 3. Resolve Report Type (Godown vs Adda)
-                resolvedReportType = ResolveReportType(accode, companyId);
-
-                string locationFilter = "";
-                if (resolvedReportType == "Godown")
-                {
-                    locationFilter = " AND (h.Station LIKE '%Godown%' OR h.Station NOT LIKE '%Adda%') ";
-                }
-                else
-                {
-                    locationFilter = " AND (h.Station LIKE '%Adda%' OR h.Station NOT LIKE '%Godown%') ";
-                }
-
-                string query = $@"
-                    SELECT
-                        d.DocDate                                       AS VoDate,
-                        CAST(ISNULL(d.BillTiNo, 0) AS VARCHAR(20))     AS BillTiNo,
-                        ISNULL(h.Station, '')                           AS Station,
-                        ISNULL(d.CommPer, 0)                            AS Rate,
-                        ISNULL(d.MAmount, 0)                            AS Amount,
-                        ISNULL(COALESCE(d.VehicleNo, h.VehicleNo), '')  AS VehicleNo,
-
-                        ISNULL(v.DrAmt, 0)                              AS DrAmt,
-                        ISNULL(v.CrAmt, 0)                              AS CrAmt,
-
-                        ISNULL(d.DeliveryAmt, 0)                        AS DeliveryAmt,
-
-                        ISNULL(v.NDrAmt, '')                            AS NDrAmt,
-                        ISNULL(v.NCrAmt, '')                            AS NCrAmt,
-
-                        ISNULL(g.AC1, '') + ISNULL(g.AC3, '')           AS PartyCode,
-
-                        ISNULL(d.STaxAmt, 0)                            AS STaxAmt,
-                        ISNULL(d.DeliveryAmt2, 0)                       AS DeliveryAmt2,
-
-                        ISNULL(iss.IName, '')                           AS IName,
-
-                        CASE c.Cocode
-                            WHEN '01' THEN 'W.H'
-                            WHEN '02' THEN 'M.P'
-                            WHEN '03' THEN 'N.K'
-                            WHEN '04' THEN 'R.W'
-                            ELSE ISNULL(c.Cocode, '')
-                        END                                             AS Branch,
-
-                        ISNULL(v.Pay, 0)                                AS Pay,
-                        ISNULL(d.Qty, 0)                                AS Qty,
-
-                        @CompanyName                                    AS CompanyName,
-                        @FromDate                                       AS FromDate,
-                        @ToDate                                         AS ToDate,
-                        @ReportType                                     AS ReportType
-
-                    FROM CommDetail d
-                    INNER JOIN CommHead h ON d.CommHeadId = h.Id
-                    LEFT JOIN GLChart3 g  ON g.Id = h.StationId
-                    LEFT JOIN ISSHEAD iss ON iss.BillTiNo = d.BillTiNo
-                                         AND iss.CompanyId = h.CompanyId
-                                         AND ISNULL(iss.IsDeleted, 0) = 0
-                    LEFT JOIN Companies c ON c.Id = h.CompanyId
-
-                    LEFT JOIN (
-                        SELECT
-                            Billtino,
-                            Cocode,
-                            SUM(ISNULL(Dramt, 0))   AS DrAmt,
-                            SUM(ISNULL(Cramt, 0))   AS CrAmt,
-                            MAX(Ndramt)              AS NDrAmt,
-                            MAX(Ncramt)              AS NCrAmt,
-                            SUM(ISNULL(Pay, 0))      AS Pay
-                        FROM VoDet
-                        WHERE IsDeleted = 0
-                        GROUP BY Billtino, Cocode
-                    ) v ON v.Billtino = d.BillTiNo AND v.Cocode = c.Cocode
-
-                    WHERE (h.CompanyId = @CompanyId OR @CompanyId = 0)
-                      AND ISNULL(h.IsDeleted, 0) = 0";
-
-                if (fromDate.HasValue)
-                    query += " AND h.DocDate >= @FromDate";
-
-                if (toDate.HasValue)
-                    query += " AND h.DocDate <= @ToDate";
-
+                if (fromDate.HasValue) query += " AND ch.DocDate >= @FromDate ";
+                if (toDate.HasValue) query += " AND ch.DocDate <= @ToDate ";
                 if (!string.IsNullOrWhiteSpace(accode))
                 {
                     query += @" AND (
-                        (ISNULL(g.AC1, '') + ISNULL(g.AC3, '')) = @Accode 
-                        OR g.ACC = @Accode 
-                        OR h.Station LIKE '%' + @Accode + '%'
-                        OR EXISTS (SELECT 1 FROM GLChart3 g2 WHERE g2.Id = h.StationId AND ((g2.AC1 + g2.AC3) = @Accode OR g2.ACC = @Accode))
-                    )";
+                        ch.StationCode = @Accode 
+                        OR ch.Station = (SELECT TOP 1 Name FROM GLChart3 WHERE ACC = @Accode OR (AC1 + AC3) = @Accode)
+                        OR ch.StationId IN (SELECT Id FROM GLChart3 WHERE ACC = @Accode OR (AC1 + AC3) = @Accode)
+                    ) ";
+                }
+                
+                if (companyId > 0)
+                {
+                    query += " AND ch.CompanyId = @CompanyId ";
                 }
 
-                query += locationFilter;
-                query += " ORDER BY h.DocDate, d.BillTiNo";
+                query += " ORDER BY ch.DocDate, ch.ChalNo";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
-                    cmd.Parameters.AddWithValue("@CompanyId", companyId);
-                    cmd.Parameters.AddWithValue("@CompanyName", companyName);
-                    cmd.Parameters.AddWithValue("@Accode", string.IsNullOrWhiteSpace(accode) ? (object)DBNull.Value : accode.Trim());
-                    cmd.Parameters.AddWithValue("@ReportType", resolvedReportType);
-                    cmd.Parameters.AddWithValue("@FromDate", fromDate.HasValue ? (object)fromDate.Value.Date : DBNull.Value);
-                    cmd.Parameters.AddWithValue("@ToDate", toDate.HasValue ? (object)toDate.Value.Date : DBNull.Value);
+                    if (fromDate.HasValue) cmd.Parameters.AddWithValue("@FromDate", fromDate.Value);
+                    if (toDate.HasValue) cmd.Parameters.AddWithValue("@ToDate", toDate.Value);
+                    if (!string.IsNullOrWhiteSpace(accode)) cmd.Parameters.AddWithValue("@Accode", accode);
+                    if (companyId > 0) cmd.Parameters.AddWithValue("@CompanyId", companyId);
 
-                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
                     {
-                        da.Fill(dt);
+                        sda.Fill(dt);
                     }
                 }
             }
-
             return dt;
         }
 
         [HttpGet]
-        public IActionResult GeneratePDF(DateTime? fromDate, DateTime? toDate, string? accode, int? companyId)
+        public IActionResult OnScreenReport(DateTime? fromDate, DateTime? toDate, string? accode, int? companyId, bool isPrintView = false)
         {
             int selectedCompanyId = GetCompanyId(companyId);
-
             try
             {
                 DataTable dt = GetVehicleListData(fromDate, toDate, accode, out string resolvedType, selectedCompanyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
-                    return Content("No data found for the selected vehicle list parameters.");
+                    return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No data found for the selected filter criteria.</strong></div>", "text/html");
                 }
 
-                // Godown: CommReportrpt.rdlc (commreportall_1) | Adda: CommReportAddarpt.rdlc (commreport_all12)
-                string rdlcFile = (resolvedType == "Adda") ? "CommReportAddarpt.rdlc" : "CommReportrpt.rdlc";
-                string reportPath = Path.Combine(_env.WebRootPath, "Reports", rdlcFile);
-
-                if (!System.IO.File.Exists(reportPath))
-                {
-                    reportPath = Path.Combine(_env.WebRootPath, "Reports", "CommReportrpt.rdlc");
-                }
-
-                using (LocalReport report = new LocalReport())
-                {
-                    report.ReportPath = reportPath;
-                    report.DataSources.Clear();
-
-                    dt.TableName = "DSCommReport";
-                    report.DataSources.Add(new ReportDataSource("DSCommReport", dt));
-
-                    byte[] pdfBytes = report.Render("PDF");
-
-                    if (pdfBytes == null || pdfBytes.Length < 100)
-                    {
-                        return Content("PDF generation failed or returned empty output.");
-                    }
-
-                    string fileName = $"VehicleList_{resolvedType}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-                    return File(pdfBytes, "application/pdf", fileName, enableRangeProcessing: true);
-                }
-            }
-            catch (Exception ex)
-            {
-                return Content($"ERROR: {ex.Message}\n\nSTACK: {ex.StackTrace}");
-            }
-        }
-
-        [HttpGet]
-        public IActionResult OnScreenReport(DateTime? fromDate, DateTime? toDate, string? accode, int? companyId)
-        {
-            int selectedCompanyId = GetCompanyId(companyId);
-
-            try
-            {
-                DataTable dt = GetVehicleListData(fromDate, toDate, accode, out string resolvedType, selectedCompanyId);
-
-                if (dt == null || dt.Rows.Count == 0)
-                {
-                    return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No data found for the selected vehicle list filter criteria.</strong></div>", "text/html");
-                }
-
-                string compName = dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() ?? "Company" : "Company";
-                string title = (resolvedType == "Adda") ? "VEHICLE LIST REPORT (ADDA - commreport_all12)" : "VEHICLE LIST REPORT (GODOWN - commreportall_1)";
-                string headerBg = "#0d6efd";
-
-                decimal grandAmount = 0, grandDrAmt = 0, grandCrAmt = 0, grandDelivery = 0;
-                decimal grandSTax = 0, grandDelivery2 = 0, grandPay = 0, grandQty = 0;
-
+                string compName = selectedCompanyId == 0 ? "All Companies" : ((dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "Company");
+                string reportTitle = (resolvedType == "Adda") ? "VEHICLE LIST REPORT (ADDA - commreport_all12)" : "VEHICLE LIST REPORT (GODOWN - commreportall_1)";
+                
                 var sb = new StringBuilder();
                 sb.Append(@"<!DOCTYPE html><html><head><meta charset='utf-8'>
                 <style>
@@ -400,9 +165,8 @@ namespace Nskg.Controllers
                     .header-box{text-align:center;margin-bottom:12px;}
                     .header-box h2{margin:0 0 4px;color:#0d6efd;font-size:18px;}
                     .header-box h3{margin:0 0 4px;font-size:14px;color:#495057;}
-                    .header-box p{margin:0;font-size:11px;color:#6c757d;}
                     table{width:100%;border-collapse:collapse;margin-top:8px;}
-                    th{background:" + headerBg + @";color:#fff;padding:6px 4px;text-align:left;font-size:10px;white-space:nowrap;border:1px solid #0b5ed7;}
+                    th{background:#0d6efd;color:#fff;padding:6px 4px;text-align:left;font-size:10px;white-space:nowrap;border:1px solid #0b5ed7;}
                     td{padding:4px;border:1px solid #dee2e6;font-size:10px;white-space:nowrap;}
                     tr:nth-child(even){background:#f8f9fa;}
                     tr:hover td{background:#e7f1ff;}
@@ -410,80 +174,143 @@ namespace Nskg.Controllers
                     .num{text-align:right;}
                     .center{text-align:center;}
                     .bold{font-weight:bold;}
-                </style></head><body>");
+                    @media print {
+                        .no-print { display: none; }
+                        body { margin: 0; }
+                    }
+                </style>");
+
+                if (isPrintView)
+                {
+                    sb.Append("<script>window.onload = function() { window.print(); };</script>");
+                }
+
+                sb.Append("</head><body>");
 
                 sb.Append("<div class='header-box'>");
                 sb.Append($"<h2>{compName}</h2>");
-                sb.Append($"<h3>{title}</h3>");
-                string periodText = (fromDate.HasValue && toDate.HasValue) ? $"Period: <b>{fromDate.Value:dd-MMM-yyyy}</b> to <b>{toDate.Value:dd-MMM-yyyy}</b>" : "All Dates";
-                string accText = !string.IsNullOrWhiteSpace(accode) ? $" &nbsp;|&nbsp; Account: <b>{accode}</b>" : "";
-                sb.Append($"<p>{periodText}{accText}</p>");
+                sb.Append($"<h3>{reportTitle}</h3>");
+                sb.Append($"<p>Date From: <b>{(fromDate.HasValue ? fromDate.Value.ToString("dd-MMM-yyyy") : "")}</b> To: <b>{(toDate.HasValue ? toDate.Value.ToString("dd-MMM-yyyy") : "")}</b></p>");
                 sb.Append("</div>");
 
                 sb.Append("<table><thead><tr>");
-                sb.Append("<th class='center' style='width:30px;'>#</th><th>Date</th><th>Bill Ti No</th><th>Station</th><th class='num'>Rate</th>");
-                sb.Append("<th class='num'>Amount</th><th>Vehicle No</th><th class='num'>Dr Amt</th><th class='num'>Cr Amt</th>");
-                sb.Append("<th class='num'>Delivery</th><th class='num'>S.Tax</th><th class='num'>Delivery2</th>");
-                sb.Append("<th>Item Name</th><th>Branch</th><th>Party Code</th>");
-                sb.Append("<th class='num'>Pay</th><th class='num'>Qty</th>");
+                if (resolvedType == "Godown")
+                {
+                    sb.Append("<th class='center'>Chal No</th>");
+                    sb.Append("<th>Date</th>");
+                    sb.Append("<th>Comp</th>");
+                    sb.Append("<th>Station</th>");
+                    sb.Append("<th>Transporter</th>");
+                    sb.Append("<th>Vehicle No</th>");
+                    sb.Append("<th class='num'>Challan AMT</th>");
+                    sb.Append("<th class='num'>Munsiana</th>");
+                    sb.Append("<th class='num'>Fright</th>");
+                    sb.Append("<th class='num'>Delivery Amt</th>");
+                    sb.Append("<th class='num'>Delivery 6%</th>");
+                    sb.Append("<th class='num'>Station amt</th>");
+                    sb.Append("<th class='num'>Advance amt</th>");
+                    sb.Append("<th class='num'>Transporter amt</th>");
+                    sb.Append("<th class='num'>Paid AMT</th>");
+                    sb.Append("<th class='num'>Expense</th>");
+                    sb.Append("<th class='num'>Total AMT</th>");
+                }
+                else
+                {
+                    sb.Append("<th>Date</th>");
+                    sb.Append("<th>Station</th>");
+                    sb.Append("<th>Vehicle no</th>");
+                    sb.Append("<th class='num'>Fright</th>");
+                }
                 sb.Append("</tr></thead><tbody>");
 
-                int sr = 1;
+                decimal totChalAmt = 0, totMunsiana = 0, totFright = 0, totDeliv = 0, totDeliv6 = 0, totStn = 0, totAdv = 0, totTransp = 0, totPaid = 0, totExp = 0, totAmt = 0;
+
                 foreach (DataRow row in dt.Rows)
                 {
-                    decimal amount = row["Amount"] != DBNull.Value ? Convert.ToDecimal(row["Amount"]) : 0;
-                    decimal drAmt = row["DrAmt"] != DBNull.Value ? Convert.ToDecimal(row["DrAmt"]) : 0;
-                    decimal crAmt = row["CrAmt"] != DBNull.Value ? Convert.ToDecimal(row["CrAmt"]) : 0;
-                    decimal delivery = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : 0;
-                    decimal stax = row["STaxAmt"] != DBNull.Value ? Convert.ToDecimal(row["STaxAmt"]) : 0;
-                    decimal delivery2 = row["DeliveryAmt2"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt2"]) : 0;
-                    decimal pay = row["Pay"] != DBNull.Value ? Convert.ToDecimal(row["Pay"]) : 0;
-                    decimal qty = row["Qty"] != DBNull.Value ? Convert.ToDecimal(row["Qty"]) : 0;
+                    string voDate = row["VoDate"] != DBNull.Value ? Convert.ToDateTime(row["VoDate"]).ToString("dd/MM/yy") : "";
+                    string chalNo = row["BillTiNo"]?.ToString() ?? "";
+                    string stn = row["Station"]?.ToString() ?? "";
+                    string veh = row["VehicleNo"]?.ToString() ?? "";
+                    string cCode = row["CoCode"]?.ToString();
+                    string comp = cCode == "01" ? "W.H" : (cCode == "02" ? "M.P" : (cCode == "03" ? "N.K" : (cCode == "04" ? "R.W" : (cCode ?? ""))));
+                    string trans = row["IName"]?.ToString() ?? "";
+
                     decimal rate = row["Rate"] != DBNull.Value ? Convert.ToDecimal(row["Rate"]) : 0;
+                    decimal totNet = row["DrAmt"] != DBNull.Value ? Convert.ToDecimal(row["DrAmt"]) : 0;
+                    decimal localAmt = row["CrAmt"] != DBNull.Value ? Convert.ToDecimal(row["CrAmt"]) : 0;
+                    decimal deliveryAmt = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : 0;
+                    decimal sTaxAmt = row["STaxAmt"] != DBNull.Value ? Convert.ToDecimal(row["STaxAmt"]) : 0;
+                    decimal stnAmt = row["Ncramt"] != DBNull.Value ? Convert.ToDecimal(row["Ncramt"]) : 0;
+                    decimal advAmt = row["Qty"] != DBNull.Value ? Convert.ToDecimal(row["Qty"]) : 0;
+                    decimal transpAmt = row["Pay"] != DBNull.Value ? Convert.ToDecimal(row["Pay"]) : 0;
+                    decimal paidAmt = row["Ndramt"] != DBNull.Value ? Convert.ToDecimal(row["Ndramt"]) : 0;
+                    decimal deliveryAmt2 = row["DeliveryAmt2"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt2"]) : 0;
 
-                    grandAmount += amount;
-                    grandDrAmt += drAmt;
-                    grandCrAmt += crAmt;
-                    grandDelivery += delivery;
-                    grandSTax += stax;
-                    grandDelivery2 += delivery2;
-                    grandPay += pay;
-                    grandQty += qty;
+                    decimal challanAmt = totNet;
+                    decimal munsiana = localAmt;
+                    decimal fright = deliveryAmt;
+                    decimal deliv = sTaxAmt;
+                    decimal deliv6 = deliveryAmt2;
+                    decimal expAmt = rate;
+                    
+                    // Formula derived from Oracle Report behaviors for Transporter, Paid, Advance and Expense connection
+                    decimal totalAmt = transpAmt + paidAmt + advAmt - expAmt;
 
-                    string voDate = row["VoDate"] != DBNull.Value ? Convert.ToDateTime(row["VoDate"]).ToString("dd-MMM-yy") : "";
+                    totChalAmt += challanAmt; totMunsiana += munsiana; totFright += fright; totDeliv += deliv; totDeliv6 += deliv6;
+                    totStn += stnAmt; totAdv += advAmt; totTransp += transpAmt; totPaid += paidAmt; totExp += expAmt; totAmt += totalAmt;
 
                     sb.Append("<tr>");
-                    sb.Append($"<td class='center'>{sr++}</td>");
-                    sb.Append($"<td>{voDate}</td>");
-                    sb.Append($"<td class='bold'>{row["BillTiNo"]}</td>");
-                    sb.Append($"<td>{row["Station"]}</td>");
-                    sb.Append($"<td class='num'>{(rate != 0 ? rate.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(amount != 0 ? amount.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='bold'>{row["VehicleNo"]}</td>");
-                    sb.Append($"<td class='num'>{(drAmt != 0 ? drAmt.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(crAmt != 0 ? crAmt.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(delivery != 0 ? delivery.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(stax != 0 ? stax.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(delivery2 != 0 ? delivery2.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td>{row["IName"]}</td>");
-                    sb.Append($"<td>{row["Branch"]}</td>");
-                    sb.Append($"<td>{row["PartyCode"]}</td>");
-                    sb.Append($"<td class='num'>{(pay != 0 ? pay.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(qty != 0 ? qty.ToString("#,##0") : "")}</td>");
+                    if (resolvedType == "Godown")
+                    {
+                        sb.Append($"<td class='center'>{chalNo}</td>");
+                        sb.Append($"<td>{voDate}</td>");
+                        sb.Append($"<td class='bold text-primary'>{comp}</td>");
+                        sb.Append($"<td>{stn}</td>");
+                        sb.Append($"<td>{trans}</td>");
+                        sb.Append($"<td>{veh}</td>");
+                        sb.Append($"<td class='num'>{challanAmt:#,##0}</td>");
+                        sb.Append($"<td class='num'>{munsiana:#,##0}</td>");
+                        sb.Append($"<td class='num'>{fright:#,##0}</td>");
+                        sb.Append($"<td class='num'>{deliv:#,##0}</td>");
+                        sb.Append($"<td class='num'>{deliv6:#,##0}</td>");
+                        sb.Append($"<td class='num'>{stnAmt:#,##0}</td>");
+                        sb.Append($"<td class='num'>{advAmt:#,##0}</td>");
+                        sb.Append($"<td class='num'>{transpAmt:#,##0}</td>");
+                        sb.Append($"<td class='num'>{paidAmt:#,##0}</td>");
+                        sb.Append($"<td class='num'>{expAmt:#,##0}</td>");
+                        sb.Append($"<td class='num'>{totalAmt:#,##0}</td>");
+                    }
+                    else
+                    {
+                        sb.Append($"<td>{voDate}</td>");
+                        sb.Append($"<td>{stn}</td>");
+                        sb.Append($"<td>{veh}</td>");
+                        sb.Append($"<td class='num'>{fright:#,##0}</td>");
+                    }
                     sb.Append("</tr>");
                 }
 
                 sb.Append("</tbody><tfoot><tr>");
-                sb.Append("<td colspan='5' style='text-align:right;' class='bold'>GRAND TOTAL:</td>");
-                sb.Append($"<td class='num bold'>{grandAmount:#,##0.00}</td><td></td>");
-                sb.Append($"<td class='num bold'>{grandDrAmt:#,##0.00}</td>");
-                sb.Append($"<td class='num bold'>{grandCrAmt:#,##0.00}</td>");
-                sb.Append($"<td class='num bold'>{grandDelivery:#,##0.00}</td>");
-                sb.Append($"<td class='num bold'>{grandSTax:#,##0.00}</td>");
-                sb.Append($"<td class='num bold'>{grandDelivery2:#,##0.00}</td>");
-                sb.Append("<td></td><td></td><td></td>");
-                sb.Append($"<td class='num bold'>{grandPay:#,##0.00}</td>");
-                sb.Append($"<td class='num bold'>{grandQty:#,##0}</td>");
+                if (resolvedType == "Godown")
+                {
+                    sb.Append("<td colspan='6' style='text-align:right;' class='bold'>GRAND TOTAL:</td>");
+                    sb.Append($"<td class='num bold'>{totChalAmt:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totMunsiana:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totFright:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totDeliv:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totDeliv6:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totStn:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totAdv:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totTransp:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totPaid:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totExp:#,##0}</td>");
+                    sb.Append($"<td class='num bold'>{totAmt:#,##0}</td>");
+                }
+                else
+                {
+                    sb.Append("<td colspan='3' style='text-align:right;' class='bold'>GRAND TOTAL:</td>");
+                    sb.Append($"<td class='num bold'>{totFright:#,##0}</td>");
+                }
                 sb.Append("</tr></tfoot></table></body></html>");
 
                 return Content(sb.ToString(), "text/html");
@@ -509,42 +336,61 @@ namespace Nskg.Controllers
                 }
 
                 var sb = new StringBuilder();
-                string compName = (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "Company";
+                string compName = selectedCompanyId == 0 ? "All Companies" : ((dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "Company");
                 string reportTitle = (resolvedType == "Adda") ? "VEHICLE LIST REPORT (ADDA - commreport_all12)" : "VEHICLE LIST REPORT (GODOWN - commreportall_1)";
                 sb.AppendLine($"\"{compName}\"");
                 sb.AppendLine($"\"{reportTitle}\"");
                 sb.AppendLine($"\"Date From:\",\"{fromDate:dd-MM-yyyy}\",\"Date To:\",\"{toDate:dd-MM-yyyy}\",\"Account:\",\"{accode}\"");
                 sb.AppendLine();
 
-                sb.AppendLine("Date,Bill Ti No,Station,Rate,Amount,Vehicle No,Dr Amt,Cr Amt,Delivery Amt,S.Tax Amt,Delivery Amt2,Item Name,Branch,Party Code,Pay,Qty");
-
-                decimal totAmt = 0, totDr = 0, totCr = 0, totDel = 0, totSTax = 0, totDel2 = 0, totPay = 0, totQty = 0;
+                if (resolvedType == "Godown")
+                {
+                    sb.AppendLine("Chal no,Date,Comp,Station,Transporter,Vehicle no,Challan AMT,Munsiana,Fright,Delivery Amt,Delivery 6%,Station amt,Advance amt,Transporter amt,Paid AMT,Expense,Total AMT");
+                }
+                else
+                {
+                    sb.AppendLine("Date,Station,Vehicle no,Fright");
+                }
 
                 foreach (DataRow row in dt.Rows)
                 {
-                    string voDate = row["VoDate"] != DBNull.Value ? Convert.ToDateTime(row["VoDate"]).ToString("dd-MM-yyyy") : "";
-                    decimal amount = row["Amount"] != DBNull.Value ? Convert.ToDecimal(row["Amount"]) : 0;
-                    decimal drAmt = row["DrAmt"] != DBNull.Value ? Convert.ToDecimal(row["DrAmt"]) : 0;
-                    decimal crAmt = row["CrAmt"] != DBNull.Value ? Convert.ToDecimal(row["CrAmt"]) : 0;
-                    decimal delivery = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : 0;
-                    decimal stax = row["STaxAmt"] != DBNull.Value ? Convert.ToDecimal(row["STaxAmt"]) : 0;
-                    decimal delivery2 = row["DeliveryAmt2"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt2"]) : 0;
-                    decimal pay = row["Pay"] != DBNull.Value ? Convert.ToDecimal(row["Pay"]) : 0;
-                    decimal qty = row["Qty"] != DBNull.Value ? Convert.ToDecimal(row["Qty"]) : 0;
+                    string voDate = row["VoDate"] != DBNull.Value ? Convert.ToDateTime(row["VoDate"]).ToString("dd/MM/yy") : "";
+                    string chalNo = row["BillTiNo"]?.ToString() ?? "";
+                    string stn = row["Station"]?.ToString() ?? "";
+                    string veh = row["VehicleNo"]?.ToString() ?? "";
+                    string cCode = row["CoCode"]?.ToString();
+                    string comp = cCode == "01" ? "W.H" : (cCode == "02" ? "M.P" : (cCode == "03" ? "N.K" : (cCode == "04" ? "R.W" : (cCode ?? ""))));
+                    string trans = row["IName"]?.ToString() ?? "";
 
-                    totAmt += amount;
-                    totDr += drAmt;
-                    totCr += crAmt;
-                    totDel += delivery;
-                    totSTax += stax;
-                    totDel2 += delivery2;
-                    totPay += pay;
-                    totQty += qty;
+                    decimal rate = row["Rate"] != DBNull.Value ? Convert.ToDecimal(row["Rate"]) : 0;
+                    decimal totNet = row["DrAmt"] != DBNull.Value ? Convert.ToDecimal(row["DrAmt"]) : 0;
+                    decimal localAmt = row["CrAmt"] != DBNull.Value ? Convert.ToDecimal(row["CrAmt"]) : 0;
+                    decimal deliveryAmt = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : 0;
+                    decimal sTaxAmt = row["STaxAmt"] != DBNull.Value ? Convert.ToDecimal(row["STaxAmt"]) : 0;
+                    decimal stnAmt = row["Ncramt"] != DBNull.Value ? Convert.ToDecimal(row["Ncramt"]) : 0;
+                    decimal advAmt = row["Qty"] != DBNull.Value ? Convert.ToDecimal(row["Qty"]) : 0;
+                    decimal transpAmt = row["Pay"] != DBNull.Value ? Convert.ToDecimal(row["Pay"]) : 0;
+                    decimal paidAmt = row["Ndramt"] != DBNull.Value ? Convert.ToDecimal(row["Ndramt"]) : 0;
+                    decimal deliveryAmt2 = row["DeliveryAmt2"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt2"]) : 0;
 
-                    sb.AppendLine($"{voDate},{EscapeCsv(row["BillTiNo"]?.ToString())},{EscapeCsv(row["Station"]?.ToString())},{row["Rate"]},{amount},{EscapeCsv(row["VehicleNo"]?.ToString())},{drAmt},{crAmt},{delivery},{stax},{delivery2},{EscapeCsv(row["IName"]?.ToString())},{EscapeCsv(row["Branch"]?.ToString())},{EscapeCsv(row["PartyCode"]?.ToString())},{pay},{qty}");
+                    decimal challanAmt = totNet;
+                    decimal munsiana = localAmt;
+                    decimal fright = deliveryAmt;
+                    decimal deliv = sTaxAmt;
+                    decimal deliv6 = deliveryAmt2;
+                    decimal expAmt = rate;
+                    
+                    decimal totalAmt = transpAmt + paidAmt + advAmt - expAmt;
+
+                    if (resolvedType == "Godown")
+                    {
+                        sb.AppendLine($"{chalNo},{voDate},{comp},{EscapeCsv(stn)},{EscapeCsv(trans)},{EscapeCsv(veh)},{challanAmt},{munsiana},{fright},{deliv},{deliv6},{stnAmt},{advAmt},{transpAmt},{paidAmt},{expAmt},{totalAmt}");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"{voDate},{EscapeCsv(stn)},{EscapeCsv(veh)},{fright}");
+                    }
                 }
-
-                sb.AppendLine($"\"TOTAL\",,,,{totAmt},,{totDr},{totCr},{totDel},{totSTax},{totDel2},,,,{totPay},{totQty}");
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
                 return File(bytes, "text/csv", $"VehicleList_{resolvedType}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
@@ -553,6 +399,12 @@ namespace Nskg.Controllers
             {
                 return Content($"ERROR: {ex.Message}\n\nSTACK: {ex.StackTrace}");
             }
+        }
+
+        [HttpGet]
+        public IActionResult GeneratePDF(DateTime? fromDate, DateTime? toDate, string? accode, int? companyId)
+        {
+            return OnScreenReport(fromDate, toDate, accode, companyId, isPrintView: true);
         }
 
         private string EscapeCsv(string? text)
@@ -566,4 +418,3 @@ namespace Nskg.Controllers
         }
     }
 }
-

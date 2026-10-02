@@ -2,7 +2,7 @@
     var mode = ViewBag.Mode as string ?? "List";
     var isChallanList = string.Equals(mode, "List", StringComparison.OrdinalIgnoreCase);
     var pageHeading = isChallanList ? "Challan List" : "Challan Report";
-    ViewData["Title"] = pageHeading + " (Runtime Parameter Form)";
+    ViewData["Title"] = pageHeading;
 
     var pchalnoValue = ViewBag.Pchalno as string ?? "";
     var pcocodeValue = ViewBag.Pcocode as string ?? "";
@@ -40,7 +40,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="fw-bold">
             <i class="fa fa-file-text-o me-2 text-primary"></i> @pageHeading 
-            <small class="text-muted fs-6">(Runtime Parameter Form)</small>
+            
         </h3>
         <div class="btn-group">
             <a asp-controller="CommReport" asp-action="ChallanList" class="btn btn-sm @(isChallanList ? "btn-primary" : "btn-outline-primary") fw-semibold">
@@ -68,14 +68,15 @@
                     @if (isChallanList)
                     {
                         <!-- Challan List Parameters (Pchalno, Pcocode) -->
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fw-bold">Pchalno <small class="text-primary">(Challan No)</small></label>
                             <input type="text" class="form-control form-control-lg fw-bold" name="pchalno" id="pchalno" placeholder="Enter Challan No (e.g. 503)" value="@pchalnoValue" autofocus />
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fw-bold">Pcocode <small class="text-primary">(Company)</small></label>
                             <select class="form-select form-select-lg select2" name="companyId" id="companySelect">
+                                <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
                                 @if (companyList != null)
                                 {
                                     foreach (var comp in companyList)
@@ -90,33 +91,26 @@
                                         }
                                     }
                                 }
-                            </select>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Location / Format</label>
-                            <select class="form-select form-select-lg fw-semibold" id="formatSelect" onchange="$('#reportType').val(this.value)">
-                                <option value="Godown" selected="@(reportTypeValue == "Godown" ? "selected" : null)">Godown (commreport_all1)</option>
-                                <option value="Adda" selected="@(reportTypeValue == "Adda" ? "selected" : null)">Adda (commreport_all12)</option>
                             </select>
                         </div>
                     }
                     else
                     {
                         <!-- Challan Report Parameters (Fdate, Tdate, Pcocode) -->
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold">Fdate <small class="text-primary">(From Date)</small></label>
                             <input type="date" class="form-control form-control-lg" name="fromDate" id="fromDate" value="@fromDateValue" required />
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold">Tdate <small class="text-primary">(To Date)</small></label>
                             <input type="date" class="form-control form-control-lg" name="toDate" id="toDate" value="@toDateValue" required />
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold">Pcocode <small class="text-primary">(Company)</small></label>
                             <select class="form-select form-select-lg select2" name="companyId" id="companySelect">
+                                <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
                                 @if (companyList != null)
                                 {
                                     foreach (var comp in companyList)
@@ -134,29 +128,7 @@
                             </select>
                         </div>
 
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Location / Format</label>
-                            <select class="form-select form-select-lg fw-semibold" id="formatSelect" onchange="$('#reportType').val(this.value)">
-                                <option value="Adda" selected="@(reportTypeValue == "Adda" ? "selected" : null)">Adda (commreport_all12)</option>
-                                <option value="Godown" selected="@(reportTypeValue == "Godown" ? "selected" : null)">Godown (commreport_all1)</option>
-                            </select>
-                        </div>
 
-                        <!-- Optional Filters -->
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Vehicle No <small class="text-muted">(Optional)</small></label>
-                            <input type="text" class="form-control" name="vehicleNo" id="vehicleNo" placeholder="Vehicle No" value="@vehicleNoValue" />
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Station <small class="text-muted">(Optional)</small></label>
-                            <input type="text" class="form-control" name="station" id="station" placeholder="Station name" value="@stationValue" />
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Bilty No <small class="text-muted">(Optional)</small></label>
-                            <input type="number" class="form-control" name="biltyNo" id="biltyNo" placeholder="Bilty No" value="@biltyNoValue" min="0" />
-                        </div>
                     }
 
                     <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
@@ -255,7 +227,8 @@
                 + '&biltyNo=' + encodeURIComponent(biltyNo)
                 + '&vehicleNo=' + encodeURIComponent(vehicleNo)
                 + '&station=' + encodeURIComponent(station)
-                + '&partyCode=' + encodeURIComponent(partyCode);
+                + '&partyCode=' + encodeURIComponent(partyCode)
+                + '&mode=' + encodeURIComponent('@mode');
 
             $('#reportFrame').off('load');
             $('#reportFrame').attr('src', url);
@@ -267,4 +240,5 @@
         }
     </script>
 }
+
 

@@ -1,15 +1,28 @@
-﻿@model List<GLChart3>
+@model List<GLChart3>
 
 
- @foreach (var item in Model)
+@foreach (var item in Model)
 {
     <tr>
-        <td>@item.AC1 - @item.AC3</td>
+        <td>
+            @item.AC1 - @item.AC3
+            @if (item.LinkedGroupId != null)
+            {
+                <span class="badge bg-info-subtle text-info border border-info ms-1" style="font-size: 0.75rem;" title="Linked across multiple companies">
+                    <i class="fa fa-link"></i> Linked
+                </span>
+            }
+        </td>
         <td>@item.Name</td>
 
         <td class="text-end text-nowrap">
+            <button class="btn btn-sm btn-outline-info me-1"
+                    onclick="openLinkModal(@item.Id, '@item.Name', '@(item.AC1 + item.AC3)')"
+                    title="Link across companies">
+                <i class="fa fa-link"></i> Link
+            </button>
 
-            <button class="btn btn-sm btn-primary"
+            <button class="btn btn-sm btn-primary me-1"
                     onclick="editDetail(@item.Id)">
                 Edit
             </button>
@@ -18,7 +31,6 @@
                     onclick="return deleteDetail(event, @item.Id, '@item.Name', this)">
                 Delete
             </button>
-
         </td>
     </tr>
 } 

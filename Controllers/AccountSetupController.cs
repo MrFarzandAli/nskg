@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -97,22 +97,32 @@ namespace Nskg.Controllers
 
                 var companyClaim = existingClaims.FirstOrDefault(c => c.Type == "CompanyId");
                 var companycodeClaim = existingClaims.FirstOrDefault(c => c.Type == "CompanyCode");
+                var companyNameClaim = existingClaims.FirstOrDefault(c => c.Type == "CompanyName");
                 var yearClaim = existingClaims.FirstOrDefault(c => c.Type == "FinancialYearId");
-
 
                 if (companyClaim != null)
                     await _userManager.RemoveClaimAsync(user, companyClaim);
 
-                if (yearClaim != null)
-                    await _userManager.RemoveClaimAsync(user, yearClaim);
-
                 if (companycodeClaim != null)
                     await _userManager.RemoveClaimAsync(user, companycodeClaim);
 
+                if (companyNameClaim != null)
+                    await _userManager.RemoveClaimAsync(user, companyNameClaim);
+
+                if (yearClaim != null)
+                    await _userManager.RemoveClaimAsync(user, yearClaim);
+
                 var company = _context.Companies.FirstOrDefault(x => x.Id == model.SelectedCompanyId);
+
                 // ADD NEW CLAIMS
                 await _userManager.AddClaimAsync(user, new Claim("CompanyId", model.SelectedCompanyId.ToString()));
-            //    await _userManager.AddClaimAsync(user, new Claim("CompanyCode", company.Cocode));
+                if (company != null)
+                {
+                    if (!string.IsNullOrEmpty(company.Cocode))
+                        await _userManager.AddClaimAsync(user, new Claim("CompanyCode", company.Cocode));
+                    if (!string.IsNullOrEmpty(company.Name))
+                        await _userManager.AddClaimAsync(user, new Claim("CompanyName", company.Name));
+                }
                 await _userManager.AddClaimAsync(user, new Claim("FinancialYearId", model.SelectedFinancialYearId.ToString()));
 
                 // 🔹 Refresh SignIn (VERY IMPORTANT)

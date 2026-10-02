@@ -128,7 +128,9 @@ namespace Nskg.Controllers
                         b.DocNo,
                         b.DocDate,
                         b.Station,
-                        b.Transporter
+                        b.StationId,
+                        b.Transporter,
+                        b.TransId
                     })
                     .ToList();
 
@@ -137,8 +139,8 @@ namespace Nskg.Controllers
                     id = b.Id,
                     docNo = b.DocNo ?? "",
                     docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
-                    station = b.Station ?? "",
-                    transporter = b.Transporter ?? ""
+                    station = !string.IsNullOrWhiteSpace(b.Station) ? b.Station : (_context.GLChart3.Where(g => g.Id == b.StationId).Select(g => g.Name).FirstOrDefault() ?? ""),
+                    transporter = !string.IsNullOrWhiteSpace(b.Transporter) ? b.Transporter : (_context.GLChart3.Where(g => g.Id == b.TransId).Select(g => g.Name).FirstOrDefault() ?? "")
                 }).ToList();
 
                 return Json(new
@@ -453,13 +455,105 @@ namespace Nskg.Controllers
 
         public IActionResult Edit(int id)
         {
-            LoadDropdowns();
-
             var head = _context.ChallanHead
                 .FirstOrDefault(x => x.Id == id);
 
             if (head == null)
                 return NotFound();
+
+            int compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
+            if (compId <= 0) compId = 1006;
+            LoadDropdowns(compId);
+
+            // FIX: Ensure Station is properly matched and selected in dropdown
+            var stationsList = ViewBag.Stations as List<SelectListItem> ?? new List<SelectListItem>();
+            bool stationFound = head.StationId > 0 && stationsList.Any(s => s.Value == head.StationId.ToString() && !string.IsNullOrEmpty(s.Value));
+
+            if (!stationFound)
+            {
+                var matched = _context.GLChart3
+                    .Where(g => g.AcType != "S" && (
+                        (!string.IsNullOrEmpty(head.Station) && g.Name == head.Station) ||
+                        (!string.IsNullOrEmpty(head.StationCode) && (g.AC1 + g.AC3) == head.StationCode) ||
+                        (!string.IsNullOrEmpty(head.Station) && (g.Name.Contains(head.Station) || head.Station.Contains(g.Name)))
+                    ))
+                    .OrderBy(g => g.CompanyId == compId ? 0 : 1)
+                    .FirstOrDefault();
+
+                if (matched != null)
+                {
+                    head.StationId = matched.Id;
+                    head.Station = matched.Name;
+                    head.StationCode = matched.AC1 + matched.AC3;
+
+                    if (!stationsList.Any(s => s.Value == matched.Id.ToString()))
+                    {
+                        stationsList.Add(new SelectListItem
+                        {
+                            Value = matched.Id.ToString(),
+                            Text = matched.Name + " (" + (matched.AC1 + matched.AC3) + ")"
+                        });
+                    }
+                }
+                else if (head.StationId > 0)
+                {
+                    var directStation = _context.GLChart3.FirstOrDefault(g => g.Id == head.StationId);
+                    if (directStation != null)
+                    {
+                        stationsList.Add(new SelectListItem
+                        {
+                            Value = directStation.Id.ToString(),
+                            Text = directStation.Name + " (" + (directStation.AC1 + directStation.AC3) + ")"
+                        });
+                    }
+                }
+                ViewBag.Stations = stationsList.OrderBy(s => string.IsNullOrEmpty(s.Value) ? "" : s.Text).ToList();
+            }
+
+            // FIX: Ensure Transporter is properly matched and selected in dropdown
+            var transList = ViewBag.Transporters as List<SelectListItem> ?? new List<SelectListItem>();
+            bool transFound = head.TransId > 0 && transList.Any(t => t.Value == head.TransId.ToString() && !string.IsNullOrEmpty(t.Value));
+
+            if (!transFound)
+            {
+                var matchedTrans = _context.GLChart3
+                    .Where(g => g.AcType != "S" && (
+                        (!string.IsNullOrEmpty(head.Transporter) && g.Name == head.Transporter) ||
+                        (!string.IsNullOrEmpty(head.TransCode) && (g.AC1 + g.AC3) == head.TransCode) ||
+                        (!string.IsNullOrEmpty(head.Transporter) && (g.Name.Contains(head.Transporter) || head.Transporter.Contains(g.Name)))
+                    ))
+                    .OrderBy(g => g.CompanyId == compId ? 0 : 1)
+                    .FirstOrDefault();
+
+                if (matchedTrans != null)
+                {
+                    head.TransId = matchedTrans.Id;
+                    head.Transporter = matchedTrans.Name;
+                    head.TransCode = matchedTrans.AC1 + matchedTrans.AC3;
+
+                    if (!transList.Any(t => t.Value == matchedTrans.Id.ToString()))
+                    {
+                        transList.Add(new SelectListItem
+                        {
+                            Value = matchedTrans.Id.ToString(),
+                            Text = matchedTrans.Name + " (" + (matchedTrans.AC1 + matchedTrans.AC3) + ")"
+                        });
+                    }
+                }
+                else if (head.TransId > 0)
+                {
+                    var directTrans = _context.GLChart3.FirstOrDefault(g => g.Id == head.TransId);
+                    if (directTrans != null)
+                    {
+                        transList.Add(new SelectListItem
+                        {
+                            Value = directTrans.Id.ToString(),
+                            Text = directTrans.Name + " (" + (directTrans.AC1 + directTrans.AC3) + ")"
+                        });
+                    }
+                }
+                ViewBag.Transporters = transList.OrderBy(t => string.IsNullOrEmpty(t.Value) ? "" : t.Text).ToList();
+            }
 
             var details = _context.ChallanDet
                  .Where(x => x.ChallanHeadId == id)
@@ -538,7 +632,26 @@ namespace Nskg.Controllers
                 head.ChalNo = model.Head.ChalNo;
                 head.DocDate = model.Head.DocDate;
                 head.StationId = model.Head.StationId;
+                if (head.StationId > 0)
+                {
+                    var st = _context.GLChart3.FirstOrDefault(g => g.Id == head.StationId);
+                    if (st != null)
+                    {
+                        head.Station = st.Name;
+                        head.StationCode = st.AC1 + st.AC3;
+                    }
+                }
+
                 head.TransId = model.Head.TransId;
+                if (head.TransId > 0)
+                {
+                    var tr = _context.GLChart3.FirstOrDefault(g => g.Id == head.TransId);
+                    if (tr != null)
+                    {
+                        head.Transporter = tr.Name;
+                        head.TransCode = tr.AC1 + tr.AC3;
+                    }
+                }
                 head.VehicleNo = model.Head.VehicleNo;
                 head.Driver = model.Head.Driver;
                 head.Narration = model.Head.Narration;
@@ -734,24 +847,25 @@ namespace Nskg.Controllers
             }
         }
 
-        private void LoadDropdowns()
+        private void LoadDropdowns(int? companyId = null)
         {
             try
             {
-
+                int compId = companyId ?? User.GetCompanyId();
+                if (compId <= 0) compId = 1006;
 
                 var transporterlist = _context.AcPara
-    .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
-                && a.CompanyId == User.GetCompanyId()
-                && a.Parent == "P")
-    .Select(a => a.Accode)
-    .Distinct();
+                    .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
+                                && (a.CompanyId == compId || a.CompanyId == 0)
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
 
                 var transporterAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
                         g.AcType != "S" &&
-                        transporterlist.Contains(g.AC1)
+                        (transporterlist.Contains(g.AC1) || g.AC1 == "052")
                     )
                     .Select(g => new SelectListItem
                     {
@@ -772,16 +886,16 @@ namespace Nskg.Controllers
 
                 var stationList = _context.AcPara
                     .Where(a => AccountCategories.Station.Contains(a.ActypeCode)
-                                && a.CompanyId == User.GetCompanyId()
+                                && (a.CompanyId == compId || a.CompanyId == 0)
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var stationAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
                         g.AcType != "S" &&
-                        stationList.Contains(g.AC1)
+                        (stationList.Contains(g.AC1) || g.AC1 == "067" || g.AC1 == "068")
                     )
                     .Select(g => new SelectListItem
                     {
@@ -802,16 +916,16 @@ namespace Nskg.Controllers
                 //party station 
                 var PartyStationList = _context.AcPara
                     .Where(a => AccountCategories.Party_Station.Contains(a.ActypeCode)
-                                && a.CompanyId == User.GetCompanyId()
+                                && (a.CompanyId == compId || a.CompanyId == 0)
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var PartyStationAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
                         g.AcType != "S" &&
-                        PartyStationList.Contains(g.AC1)
+                        (PartyStationList.Contains(g.AC1) || g.AC1 == "067" || g.AC1 == "068")
                     )
                     .Select(g => new SelectListItem
                     {
@@ -832,7 +946,7 @@ namespace Nskg.Controllers
                 //party Exp
                 var PartyExpList = _context.AcPara
                     .Where(a => AccountCategories.Too_PayParty.Contains(a.ActypeCode)
-                                && a.CompanyId == User.GetCompanyId()
+                                && (a.CompanyId == compId || a.CompanyId == 0)
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();

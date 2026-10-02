@@ -1,17 +1,17 @@
+@using Nskg.Models
 @{
     ViewData["Title"] = "Party Expense Report (Detailed Ledger)";
-
-    var fromDateValue = ViewBag.FromDate as string;
-    var toDateValue = ViewBag.ToDate as string;
-    var accodeValue = ViewBag.Accode as string;
-    var vehicleNoValue = ViewBag.VehicleNo as string;
-    var biltyNoValue = ViewBag.BiltyNo as string;
+    var fromDateValue = ViewBag.FromDate as string ?? "";
+    var toDateValue = ViewBag.ToDate as string ?? "";
+    var biltyNoValue = ViewBag.BiltyNo as string ?? "";
+    var vehicleNoValue = ViewBag.VehicleNo as string ?? "";
+    var accodeValue = ViewBag.Accode as string ?? "";
     var selectedCompanyId = ViewBag.SelectedCompanyId != null ? (int)ViewBag.SelectedCompanyId : 0;
     var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
 
     if (string.IsNullOrEmpty(fromDateValue))
     {
-        fromDateValue = "2010-01-01";
+        fromDateValue = DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd");
     }
 
     if (string.IsNullOrEmpty(toDateValue))
@@ -42,30 +42,27 @@
             </h5>
         </div>
         <div class="card-body p-4 bg-light">
-            <form method="get">
+            <form method="get" id="partyExpenseForm">
                 <div class="row g-3">
-                    <!-- Company Dropdown -->
+                    
+                    <!-- Company Filter -->
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Company</label>
-                        <select class="form-select select2" name="companyId" id="companySelect">
+                        <select class="form-select select2" id="companySelect" name="companyId">
+                            <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
                             @if (companyList != null)
                             {
                                 foreach (var comp in companyList)
                                 {
-                                    if (comp.Id == selectedCompanyId)
-                                    {
-                                        <option value="@comp.Id" selected="selected">@comp.Name</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="@comp.Id">@comp.Name</option>
-                                    }
+                                    <option value="@comp.Id" selected="@(comp.Id == selectedCompanyId ? "selected" : null)">
+                                        @comp.Code - @comp.Name
+                                    </option>
                                 }
                             }
                         </select>
                     </div>
 
-                    <!-- Party / Account Selector -->
+                    <!-- Account / Party Filter -->
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Select Party / Account</label>
                         <select class="form-control select2" id="accodeSelect" name="accode">
@@ -86,24 +83,18 @@
                     <!-- Vehicle No Filter -->
                     <div class="col-md-2">
                         <label class="form-label fw-bold">Vehicle No</label>
-                        <select class="form-control select2" id="vehicleNoSelect" name="vehicleNo">
+                        <select class="form-select select2" id="vehicleNoSelect" name="vehicleNo">
                             <option value="">-- All Vehicles --</option>
-                            @if (ViewBag.VehicleList != null)
+                            @if (!string.IsNullOrEmpty(vehicleNoValue))
                             {
-                                foreach (var item in ViewBag.VehicleList)
-                                {
-                                    <option value="@item" 
-                                            selected="@(item == vehicleNoValue ? "selected" : null)">
-                                        @item
-                                    </option>
-                                }
+                                <option value="@vehicleNoValue" selected="selected">@vehicleNoValue</option>
                             }
                         </select>
                     </div>
 
-                    <!-- Bilty No -->
+                    <!-- Commission No -->
                     <div class="col-md-2">
-                        <label class="form-label fw-bold">Bilty No</label>
+                        <label class="form-label fw-bold">Commission No</label>
                         <input type="text" class="form-control" name="biltyNo" value="@biltyNoValue" placeholder="e.g. 5432" />
                     </div>
 
@@ -198,30 +189,24 @@
 
             $('#companySelect').on('change', function () {
                 var compId = $(this).val();
-                if (!compId) return;
+                if (compId === null || compId === undefined || compId === "") compId = "0";
 
                 $.getJSON('@Url.Action("GetAccountsByCompany", "PartyExpenseReport")', { companyId: compId }, function (data) {
                     var $acc = $('#accodeSelect');
                     $acc.empty().append('<option value="">-- Select Party / Account --</option>');
                     $.each(data, function (i, item) {
-                        $acc.append('<option value="' + item.code + '">' + item.code + ' - ' + item.name + '</option>');
+                        var codeVal = item.code || item.Code || '';
+                        var nameVal = item.name || item.Name || '';
+                        $acc.append('<option value="' + codeVal + '">' + codeVal + ' - ' + nameVal + '</option>');
                     });
                     $acc.trigger('change');
-                });
-
-                $.getJSON('@Url.Action("GetVehiclesByCompany", "PartyExpenseReport")', { companyId: compId }, function (data) {
-                    var $veh = $('#vehicleNoSelect');
-                    $veh.empty().append('<option value="">-- All Vehicles --</option>');
-                    $.each(data, function (i, item) {
-                        $veh.append('<option value="' + item + '">' + item + '</option>');
-                    });
-                    $veh.trigger('change');
                 });
             });
         });
 
         function loadOnScreenReport() {
-            var companyId = $('#companySelect').val() || '';
+            var companyId = $('#companySelect').val();
+            if (companyId === null || companyId === undefined || companyId === "") companyId = "0";
             var accode = $('#accodeSelect').val() || '';
             var vehicleNo = $('#vehicleNoSelect').val() || '';
             var biltyNo = $('input[name="biltyNo"]').val() || '';
@@ -229,7 +214,7 @@
             var toDate = $('input[name="toDate"]').val() || '';
 
             if (!accode && !vehicleNo && !biltyNo) {
-                alert("Please select a Party / Account, Vehicle No, or enter a Bilty No.");
+                alert("Please select a Party / Account, Vehicle No, or enter a Commission No.");
                 return;
             }
 

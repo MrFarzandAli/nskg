@@ -77,13 +77,33 @@
 			var companyName = "NSKG";
 			try
 			{
-				var companies = await UnitOfWork.Companies.GetAllAsync();
-				var company = companies.FirstOrDefault(c => !c.IsDeleted && c.IsActive)
-							  ?? companies.FirstOrDefault(c => !c.IsDeleted)
-							  ?? companies.FirstOrDefault();
-				if (company != null && !string.IsNullOrWhiteSpace(company.Name))
+				var compIdClaim = User.FindFirst("CompanyId")?.Value;
+				if (int.TryParse(compIdClaim, out int loggedCompId) && loggedCompId > 0)
 				{
-					companyName = company.Name;
+					var company = await UnitOfWork.Companies.GetByIdAsync(loggedCompId);
+					if (company != null && !string.IsNullOrWhiteSpace(company.Name))
+					{
+						companyName = company.Name;
+					}
+				}
+				else
+				{
+					var claimName = User.FindFirst("CompanyName")?.Value;
+					if (!string.IsNullOrWhiteSpace(claimName))
+					{
+						companyName = claimName;
+					}
+					else
+					{
+						var companies = await UnitOfWork.Companies.GetAllAsync();
+						var company = companies.FirstOrDefault(c => !c.IsDeleted && c.IsActive)
+									  ?? companies.FirstOrDefault(c => !c.IsDeleted)
+									  ?? companies.FirstOrDefault();
+						if (company != null && !string.IsNullOrWhiteSpace(company.Name))
+						{
+							companyName = company.Name;
+						}
+					}
 				}
 			}
 			catch
@@ -197,9 +217,9 @@
 							<span>Admin</span>
 						</a>
 						<div class="dropdown-menu">					
-							<form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
-								<button type="submit" class="dropdown-item">Logout</button>
-							</form>
+							<a class="dropdown-item" asp-area="Identity" asp-page="/Account/Logout">
+								<i class="fa fa-sign-out me-2"></i> Logout
+							</a>
 						</div>
 					</li>
 				</ul>
@@ -210,9 +230,9 @@
 					<div class="dropdown-menu dropdown-menu-right">
 						<a class="dropdown-item" href="profile.html">My Profile</a>
 						<a class="dropdown-item" href="settings.html">Settings</a>
-						<form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
-							<button type="submit" class="dropdown-item">Logout</button>
-						</form>
+						<a class="dropdown-item" asp-area="Identity" asp-page="/Account/Logout">
+							<i class="fa fa-sign-out me-2"></i> Logout
+						</a>
 					</div>
 				</div>
 				<!-- /Mobile Menu -->
@@ -316,13 +336,12 @@
 					</ul>
 					</li>
 
-					var reportsControllers = new[] { "GenerlLedgerReport", "AccountLedgerReport", "TrailBalanceReport", "PartyExpenseReport", "TransporterLedgerReport", "StationLedgerReport", "BiltyListReport", "ToPayBiltyReport", "AdvanceReport", "CommReport", "ReceivablePayableReport", "VehicleListReport" };
+					var reportsControllers = new[] { "AccountLedgerReport", "TrailBalanceReport", "PartyExpenseReport", "TransporterLedgerReport", "StationLedgerReport", "BiltyListReport", "ToPayBiltyReport", "AdvanceReport", "CommReport", "ReceivablePayableReport", "VehicleListReport" };
 					var showReports = isControllerIn(reportsControllers);
 
 					<li class="submenu@(showReports ? " active" : "")">
 					<a href="#" class="@(showReports ? "active" : "")"><i class="la la-bar-chart"></i> <span> Reports</span> <span class="menu-arrow"></span></a>
 					<ul @(showReports ? "style=\"display:block;\"" : "")>					
-						<li><a class="@(isActive("GenerlLedgerReport","Index") ? "active" : "")" asp-controller="GenerlLedgerReport" asp-action="Index">General Ledger Report</a></li>
 						<li><a class="@(isActive("AccountLedgerReport","Index") ? "active" : "")" asp-controller="AccountLedgerReport" asp-action="Index">Account Ledger (Detailed)</a></li>
 						<li><a class="@(isActive("TrailBalanceReport","Index") ? "active" : "")" asp-controller="TrailBalanceReport" asp-action="Index">Trail Balance Report</a></li>
 						<li><a class="@(isActive("ReceivablePayableReport","Index") ? "active" : "")" asp-controller="ReceivablePayableReport" asp-action="Index">Receivable & Payable Report</a></li>
@@ -332,8 +351,8 @@
 						<li><a class="@(isActive("BiltyListReport","Index") ? "active" : "")" asp-controller="BiltyListReport" asp-action="Index">Paid Bilty Report</a></li>
 						<li><a class="@(isActive("ToPayBiltyReport","Index") ? "active" : "")" asp-controller="ToPayBiltyReport" asp-action="Index">To Pay Bilty Report</a></li>
 						<li><a class="@(isActive("AdvanceReport","Index") ? "active" : "")" asp-controller="AdvanceReport" asp-action="Index">Advance Report</a></li>
-						<li><a class="@(isActive("CommReport","ChallanList") || (isActive("CommReport","Index") && string.Equals(Context.Request.Query["reportType"].ToString(), "Godown", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" asp-controller="CommReport" asp-action="ChallanList">Challan List</a></li>
-						<li><a class="@(isActive("CommReport","ChallanReport") || (isActive("CommReport","Index") && string.Equals(Context.Request.Query["reportType"].ToString(), "Adda", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" asp-controller="CommReport" asp-action="ChallanReport">Challan Report</a></li>
+						<li><a class="@(isActive("CommReport","ChallanList") ? "active" : "")" asp-controller="CommReport" asp-action="ChallanList">Challan List</a></li>
+						<li><a class="@(isActive("CommReport","ChallanReport") ? "active" : "")" asp-controller="CommReport" asp-action="ChallanReport">Challan Report</a></li>
 						<li><a class="@(isActive("VehicleListReport","Index") ? "active" : "")" asp-controller="VehicleListReport" asp-action="Index">Vehicle List Report</a></li>
 					</ul>
 					</li>	

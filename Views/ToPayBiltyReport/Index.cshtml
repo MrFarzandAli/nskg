@@ -11,7 +11,7 @@
     var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
 
     if (string.IsNullOrEmpty(fromDateValue))
-        fromDateValue = DateTime.Now.ToString("yyyy-MM-dd");
+        fromDateValue = DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd");
 
     if (string.IsNullOrEmpty(toDateValue))
         toDateValue = DateTime.Now.ToString("yyyy-MM-dd");
@@ -45,6 +45,7 @@
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Company</label>
                         <select class="form-select select2" name="companyId" id="companySelect">
+                                <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
                             @if (companyList != null)
                             {
                                 foreach (var comp in companyList)

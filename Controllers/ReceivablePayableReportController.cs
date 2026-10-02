@@ -31,7 +31,7 @@ namespace Nskg.Controllers
         {
             int cid = User.GetCompanyId();
             if (cid > 0) return cid;
-            return 1006;
+            return 0; // 0 = All Companies
         }
 
         private string GetCompanyCode()
@@ -49,11 +49,20 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(string rcocode, string pac1)
+        public IActionResult Index(string rcocode, string pac1, int? fyId)
         {
             int companyId = GetCompanyId();
             string defaultCoCode = GetCompanyCode();
-            string selectedRco = !string.IsNullOrEmpty(rcocode) ? rcocode : defaultCoCode;
+            string selectedRco = rcocode != null ? rcocode : defaultCoCode;
+
+            // Financial Years
+            var financialYears = _context.FinancialYears
+                .Where(f => !f.IsDeleted && !string.IsNullOrEmpty(f.YearName))
+                .OrderByDescending(f => !f.IsClosed)
+                .ThenByDescending(f => f.StartDate)
+                .ToList();
+
+            int selectedFyId = fyId ?? financialYears.FirstOrDefault(f => !f.IsClosed)?.Id ?? GetFinancialYearId();
 
             // 1. Companies for Rcocode dropdown
             var companies = _context.Companies
@@ -67,9 +76,14 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            // 2. Account dropdown populated directly from GLChart1 (containing CASH, CAPITAL, SERVICES, EXPENSES, RUQQA, etc.)
-            var accounts = _context.GLChart1
-                .Where(g => (g.CoCode == selectedRco || g.CompanyId == companyId || (selectedRco == "" && g.CompanyId == 0)))
+            // 2. Account dropdown populated directly from GLChart1
+            var queryAccounts = _context.GLChart1.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(selectedRco))
+            {
+                queryAccounts = queryAccounts.Where(g => g.CoCode == selectedRco || g.CompanyId == companyId);
+            }
+
+            var accounts = queryAccounts
                 .Select(g => new
                 {
                     Code = g.AC1,
@@ -79,6 +93,8 @@ namespace Nskg.Controllers
                 .OrderBy(g => g.Name)
                 .ToList();
 
+            ViewBag.FinancialYears = financialYears;
+            ViewBag.SelectedFyId = selectedFyId;
             ViewBag.CompanyList = companies;
             ViewBag.AccountList = accounts;
 
@@ -89,15 +105,17 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetAccountsByCompany(string rcocode)
+                public IActionResult GetAccountsByCompany(string rcocode)
         {
-            if (string.IsNullOrWhiteSpace(rcocode)) rcocode = "01";
+            var query = _context.GLChart1.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(rcocode) && rcocode != "0")
+            {
+                var company = _context.Companies.FirstOrDefault(c => c.Cocode == rcocode || c.Id.ToString() == rcocode);
+                int companyId = company?.Id ?? 0;
+                query = query.Where(g => g.CoCode == rcocode || (companyId > 0 && g.CompanyId == companyId));
+            }
 
-            var company = _context.Companies.FirstOrDefault(c => c.Cocode == rcocode || c.Id.ToString() == rcocode);
-            int companyId = company?.Id ?? 0;
-
-            var accounts = _context.GLChart1
-                .Where(g => g.CoCode == rcocode || (companyId > 0 && g.CompanyId == companyId))
+            var accounts = query
                 .Select(g => new
                 {
                     code = g.AC1,
@@ -110,16 +128,21 @@ namespace Nskg.Controllers
             return Json(accounts);
         }
 
-        private DataTable GetReceivablePayableData(string rcocode, string pac1, int companyId, int financialYearId)
+        private DataTable GetReceivablePayableData(string rcocode, string pac1, int companyId, int? fyId)
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
+
+            int selectedFyId = fyId ?? GetFinancialYearId();
+            var fy = _context.FinancialYears.FirstOrDefault(f => f.Id == selectedFyId);
+            DateTime? sDate = fy?.StartDate;
+            DateTime? tDate = fy?.EndDate;
 
             using (SqlConnection con = new SqlConnection(connString))
             {
                 con.Open();
 
-                string companyName = "West Wharf-New Shadab Karachi Goods Transports";
+                string companyName = "All Companies / Branches - West Wharf-New Shadab Karachi Goods Transports";
                 int targetCompanyId = companyId;
 
                 if (!string.IsNullOrWhiteSpace(rcocode))
@@ -141,25 +164,31 @@ namespace Nskg.Controllers
                 }
                 else
                 {
-                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
-                    {
-                        cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
-                        var res = cmdComp.ExecuteScalar();
-                        if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
-                            companyName = res.ToString();
-                    }
+                    targetCompanyId = 0;
                 }
 
-                // Translated Oracle Query:
-                // SELECT ALL GLCHART.AC1, GLCHART.NAME, GLCHART.ACTYPE, GLCHART.OPENING opening, AC1||AC3 HACC,
-                // decode(actype,'A','1','L','2','C','3','I','4','E','5','') mactype
-                // FROM GLCHART3 GLCHART
-                // WHERE GLCHART.COCODE = :RCOCODE
-                //  AND NVL(OPENING,0)<>0
-                // and AC1 in ( select substr(accode,1,3) from acpara where actype not in ('R','E','S','F'))
-                // and actype not in ('S','E','I','C')
-                // and ac1 between nvl(:PAC1,'000') and nvl(:PAC1,'999')
-                // ORDER BY ACTYPE,NAME
+                // 1. Run sp_ProcessTrialBalance before generating the report
+                try
+                {
+                    using (SqlCommand cmdProc = new SqlCommand("dbo.sp_ProcessTrialBalance", con))
+                    {
+                        cmdProc.CommandType = CommandType.StoredProcedure;
+                        cmdProc.CommandTimeout = 180;
+                        cmdProc.Parameters.AddWithValue("@Cocode", string.IsNullOrWhiteSpace(rcocode) ? (object)DBNull.Value : rcocode.Trim());
+                        cmdProc.Parameters.AddWithValue("@CompanyId", targetCompanyId > 0 ? (object)targetCompanyId : DBNull.Value);
+                        cmdProc.Parameters.AddWithValue("@FinancialYearId", selectedFyId > 0 ? (object)selectedFyId : DBNull.Value);
+                        cmdProc.Parameters.AddWithValue("@SDate", sDate.HasValue ? (object)sDate.Value : DBNull.Value);
+                        cmdProc.Parameters.AddWithValue("@TDate", tDate.HasValue ? (object)tDate.Value : DBNull.Value);
+                        cmdProc.ExecuteNonQuery();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log or handle procedure warning if needed
+                    Console.WriteLine("Warning: sp_ProcessTrialBalance execution: " + ex.Message);
+                }
+
+                // 2. Fetch balances from GLChart3
                 string query = @"
                     SELECT 
                         GLCHART.AC1,
@@ -220,14 +249,13 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(string rcocode, string pac1)
+        public IActionResult OnScreenReport(string rcocode, string pac1, int? fyId)
         {
             int companyId = GetCompanyId();
-            int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetReceivablePayableData(rcocode, pac1, companyId, financialYearId);
+                DataTable dt = GetReceivablePayableData(rcocode, pac1, companyId, fyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -335,14 +363,13 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(string rcocode, string pac1)
+        public IActionResult ExportExcel(string rcocode, string pac1, int? fyId)
         {
             int companyId = GetCompanyId();
-            int financialYearId = GetFinancialYearId();
 
             try
             {
-                DataTable dt = GetReceivablePayableData(rcocode, pac1, companyId, financialYearId);
+                DataTable dt = GetReceivablePayableData(rcocode, pac1, companyId, fyId);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -395,3 +422,5 @@ namespace Nskg.Controllers
         }
     }
 }
+
+

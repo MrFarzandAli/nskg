@@ -9,6 +9,9 @@ namespace Nskg.Models
         // 🔥 NEW FK
         public int GLChart1Id { get; set; }
 
+        // 🔗 Multi-Company Linked Group
+        public Guid? LinkedGroupId { get; set; }
+
         [Required]
         public string? AC1 { get; set; }   // optional (for legacy/reference)
         public string? AC2 { get; set; }       

@@ -58,20 +58,52 @@ namespace Nskg.Controllers
 
        
         [HttpPost]
-        public async Task<IActionResult> AddAccount(GLChart1 model)
+        public async Task<IActionResult> AddAccount(GLChart1 model, bool createInAllCompanies = false)
         {
             try
             {
-                model.AC1 = GenerateAC1();
-                model.CompanyId = User.GetCompanyId();
-                model.CoCode = User.GetCompanyCode();
+                int currentCompanyId = User.GetCompanyId();
+                string currentCompanyCode = User.GetCompanyCode();
+
+                string ac1Code = GenerateAC1();
+                model.AC1 = ac1Code;
+                model.CompanyId = currentCompanyId;
+                model.CoCode = currentCompanyCode;
 
                 _context.GLChart1.Add(model);
                 _context.SaveChanges();
 
                 await _audit.LogAsync("Create", "GLChart1", model.Id.ToString(), $"Created Account: {model.Name}");
 
-                TempData["SuccessMessage"] = "Account created successfully!";
+                if (createInAllCompanies)
+                {
+                    var otherCompanies = _context.Companies
+                        .Where(c => !c.IsDeleted && c.Id != currentCompanyId)
+                        .ToList();
+
+                    foreach (var comp in otherCompanies)
+                    {
+                        var exists = _context.GLChart1.Any(x => (x.CompanyId == comp.Id || x.CoCode == comp.Cocode) && (x.AC1 == ac1Code || x.Name == model.Name));
+                        if (!exists)
+                        {
+                            var clone = new GLChart1
+                            {
+                                AC1 = ac1Code,
+                                Name = model.Name,
+                                AcType = model.AcType,
+                                CType = model.CType,
+                                IncBal = model.IncBal,
+                                CompanyId = comp.Id,
+                                CoCode = comp.Cocode,
+                                Opening = 0
+                            };
+                            _context.GLChart1.Add(clone);
+                        }
+                    }
+                    _context.SaveChanges();
+                }
+
+                TempData["SuccessMessage"] = createInAllCompanies ? "Account created in all companies successfully!" : "Account created successfully!";
                 return Json(new { success = true });
             }
             catch (Exception ex)
@@ -146,27 +178,103 @@ namespace Nskg.Controllers
         // DETAIL
        
         [HttpPost]
-        public async Task<IActionResult> AddDetail(GLChart3 model)
+        public async Task<IActionResult> AddDetail(GLChart3 model, bool createInAllCompanies = false)
         {
             try
             {
+                int currentCompanyId = User.GetCompanyId();
+                string currentCompanyCode = User.GetCompanyCode();
+
                 var account = _context.GLChart1.Find(model.GLChart1Id);
+                if (account == null)
+                    return Json(new { success = false, message = "Parent account not found!" });
+
+                string ac3Code = GenerateAC3(model.GLChart1Id);
 
                 model.AC1 = account.AC1;
-                model.AC3 = GenerateAC3(model.GLChart1Id);
-                model.ACC = account.AC1 + GenerateAC3(model.GLChart1Id);
+                model.AC3 = ac3Code;
+                model.ACC = account.AC1 + ac3Code;
                 model.AcType = account.AcType;
                 model.CType = account.CType;
                 model.CHName = account.Name;
-                model.CoCode = User.GetCompanyCode();
-                model.CompanyId = User.GetCompanyId();
+                Guid? newGroupId = null;
+                if (createInAllCompanies)
+                {
+                    newGroupId = Guid.NewGuid();
+                    model.LinkedGroupId = newGroupId;
+                }
+
+                model.CoCode = currentCompanyCode;
+                model.CompanyId = currentCompanyId;
 
                 _context.GLChart3.Add(model);
                 _context.SaveChanges();
 
                 await _audit.LogAsync("Create", "GLChart3", model.Id.ToString(), $"Created Detail: {model.Name}");
 
-                return Json(new { success = true, message = "Detail added successfully!" });
+                if (createInAllCompanies)
+                {
+                    var otherCompanies = _context.Companies
+                        .Where(c => !c.IsDeleted && c.Id != currentCompanyId)
+                        .ToList();
+
+                    foreach (var comp in otherCompanies)
+                    {
+                        var otherParent = _context.GLChart1.FirstOrDefault(x =>
+                            (x.CompanyId == comp.Id || x.CoCode == comp.Cocode) &&
+                            (x.AC1 == account.AC1 || x.Name == account.Name));
+
+                        if (otherParent == null)
+                        {
+                            otherParent = new GLChart1
+                            {
+                                AC1 = account.AC1,
+                                Name = account.Name,
+                                AcType = account.AcType,
+                                CType = account.CType,
+                                IncBal = account.IncBal,
+                                CompanyId = comp.Id,
+                                CoCode = comp.Cocode,
+                                Opening = 0
+                            };
+                            _context.GLChart1.Add(otherParent);
+                            _context.SaveChanges();
+                        }
+
+                        var existingAccount = _context.GLChart3.FirstOrDefault(x =>
+                            (x.CompanyId == comp.Id || x.CoCode == comp.Cocode) &&
+                            x.GLChart1Id == otherParent.Id &&
+                            (x.AC3 == ac3Code || x.Name == model.Name));
+
+                        if (existingAccount != null)
+                        {
+                            existingAccount.LinkedGroupId = newGroupId;
+                        }
+                        else
+                        {
+                            string compAc3 = GenerateAC3(otherParent.Id);
+                            var cloneDetail = new GLChart3
+                            {
+                                GLChart1Id = otherParent.Id,
+                                AC1 = otherParent.AC1,
+                                AC3 = compAc3,
+                                ACC = otherParent.AC1 + compAc3,
+                                Name = model.Name,
+                                AcType = otherParent.AcType,
+                                CType = otherParent.CType,
+                                CHName = otherParent.Name,
+                                CoCode = comp.Cocode,
+                                CompanyId = comp.Id,
+                                Opening = 0,
+                                LinkedGroupId = newGroupId
+                            };
+                            _context.GLChart3.Add(cloneDetail);
+                        }
+                    }
+                    _context.SaveChanges();
+                }
+
+                return Json(new { success = true, message = createInAllCompanies ? "Detail added in all companies successfully!" : "Detail added successfully!" });
             }
             catch (Exception ex)
             {
@@ -273,6 +381,159 @@ namespace Nskg.Controllers
             catch (Exception ex)
             {
                 await _audit.LogAsync("Error", "GLChart3", id.ToString(), ex.Message);
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public IActionResult GetAccountLinkingData(int detailId)
+        {
+            var source = _context.GLChart3.Find(detailId);
+            if (source == null)
+                return Json(new { success = false, message = "Account not found!" });
+
+            var currentCompany = _context.Companies.FirstOrDefault(c => c.Id == source.CompanyId || c.Cocode == source.CoCode);
+            string currentCompanyName = currentCompany != null ? ((!string.IsNullOrEmpty(currentCompany.Cocode) ? currentCompany.Cocode + " - " : "") + currentCompany.Name) : "Current Company";
+
+            var otherCompanies = _context.Companies
+                .Where(c => !c.IsDeleted && c.Id != source.CompanyId && c.Cocode != source.CoCode)
+                .OrderBy(c => c.Cocode)
+                .Select(c => new
+                {
+                    companyId = c.Id,
+                    coCode = c.Cocode,
+                    companyName = (!string.IsNullOrEmpty(c.Cocode) ? c.Cocode + " - " : "") + c.Name
+                })
+                .ToList();
+
+            var linkedAccountIds = new HashSet<int>();
+            if (source.LinkedGroupId.HasValue)
+            {
+                linkedAccountIds = _context.GLChart3
+                    .Where(x => x.LinkedGroupId == source.LinkedGroupId.Value && x.Id != detailId)
+                    .Select(x => x.Id)
+                    .ToHashSet();
+            }
+
+            var companiesData = new List<object>();
+            foreach (var comp in otherCompanies)
+            {
+                // Prioritize accounts under the same AC1 head
+                var accounts = _context.GLChart3
+                    .Where(x => (x.CompanyId == comp.companyId || x.CoCode == comp.coCode) && x.AC1 == source.AC1)
+                    .OrderBy(x => x.ACC)
+                    .Select(x => new
+                    {
+                        id = x.Id,
+                        code = x.ACC ?? (x.AC1 + x.AC3),
+                        name = x.Name,
+                        isLinked = linkedAccountIds.Contains(x.Id)
+                    })
+                    .ToList();
+
+                if (!accounts.Any())
+                {
+                    accounts = _context.GLChart3
+                        .Where(x => (x.CompanyId == comp.companyId || x.CoCode == comp.coCode))
+                        .OrderBy(x => x.Name)
+                        .Select(x => new
+                        {
+                            id = x.Id,
+                            code = x.ACC ?? (x.AC1 + x.AC3),
+                            name = x.Name,
+                            isLinked = linkedAccountIds.Contains(x.Id)
+                        })
+                        .Take(500)
+                        .ToList();
+                }
+
+                var currentlyLinkedAcc = accounts.FirstOrDefault(a => a.isLinked);
+
+                companiesData.Add(new
+                {
+                    companyId = comp.companyId,
+                    coCode = comp.coCode,
+                    companyName = comp.companyName,
+                    accounts = accounts,
+                    selectedAccountId = currentlyLinkedAcc?.id ?? 0,
+                    isLinked = currentlyLinkedAcc != null
+                });
+            }
+
+            return Json(new
+            {
+                success = true,
+                source = new
+                {
+                    id = source.Id,
+                    code = source.ACC ?? (source.AC1 + source.AC3),
+                    name = source.Name,
+                    companyName = currentCompanyName,
+                    linkedGroupId = source.LinkedGroupId?.ToString()
+                },
+                companies = companiesData
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveAccountLinks([FromBody] SaveAccountLinksViewModel model)
+        {
+            try
+            {
+                if (model == null || model.SourceDetailId == 0)
+                    return Json(new { success = false, message = "Invalid request payload!" });
+
+                var source = _context.GLChart3.Find(model.SourceDetailId);
+                if (source == null)
+                    return Json(new { success = false, message = "Source account not found!" });
+
+                Guid groupId = source.LinkedGroupId ?? Guid.NewGuid();
+                source.LinkedGroupId = groupId;
+
+                var currentlyLinked = _context.GLChart3
+                    .Where(x => x.LinkedGroupId == groupId && x.Id != source.Id)
+                    .ToList();
+
+                var targetSet = new HashSet<int>(model.TargetDetailIds ?? new List<int>());
+
+                if (targetSet.Count == 0)
+                {
+                    source.LinkedGroupId = null;
+                    foreach (var item in currentlyLinked)
+                    {
+                        item.LinkedGroupId = null;
+                    }
+                }
+                else
+                {
+                    // Unlink deselected accounts
+                    foreach (var item in currentlyLinked)
+                    {
+                        if (!targetSet.Contains(item.Id))
+                        {
+                            item.LinkedGroupId = null;
+                        }
+                    }
+
+                    // Link selected accounts
+                    foreach (var targetId in targetSet)
+                    {
+                        var target = _context.GLChart3.Find(targetId);
+                        if (target != null)
+                        {
+                            target.LinkedGroupId = groupId;
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await _audit.LogAsync("Link", "GLChart3", source.Id.ToString(), $"Linked account {source.Name} across companies");
+
+                return Json(new { success = true, message = "Accounts successfully linked across selected companies!" });
+            }
+            catch (Exception ex)
+            {
+                await _audit.LogAsync("Error", "GLChart3", model?.SourceDetailId.ToString() ?? "0", ex.Message);
                 return Json(new { success = false, message = ex.Message });
             }
         }

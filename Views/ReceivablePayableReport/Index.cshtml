@@ -2,9 +2,11 @@
     ViewData["Title"] = "Receivable & Payable Report";
     var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
     var accountList = ViewBag.AccountList as IEnumerable<dynamic>;
+    var financialYears = ViewBag.FinancialYears as IEnumerable<Nskg.Models.FinancialYear>;
 
     var selectedRcocode = ViewBag.Rcocode as string ?? "01";
     var selectedPac1 = ViewBag.PAC1 as string ?? "";
+    var selectedFyId = ViewBag.SelectedFyId as int? ?? 4;
 }
 
 <style>
@@ -33,10 +35,32 @@
             <form id="reportForm" method="get">
                 <div class="row g-3 align-items-end">
 
-                    <!-- 1. Rcocode -->
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Rcocode</label>
+                    <!-- 1. Financial Year -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Financial Year</label>
+                        <select class="form-select select2" id="fySelect" name="fyId">
+                            @if (financialYears != null)
+                            {
+                                foreach (var fy in financialYears)
+                                {
+                                    if (selectedFyId == fy.Id)
+                                    {
+                                        <option value="@fy.Id" selected="selected">@fy.YearName (@fy.StartDate.ToString("yyyy") - @fy.EndDate.ToString("yyyy")) @(!fy.IsClosed ? "[Active]" : "")</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@fy.Id">@fy.YearName (@fy.StartDate.ToString("yyyy") - @fy.EndDate.ToString("yyyy")) @(!fy.IsClosed ? "[Active]" : "")</option>
+                                    }
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- 2. Rcocode (Company) -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Company / Branch</label>
                         <select class="form-select select2" id="rcocodeSelect" name="rcocode">
+                            <option value="">-- ALL COMPANIES / BRANCHES --</option>
                             @if (companyList != null && companyList.Any())
                             {
                                 foreach (var comp in companyList)
@@ -51,15 +75,11 @@
                                     }
                                 }
                             }
-                            else
-                            {
-                                <option value="01" selected="selected">01 - Karachi Head Office</option>
-                            }
                         </select>
                     </div>
 
-                    <!-- 2. Account (GLChart1 - PAC1) -->
-                    <div class="col-md-5">
+                    <!-- 3. Account (GLChart1 - PAC1) -->
+                    <div class="col-md-3">
                         <label class="form-label fw-semibold">Account</label>
                         <select class="form-select select2" id="pac1Select" name="pac1">
                             <option value="">-- ALL ACCOUNTS --</option>
@@ -162,6 +182,10 @@
                 });
             });
 
+            $('#fySelect').on('change', function () {
+                loadOnScreenReport();
+            });
+
             // Auto load report on first view
             loadOnScreenReport();
         });
@@ -169,6 +193,7 @@
         function loadOnScreenReport() {
             var rcocode = $('#rcocodeSelect').val() || '';
             var pac1 = $('#pac1Select').val() || '';
+            var fyId = $('#fySelect').val() || '';
 
             $('#reportCard').show();
             $('#reportLoader').show();
@@ -176,7 +201,8 @@
 
             var url = '/ReceivablePayableReport/OnScreenReport'
                 + '?rcocode=' + encodeURIComponent(rcocode)
-                + '&pac1=' + encodeURIComponent(pac1);
+                + '&pac1=' + encodeURIComponent(pac1)
+                + '&fyId=' + encodeURIComponent(fyId);
 
             $('#reportFrame').off('load');
             $('#reportFrame').attr('src', url);

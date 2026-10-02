@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 
 namespace Nskg.Extensions
 {
@@ -11,6 +11,10 @@ namespace Nskg.Extensions
         public static string GetCompanyCode(this ClaimsPrincipal user)
         {
             return user.FindFirst("CompanyCode")?.Value ?? "0";
+        }
+        public static string GetCompanyName(this ClaimsPrincipal user)
+        {
+            return user.FindFirst("CompanyName")?.Value ?? "";
         }
 
         public static int GetFinancialYearId(this ClaimsPrincipal user)

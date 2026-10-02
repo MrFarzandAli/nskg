@@ -28,10 +28,10 @@ namespace Nskg.Controllers
 
         private int GetCompanyId(int? companyId = null)
         {
-            if (companyId.HasValue && companyId.Value > 0) return companyId.Value;
+            if (companyId.HasValue) return companyId.Value;
             var compId = User.FindFirst("CompanyId")?.Value;
             if (int.TryParse(compId, out int id) && id > 0) return id;
-            return 1006;
+            return 0;
         }
 
         private int GetFinancialYearId()
@@ -44,17 +44,48 @@ namespace Nskg.Controllers
         [HttpGet]
         public IActionResult GetAccountsByCompany(int companyId)
         {
-            var accounts = _context.GLChart3
-                .Where(x => (x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null) && !string.IsNullOrEmpty(x.Name))
+            var accountsQuery = _context.GLChart3
+                .Where(x => (companyId == 0 || x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null) && !string.IsNullOrEmpty(x.Name));
+
+            var accounts = accountsQuery
+                .Where(x => x.AC1 == "052" || x.AC1 == "060" || x.Name.Contains("BROKER") || x.Name.Contains("TRANSPORTER") || x.Name.Contains("TRANS"))
                 .Select(x => new
                 {
-                    Code = x.ACC ?? (x.AC1 + x.AC3),
-                    Name = x.Name,
-                    IsTransporter = (x.AC1 == "052" || x.AC1 == "060" || x.Name.Contains("BROKER") || x.Name.Contains("TRANSPORTER") || x.Name.Contains("TRANS"))
+                    Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                    Name = x.Name.Trim()
                 })
-                .OrderByDescending(x => x.IsTransporter)
-                .ThenBy(x => x.Code)
+                .ToList()
+                .GroupBy(x => x.Code)
+                .Select(g => new
+                {
+                    code = g.Key,
+                    Code = g.Key,
+                    name = g.First().Name,
+                    Name = g.First().Name
+                })
+                .OrderBy(x => x.name)
                 .ToList();
+
+            if (accounts.Count == 0)
+            {
+                accounts = accountsQuery
+                    .Select(x => new
+                    {
+                        Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                        Name = x.Name.Trim()
+                    })
+                    .ToList()
+                    .GroupBy(x => x.Code)
+                    .Select(g => new
+                    {
+                        code = g.Key,
+                        Code = g.Key,
+                        name = g.First().Name,
+                        Name = g.First().Name
+                    })
+                    .OrderBy(x => x.name)
+                    .ToList();
+            }
 
             return Json(accounts);
         }
@@ -63,13 +94,13 @@ namespace Nskg.Controllers
         public IActionResult GetVehiclesByCompany(int companyId)
         {
             var vehicles = _context.VoDet
-                .Where(v => v.Vehicleno != null && v.Vehicleno.Trim() != "" && (v.VoHead == null || v.VoHead.CompanyId == companyId || v.VoHead.CompanyId == 0))
+                .Where(v => v.Vehicleno != null && v.Vehicleno.Trim() != "" && (companyId == 0 || v.VoHead == null || v.VoHead.CompanyId == companyId || v.VoHead.CompanyId == 0))
                 .Select(v => v.Vehicleno!.Trim())
                 .Union(_context.ChallanHead
-                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (c.CompanyId == companyId || c.CompanyId == 0))
+                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (companyId == 0 || c.CompanyId == companyId || c.CompanyId == 0))
                     .Select(c => c.VehicleNo!.Trim()))
                 .Union(_context.CommHead
-                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (c.CompanyId == companyId || c.CompanyId == 0))
+                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (companyId == 0 || c.CompanyId == companyId || c.CompanyId == 0))
                     .Select(c => c.VehicleNo!.Trim()))
                 .Where(v => v != "")
                 .Distinct()
@@ -95,36 +126,48 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            var accounts = _context.GLChart3
-                .Where(x => (x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null) && !string.IsNullOrEmpty(x.Name))
+            var accountsQuery = _context.GLChart3
+                .Where(x => (selectedCompanyId == 0 || x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null) && !string.IsNullOrEmpty(x.Name));
+
+            var accounts = accountsQuery
+                .Where(x => x.AC1 == "052" || x.AC1 == "060" || x.Name.Contains("BROKER") || x.Name.Contains("TRANSPORTER") || x.Name.Contains("TRANS"))
                 .Select(x => new
                 {
-                    Code = x.ACC ?? (x.AC1 + x.AC3),
-                    Name = x.Name,
-                    IsTransporter = (x.AC1 == "052" || x.AC1 == "060" || x.Name.Contains("BROKER") || x.Name.Contains("TRANSPORTER") || x.Name.Contains("TRANS"))
+                    Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                    Name = x.Name.Trim()
                 })
-                .OrderByDescending(x => x.IsTransporter)
-                .ThenBy(x => x.Code)
+                .ToList()
+                .GroupBy(x => x.Code)
+                .Select(g => new
+                {
+                    Code = g.Key,
+                    Name = g.First().Name
+                })
+                .OrderBy(x => x.Name)
                 .ToList();
 
-            var vehicles = _context.VoDet
-                .Where(v => v.Vehicleno != null && v.Vehicleno.Trim() != "" && (v.VoHead == null || v.VoHead.CompanyId == selectedCompanyId || v.VoHead.CompanyId == 0))
-                .Select(v => v.Vehicleno!.Trim())
-                .Union(_context.ChallanHead
-                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (c.CompanyId == selectedCompanyId || c.CompanyId == 0))
-                    .Select(c => c.VehicleNo!.Trim()))
-                .Union(_context.CommHead
-                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (c.CompanyId == selectedCompanyId || c.CompanyId == 0))
-                    .Select(c => c.VehicleNo!.Trim()))
-                .Where(v => v != "")
-                .Distinct()
-                .OrderBy(v => v)
-                .ToList();
+            if (accounts.Count == 0)
+            {
+                accounts = accountsQuery
+                    .Select(x => new
+                    {
+                        Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                        Name = x.Name.Trim()
+                    })
+                    .ToList()
+                    .GroupBy(x => x.Code)
+                    .Select(g => new
+                    {
+                        Code = g.Key,
+                        Name = g.First().Name
+                    })
+                    .OrderBy(x => x.Name)
+                    .ToList();
+            }
 
             ViewBag.CompanyList = companies;
             ViewBag.SelectedCompanyId = selectedCompanyId;
             ViewBag.AccountList = accounts;
-            ViewBag.VehicleList = vehicles;
             ViewBag.Accode = accode;
             ViewBag.VehicleNo = vehicleNo;
             ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? "2010-01-01" : fromDate;
@@ -209,13 +252,16 @@ namespace Nskg.Controllers
                         accName += $" (VEHICLE: {vehicleNo.Trim()})";
                 }
 
-                string companyName = "West Wharf-New Shadab Karachi Goods Transports";
-                using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
+                string companyName = companyId == 0 ? "All Companies" : "West Wharf-New Shadab Karachi Goods Transports";
+                if (companyId > 0)
                 {
-                    cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
-                    var res = cmdComp.ExecuteScalar();
-                    if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
-                        companyName = res.ToString();
+                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
+                    {
+                        cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
+                        var res = cmdComp.ExecuteScalar();
+                        if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
+                            companyName = res.ToString();
+                    }
                 }
 
                 // 3. Query Opening Balance and Transactions with Running Balance
@@ -227,7 +273,7 @@ namespace Nskg.Controllers
                         SELECT @AnnualOpeningBal = ISNULL(SUM(Debit - Credit), 0)
                         FROM OpeningBalances
                         WHERE (@Accode = '' OR Accode = @Accode)
-                          AND CompanyId = @CompanyId
+                          AND (@CompanyId = 0 OR CompanyId = @CompanyId)
                           AND FinancialYearId = @FinancialYearId;
                     END
 
@@ -264,7 +310,8 @@ namespace Nskg.Controllers
                             CASE WHEN @OpeningBal > 0 THEN @OpeningBal ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
                             CASE WHEN @OpeningBal < 0 THEN ABS(@OpeningBal) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
                             @OpeningBal AS Balance,
-                            CAST(0 AS BIGINT) AS RowNum
+                            CAST(0 AS BIGINT) AS RowNum,
+                            CAST('' AS VARCHAR(20)) AS COCODE
 
                         UNION ALL
 
@@ -298,7 +345,8 @@ namespace Nskg.Controllers
                                 ORDER BY a.VODATE, a.VONO, (SELECT NULL)
                                 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                             ) AS Balance,
-                            ROW_NUMBER() OVER (ORDER BY a.VODATE, a.VONO) AS RowNum
+                            ROW_NUMBER() OVER (ORDER BY a.VODATE, a.VONO) AS RowNum,
+                            ISNULL(a.COCODE, '') AS COCODE
                         FROM ACCUMULATED a
                         WHERE a.VODATE >= @FromDate AND a.VODATE <= @ToDate
                           AND (@Accode = '' OR RTRIM(LTRIM(ISNULL(a.ACC, ''))) = @Accode OR (RTRIM(LTRIM(ISNULL(a.AC1, ''))) + RTRIM(LTRIM(ISNULL(a.AC3, '')))) = @Accode)
@@ -330,7 +378,14 @@ namespace Nskg.Controllers
                         @AccName AS AccName,
                         @CompanyName AS CompanyName,
                         @FromDate AS FromDate,
-                        @ToDate AS ToDate
+                        @ToDate AS ToDate,
+                        CASE
+                            WHEN COCODE IN ('01','1006') THEN 'W.H'
+                            WHEN COCODE IN ('02','1007') THEN 'M.P'
+                            WHEN COCODE IN ('03','1008') THEN 'N.K'
+                            WHEN COCODE IN ('04','1009') THEN 'R.W'
+                            ELSE ISNULL(COCODE,'')
+                        END AS RowCompany
                     FROM RawData
                     ORDER BY SortOrder, DocDate, DocNo, RowNum;";
 
@@ -453,23 +508,20 @@ namespace Nskg.Controllers
                 sb.Append($"<p>Account: <b>{(string.IsNullOrEmpty(accode) ? "ALL TRANSPORTERS" : accode + " - " + accName)}</b> &nbsp;|&nbsp; Period: <b>{effFromDate:dd-MMM-yyyy}</b> to <b>{effToDate:dd-MMM-yyyy}</b>{vehicleInfo}</p>");
                 sb.Append("</div>");
 
+                // Columns exactly matching old software
                 sb.Append("<table><thead><tr>");
-                sb.Append("<th style='width:35px;' class='center'>#</th>");
-                sb.Append("<th style='width:75px;'>Date</th>");
-                sb.Append("<th style='width:65px;'>Doc No</th>");
-                sb.Append("<th style='width:45px;'>Type</th>");
-                sb.Append("<th style='width:65px;'>Bilty No</th>");
-                sb.Append("<th style='width:60px;'>Bil No</th>");
-                sb.Append("<th style='width:85px;'>Vehicle No</th>");
+                sb.Append("<th style='width:75px;'>Doc.Date</th>");
+                sb.Append("<th style='width:75px;'>Doc. #</th>");
+                sb.Append("<th style='width:40px;'>Typ</th>");
+                sb.Append("<th style='width:55px;'>Comm.no</th>");
+                sb.Append("<th style='width:90px;'>Vehicle No</th>");
                 sb.Append("<th>Station</th>");
-                sb.Append("<th>Item / Narration</th>");
-                sb.Append("<th class='num' style='width:45px;'>Qty</th>");
-                sb.Append("<th class='num' style='width:80px;'>Debit</th>");
-                sb.Append("<th class='num' style='width:80px;'>Credit</th>");
-                sb.Append("<th class='num' style='width:85px;'>Balance</th>");
+                sb.Append("<th style='width:50px;'>Company</th>");
+                sb.Append("<th class='num' style='width:85px;'>DEBIT</th>");
+                sb.Append("<th class='num' style='width:85px;'>CREDIT</th>");
+                sb.Append("<th class='num' style='width:90px;'>BALANCE</th>");
                 sb.Append("</tr></thead><tbody>");
 
-                int sr = 1;
                 foreach (DataRow row in dt.Rows)
                 {
                     int sortOrder = row["SortOrder"] != DBNull.Value ? Convert.ToInt32(row["SortOrder"]) : 1;
@@ -485,33 +537,48 @@ namespace Nskg.Controllers
                         totalCredit += credit;
                     }
 
-                    string docDate = row["DocDate"] != DBNull.Value ? Convert.ToDateTime(row["DocDate"]).ToString("dd-MMM-yy") : "";
-                    string rowClass = isOpening ? "class='op-row'" : "";
+                    string docDate   = row["DocDate"] != DBNull.Value ? Convert.ToDateTime(row["DocDate"]).ToString("dd-MMM-yy") : "";
+                    string votype    = row["Votype"]?.ToString() ?? "";
+                    string commNo    = row["BillTiNo"] != DBNull.Value && !string.IsNullOrWhiteSpace(row["BillTiNo"].ToString()) ? row["BillTiNo"].ToString() : "";
+                    string vehNo     = row["VehicleNo"]?.ToString() ?? "";
+                    string station   = row["Station"]?.ToString() ?? "";
+                    string rowComp   = row["RowCompany"] != DBNull.Value ? row["RowCompany"].ToString() : "";
+                    string rowClass  = isOpening ? "class='op-row'" : "";
 
-                    sb.Append($"<tr {rowClass}>");
-                    sb.Append($"<td class='center'>{(isOpening ? "" : sr++.ToString())}</td>");
-                    sb.Append($"<td>{docDate}</td>");
-                    sb.Append($"<td>{row["DocNo"]}</td>");
-                    sb.Append($"<td>{row["Votype"]}</td>");
-                    sb.Append($"<td>{row["BillTiNo"]}</td>");
-                    sb.Append($"<td>{row["BilNo"]}</td>");
-                    sb.Append($"<td class='bold'>{row["VehicleNo"]}</td>");
-                    sb.Append($"<td>{row["Station"]}</td>");
-                    sb.Append($"<td>{row["INAME"]}</td>");
-                    sb.Append($"<td class='num'>{row["Qty"]}</td>");
-                    sb.Append($"<td class='num'>{(debit != 0 ? debit.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(credit != 0 ? credit.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num bold'>{balance:#,##0.00}</td>");
-                    sb.Append("</tr>");
+                    if (isOpening)
+                    {
+                        sb.Append($"<tr {rowClass}>");
+                        sb.Append("<td></td><td></td><td></td><td></td>");
+                        sb.Append("<td colspan='3' class='bold'>Opening Balance</td>");
+                        sb.Append($"<td class='num'>{(debit != 0 ? debit.ToString("#,##0") : "")}</td>");
+                        sb.Append($"<td class='num'>{(credit != 0 ? credit.ToString("#,##0") : "")}</td>");
+                        sb.Append($"<td class='num bold'>{balance:#,##0}</td>");
+                        sb.Append("</tr>");
+                    }
+                    else
+                    {
+                        sb.Append($"<tr {rowClass}>");
+                        sb.Append($"<td>{docDate}</td>");
+                        sb.Append($"<td>{row["DocNo"]}</td>");
+                        sb.Append($"<td>{votype}</td>");
+                        sb.Append($"<td class='center'>{commNo}</td>");
+                        sb.Append($"<td class='bold'>{vehNo}</td>");
+                        sb.Append($"<td>{station}</td>");
+                        sb.Append($"<td class='center'>{rowComp}</td>");
+                        sb.Append($"<td class='num'>{(debit != 0 ? debit.ToString("#,##0") : "")}</td>");
+                        sb.Append($"<td class='num'>{(credit != 0 ? credit.ToString("#,##0") : "")}</td>");
+                        sb.Append($"<td class='num bold'>{balance:#,##0}</td>");
+                        sb.Append("</tr>");
+                    }
                 }
 
                 decimal closingBal = (dt.Rows.Count > 0 && dt.Rows[dt.Rows.Count - 1]["Balance"] != DBNull.Value) ? Convert.ToDecimal(dt.Rows[dt.Rows.Count - 1]["Balance"]) : 0;
 
                 sb.Append("</tbody><tfoot><tr>");
-                sb.Append($"<td colspan='10' class='bold' style='text-align:right;'>TOTAL:</td>");
-                sb.Append($"<td class='num bold'>{totalDebit:#,##0.00}</td>");
-                sb.Append($"<td class='num bold'>{totalCredit:#,##0.00}</td>");
-                sb.Append($"<td class='num bold'>{closingBal:#,##0.00}</td>");
+                sb.Append($"<td colspan='7' class='bold' style='text-align:right;'>GRAND TOTAL............</td>");
+                sb.Append($"<td class='num bold'>{totalDebit:#,##0}</td>");
+                sb.Append($"<td class='num bold'>{totalCredit:#,##0}</td>");
+                sb.Append($"<td class='num bold'>{closingBal:#,##0}</td>");
                 sb.Append("</tr></tfoot></table></body></html>");
 
                 return Content(sb.ToString(), "text/html");

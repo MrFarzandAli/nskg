@@ -1,4 +1,4 @@
-﻿@Html.AntiForgeryToken()
+@Html.AntiForgeryToken()
  @using Nskg.Models.ViewModels
 @model ChartVM
 
@@ -179,6 +179,13 @@
                     </select>
                 </div>
 
+                <div class="form-check mt-3 mb-1">
+                    <input class="form-check-input" type="checkbox" name="createInAllCompanies" id="accCreateInAllCompanies" value="true">
+                    <label class="form-check-label fw-bold text-primary" for="accCreateInAllCompanies">
+                        <i class="fa fa-building me-1"></i> Create in All Companies / Branches
+                    </label>
+                </div>
+
             </div>
 
             <div class="modal-footer">
@@ -208,9 +215,15 @@
 
                 <div class="mb-2">
                     <label class="form-label">Detail Name</label>
-                    @*                     <input name="Name" class="form-control" placeholder="Enter detail name" required />*@
                     <input id="detailName" name="Name" class="form-control" placeholder="Enter detail name" required />
-                 </div>
+                </div>
+
+                <div class="form-check mt-3 mb-1" id="detAllCompaniesCheckDiv">
+                    <input class="form-check-input" type="checkbox" name="createInAllCompanies" id="detCreateInAllCompanies" value="true">
+                    <label class="form-check-label fw-bold text-success" for="detCreateInAllCompanies">
+                        <i class="fa fa-building me-1"></i> Create in All Companies / Branches
+                    </label>
+                </div>
 
             </div>
 
@@ -221,6 +234,57 @@
             </div>
 
         </form>
+    </div>
+</div>
+
+<!-- LINK MODAL -->
+<div class="modal fade" id="linkModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fa fa-link me-2"></i> Link Account Across Companies</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="linkSourceDetailId" />
+
+                <!-- Current Account Info Banner -->
+                <div class="alert alert-light border shadow-sm mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small text-uppercase fw-bold">Active Account:</span>
+                            <h5 class="mb-0 fw-bold text-primary mt-1" id="linkSourceAccTitle">-</h5>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary px-3 py-2 fs-6" id="linkSourceCompanyBadge">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark"><i class="fa fa-building me-1 text-secondary"></i> Target Companies</h6>
+                        <small class="text-muted">Choose 1, 2, or all companies to link. Check the box and select the corresponding account for each company.</small>
+                    </div>
+                </div>
+
+                <!-- Loader -->
+                <div id="linkModalLoader" class="text-center py-4">
+                    <div class="spinner-border text-info" role="status"></div>
+                    <p class="text-muted mt-2">Loading company accounts...</p>
+                </div>
+
+                <!-- Companies List Container -->
+                <div id="linkCompaniesList" style="display:none; max-height: 55vh; overflow-y: auto;">
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info text-white px-4 fw-bold" onclick="saveAccountLinks()">
+                    <i class="fa fa-save me-1"></i> Save Links
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -277,23 +341,13 @@
 
             $('#detailForm')[0].reset();
             $('#detailId').val('');
+            $('#detAllCompaniesCheckDiv').show();
 
             $('#detailModal').modal('show');
         }
 
         // ADD / UPDATE DETAIL (FIXED)
-        // $('#detailForm').submit(function (e) {
-        //     e.preventDefault();
-
-        //     let id = $('#detailId').val();
-        //     let url = id ? '/GLChart/UpdateDetail' : '/GLChart/AddDetail';
-
-        //     $.post(url, $(this).serialize(), function () {
-        //         $('#detailModal').modal('hide');
-        //         loadDetails(currentAccountId);
-        //     });
-        // });
-                $('#detailForm').submit(function (e) {
+        $('#detailForm').submit(function (e) {
             e.preventDefault();
 
             let id = $('#detailId').val();
@@ -318,9 +372,8 @@
 
                 $('#detailId').val(data.id);
                 $('#selectedAccountId').val(data.glChart1Id);
-               // $('#name').val(data.name);
-                       $('#detailName').val(data.name); // ✅ FIXED
-
+                $('#detailName').val(data.name);
+                $('#detAllCompaniesCheckDiv').hide();
 
                 $('#detailModal').modal('show');
             });
@@ -540,6 +593,129 @@
                         title: 'Error!',
                         text: result.value?.message || 'Delete failed!'
                     });
+                }
+            });
+        }
+
+        // ================= LINK ACCOUNTS ACROSS COMPANIES =================
+        let currentLinkingSourceId = 0;
+
+        function openLinkModal(id, name, code) {
+            currentLinkingSourceId = id;
+            $('#linkSourceDetailId').val(id);
+            $('#linkSourceAccTitle').text(code + ' - ' + name);
+            $('#linkSourceCompanyBadge').text('Loading...');
+            $('#linkModalLoader').show();
+            $('#linkCompaniesList').hide().empty();
+            $('#linkModal').modal('show');
+
+            $.get('/GLChart/GetAccountLinkingData?detailId=' + id, function (res) {
+                $('#linkModalLoader').hide();
+                if (!res.success) {
+                    toastr.error(res.message || 'Failed to load linking data');
+                    return;
+                }
+
+                $('#linkSourceCompanyBadge').text(res.source.companyName);
+
+                var html = '';
+                if (!res.companies || res.companies.length === 0) {
+                    html = '<div class="alert alert-warning py-3 text-center"><i class="fa fa-info-circle me-1"></i> No other active companies found.</div>';
+                } else {
+                    $.each(res.companies, function (idx, comp) {
+                        var isChecked = comp.isLinked ? 'checked' : '';
+                        var isLinkedBadge = comp.isLinked 
+                            ? '<span class="badge bg-success ms-2"><i class="fa fa-check-circle me-1"></i> Currently Linked</span>' 
+                            : '<span class="badge bg-light text-muted border ms-2">Not Linked</span>';
+
+                        html += '<div class="card mb-3 border ' + (comp.isLinked ? 'border-success' : '') + ' shadow-sm">';
+                        html += '  <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">';
+                        html += '    <div class="form-check form-switch mb-0">';
+                        html += '      <input class="form-check-input comp-link-toggle" type="checkbox" id="toggleComp_' + comp.companyId + '" data-comp-id="' + comp.companyId + '" ' + isChecked + ' onchange="toggleCompanySelect(' + comp.companyId + ')">';
+                        html += '      <label class="form-check-label fw-bold ms-2" for="toggleComp_' + comp.companyId + '">';
+                        html += '        <i class="fa fa-building text-primary me-1"></i> ' + comp.companyName;
+                        html += '      </label>';
+                        html += '    </div>';
+                        html += '    <div>' + isLinkedBadge + '</div>';
+                        html += '  </div>';
+                        html += '  <div class="card-body py-2" id="compBody_' + comp.companyId + '" style="' + (comp.isLinked ? '' : 'opacity: 0.5;') + '">';
+                        html += '    <label class="form-label small text-muted mb-1">Select Account in ' + comp.companyName + ':</label>';
+                        html += '    <select class="form-select form-select-sm comp-acc-select" id="selectComp_' + comp.companyId + '" data-comp-id="' + comp.companyId + '" ' + (comp.isLinked ? '' : 'disabled') + '>';
+                        html += '      <option value="">-- Select Matching Account --</option>';
+
+                        $.each(comp.accounts, function (i, acc) {
+                            var selected = (acc.id === comp.selectedAccountId || (!comp.selectedAccountId && acc.name.toLowerCase() === res.source.name.toLowerCase())) ? 'selected' : '';
+                            html += '<option value="' + acc.id + '" ' + selected + '>' + acc.code + ' - ' + acc.name + '</option>';
+                        });
+
+                        html += '    </select>';
+                        html += '  </div>';
+                        html += '</div>';
+                    });
+                }
+
+                $('#linkCompaniesList').html(html).show();
+            }).fail(function () {
+                $('#linkModalLoader').hide();
+                toastr.error('Failed to contact server');
+            });
+        }
+
+        function toggleCompanySelect(compId) {
+            var isChecked = $('#toggleComp_' + compId).is(':checked');
+            var $select = $('#selectComp_' + compId);
+            var $body = $('#compBody_' + compId);
+
+            if (isChecked) {
+                $select.prop('disabled', false);
+                $body.css('opacity', '1');
+            } else {
+                $select.prop('disabled', true);
+                $body.css('opacity', '0.5');
+            }
+        }
+
+        function saveAccountLinks() {
+            var sourceId = parseInt($('#linkSourceDetailId').val());
+            var targetIds = [];
+
+            $('.comp-link-toggle:checked').each(function () {
+                var compId = $(this).data('comp-id');
+                var val = $('#selectComp_' + compId).val();
+                if (val) {
+                    targetIds.push(parseInt(val));
+                }
+            });
+
+            var payload = {
+                SourceDetailId: sourceId,
+                TargetDetailIds: targetIds
+            };
+
+            var token = $('input[name="__RequestVerificationToken"]').val();
+
+            $.ajax({
+                url: '/GLChart/SaveAccountLinks',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                headers: {
+                    'RequestVerificationToken': token
+                },
+                success: function (res) {
+                    if (res.success) {
+                        toastr.success(res.message || 'Accounts linked successfully!');
+                        $('#linkModal').modal('hide');
+                        if (currentAccountId > 0) {
+                            var ac1 = $('#selectedAC1').val();
+                            loadDetails(currentAccountId, ac1, $('.account-item.active'));
+                        }
+                    } else {
+                        toastr.error(res.message || 'Failed to link accounts');
+                    }
+                },
+                error: function () {
+                    toastr.error('Server error occurred while linking accounts.');
                 }
             });
         }
