@@ -1,7 +1,704 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@using Nskg.Models.ViewModels
+@model AdminDashboardViewModel
+
+@{
+    ViewData["Title"] = "Admin & Operations Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>  
+@section Styles {
+    <style>
+        .ops-dashboard-wrapper {
+            background-color: #f8fafc;
+            padding: 1.5rem 0.5rem;
+            min-height: calc(100vh - 100px);
+        }
+
+        .ops-filter-card {
+            background: linear-gradient(135deg, #0b192c 0%, #1e3e62 100%);
+            border-radius: 16px;
+            color: #ffffff;
+            padding: 1.5rem;
+            margin-bottom: 1.75rem;
+            box-shadow: 0 10px 25px -5px rgba(11, 25, 44, 0.3);
+        }
+
+        .ops-filter-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .ops-badge-brand {
+            background: rgba(0, 141, 218, 0.25);
+            color: #41c9e2;
+            border: 1px solid rgba(65, 201, 226, 0.4);
+            font-size: 0.82rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 30px;
+            font-weight: 600;
+        }
+
+        .ops-kpi-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            padding: 1.35rem;
+            box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.04);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .ops-kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
+        }
+
+        .ops-kpi-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.85rem;
+        }
+
+        .ops-kpi-title {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+        }
+
+        .ops-kpi-icon-wrap {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+        }
+
+        .ops-kpi-amount {
+            font-size: 1.85rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.15;
+            letter-spacing: -0.8px;
+            margin-bottom: 0.4rem;
+        }
+
+        .ops-kpi-currency {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-right: 0.2rem;
+        }
+
+        .ops-kpi-subtext {
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .kpi-today { border-top: 4px solid #0284c7; }
+        .kpi-today .ops-kpi-icon-wrap { background: #e0f2fe; color: #0284c7; }
+
+        .kpi-fyfreight { border-top: 4px solid #10b981; }
+        .kpi-fyfreight .ops-kpi-icon-wrap { background: #d1fae5; color: #059669; }
+
+        .kpi-challans { border-top: 4px solid #ff9b44; }
+        .kpi-challans .ops-kpi-icon-wrap { background: #ffedd5; color: #ea580c; }
+
+        .kpi-topaybilties { border-top: 4px solid #dc2626; }
+        .kpi-topaybilties .ops-kpi-icon-wrap { background: #fee2e2; color: #dc2626; }
+
+        .ops-actions-card {
+            background: #ffffff;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .action-btn-custom {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .action-btn-custom:hover {
+            transform: translateY(-2px);
+        }
+
+        .ops-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.03);
+            margin-bottom: 1.75rem;
+            overflow: hidden;
+        }
+
+        .ops-card-header {
+            padding: 1.15rem 1.4rem;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+        }
+
+        .ops-card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ops-card-body {
+            padding: 1.4rem;
+        }
+
+        .table-ops {
+            width: 100%;
+            margin-bottom: 0;
+            vertical-align: middle;
+        }
+
+        .table-ops thead th {
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .table-ops tbody td {
+            padding: 0.85rem 1rem;
+            font-size: 0.85rem;
+            color: #334155;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .badge-bilty-paid {
+            background-color: #dcfce7;
+            color: #15803d;
+            font-weight: 600;
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-bilty-topay {
+            background-color: #fef3c7;
+            color: #b45309;
+            font-weight: 600;
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+    </style>
+}
+
+<div class="ops-dashboard-wrapper">
+    <div class="container-fluid px-3 px-md-4">
+
+        <!-- 1. FILTER & HEADER -->
+        <div class="ops-filter-card">
+            <form method="get" asp-controller="Home" asp-action="Index">
+                <div class="row align-items-center g-3">
+                    <div class="col-lg-5 col-md-12">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="ops-badge-brand d-none d-sm-inline-flex">
+                                <i class="fa fa-dashboard me-1"></i> OPERATIONS CONTROL
+                            </div>
+                            <span class="badge bg-secondary px-2 py-1 text-light">FY @Model.SelectedFyName</span>
+                        </div>
+                        <h2 class="ops-filter-title mt-2 mb-1">
+                            Admin & Transport Operations Dashboard
+                        </h2>
+                        <div class="text-white-50 small">
+                            Fleet movement, bilty bookings, and trip tracking for <strong>@Model.SelectedCompanyName</strong>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7 col-md-12">
+                        <div class="row g-2 justify-content-lg-end">
+                            <div class="col-sm-5 col-12">
+                                <label class="text-white-50 small fw-bold mb-1">Select Branch / Hub</label>
+                                <select name="companyId" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="0" selected="@(Model.SelectedCompanyId == 0)">All Branches & Hubs</option>
+                                    @foreach (var comp in Model.Companies)
+                                    {
+                                        <option value="@comp.Id" selected="@(Model.SelectedCompanyId == comp.Id)">@comp.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-sm-4 col-8">
+                                <label class="text-white-50 small fw-bold mb-1">Financial Year</label>
+                                <select name="fyId" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    @foreach (var fy in Model.FinancialYears)
+                                    {
+                                        <option value="@fy.Id" selected="@(Model.SelectedFyId == fy.Id)">
+                                            @fy.YearName @(!fy.IsClosed ? " [Active]" : "")
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-sm-3 col-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-info text-white btn-sm w-100 fw-bold shadow-sm">
+                                    <i class="fa fa-refresh me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- 2. QUICK OPERATIONS BAR -->
+        <div class="ops-actions-card">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold text-dark small"><i class="fa fa-sliders text-primary me-1"></i> Quick Dispatch & Booking:</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a asp-controller="Bilty" asp-action="Create" class="btn btn-primary btn-sm action-btn-custom">
+                    <i class="fa fa-plus-circle"></i> New Bilty Booking
+                </a>
+                <a asp-controller="Challan" asp-action="Create" class="btn btn-outline-primary btn-sm action-btn-custom">
+                    <i class="fa fa-truck"></i> Create Truck Challan
+                </a>
+                <a asp-controller="ToPayBiltyReport" asp-action="Index" class="btn btn-outline-danger btn-sm action-btn-custom">
+                    <i class="fa fa-clock-o"></i> ToPay Recovery Report
+                </a>
+                <a asp-controller="BiltyListReport" asp-action="Index" class="btn btn-outline-secondary btn-sm action-btn-custom">
+                    <i class="fa fa-list"></i> Bilty Booking Report
+                </a>
+                <a asp-controller="Dashboard" asp-action="Financial" class="btn btn-outline-success btn-sm action-btn-custom">
+                    <i class="fa fa-money"></i> Open Financial Dashboard &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- 3. OPERATIONS KPI CARDS -->
+        <div class="row g-3 mb-4">
+            <!-- 1. Today's Booked -->
+            <div class="col-xl-3 col-md-6">
+                <div class="ops-kpi-card kpi-today">
+                    <div class="ops-kpi-top">
+                        <div>
+                            <div class="ops-kpi-title">Recent Daily Booking</div>
+                            <div class="ops-kpi-amount text-primary">
+                                <span class="ops-kpi-currency">Rs.</span>@Model.TodayFreightBooked.ToString("N0")
+                            </div>
+                        </div>
+                        <div class="ops-kpi-icon-wrap">
+                            <i class="fa fa-calendar-check-o"></i>
+                        </div>
+                    </div>
+                    <div class="ops-kpi-subtext text-primary">
+                        <strong>@Model.TodayBiltiesCount</strong> Bilties Processed
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Total Freight Booked (FY) -->
+            <div class="col-xl-3 col-md-6">
+                <div class="ops-kpi-card kpi-fyfreight">
+                    <div class="ops-kpi-top">
+                        <div>
+                            <div class="ops-kpi-title">Total Freight Booked (FY)</div>
+                            <div class="ops-kpi-amount text-success">
+                                <span class="ops-kpi-currency">Rs.</span>@Model.MonthFreightBooked.ToString("N0")
+                            </div>
+                        </div>
+                        <div class="ops-kpi-icon-wrap">
+                            <i class="fa fa-archive"></i>
+                        </div>
+                    </div>
+                    <div class="ops-kpi-subtext text-success">
+                        <strong>@Model.MonthBiltiesCount.ToString("N0")</strong> Total Cargo Bilties
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Dispatched Challans -->
+            <div class="col-xl-3 col-md-6">
+                <div class="ops-kpi-card kpi-challans">
+                    <div class="ops-kpi-top">
+                        <div>
+                            <div class="ops-kpi-title">Dispatched Challans (Trips)</div>
+                            <div class="ops-kpi-amount" style="color: #ea580c;">
+                                @Model.TotalChallansCount.ToString("N0") <span style="font-size: 1.1rem; color: #64748b;">Trips</span>
+                            </div>
+                        </div>
+                        <div class="ops-kpi-icon-wrap">
+                            <i class="fa fa-truck"></i>
+                        </div>
+                    </div>
+                    <div class="ops-kpi-subtext text-secondary">
+                        <strong>@Model.ActiveVehiclesCount Unique Trucks</strong> Dispatched
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Pending To-Pay Bilties -->
+            <div class="col-xl-3 col-md-6">
+                <div class="ops-kpi-card kpi-topaybilties">
+                    <div class="ops-kpi-top">
+                        <div>
+                            <div class="ops-kpi-title">Pending To-Pay (At Station)</div>
+                            <div class="ops-kpi-amount text-danger">
+                                <span class="ops-kpi-currency">Rs.</span>@Model.PendingToPayAmount.ToString("N0")
+                            </div>
+                        </div>
+                        <div class="ops-kpi-icon-wrap">
+                            <i class="fa fa-exclamation-circle"></i>
+                        </div>
+                    </div>
+                    <div class="ops-kpi-subtext text-danger">
+                        <strong>@Model.PendingToPayCount Bilties</strong> Pending Delivery Recovery
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. OPERATIONS CHARTS -->
+        <div class="row g-4 mb-4">
+            <!-- Monthly Trend -->
+            <div class="col-lg-8">
+                <div class="ops-card">
+                    <div class="ops-card-header">
+                        <h5 class="ops-card-title">
+                            <i class="fa fa-line-chart text-primary"></i> Monthly Freight Booking & Cargo Volume
+                        </h5>
+                        <span class="badge bg-light text-dark border px-2 py-1">Last 12 Months</span>
+                    </div>
+                    <div class="ops-card-body">
+                        <div id="opsMonthlyChart" style="min-height: 330px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Station Traffic Share -->
+            <div class="col-lg-4">
+                <div class="ops-card">
+                    <div class="ops-card-header">
+                        <h5 class="ops-card-title">
+                            <i class="fa fa-map-marker text-danger"></i> Station Cargo Traffic Share
+                        </h5>
+                    </div>
+                    <div class="ops-card-body">
+                        <div id="opsStationChart" style="min-height: 330px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. TOP CARGO BOOKING PARTIES -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="ops-card">
+                    <div class="ops-card-header">
+                        <h5 class="ops-card-title">
+                            <i class="fa fa-users text-primary"></i> Top Freight Booking Parties (Clients)
+                        </h5>
+                        <small class="text-muted">Highest cargo booked</small>
+                    </div>
+                    <div class="ops-card-body">
+                        <div id="opsTopPartiesChart" style="min-height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paid vs ToPay Ratio -->
+            <div class="col-lg-6">
+                <div class="ops-card">
+                    <div class="ops-card-header">
+                        <h5 class="ops-card-title">
+                            <i class="fa fa-pie-chart text-success"></i> Freight Payment Composition
+                        </h5>
+                        <small class="text-muted">Paid Freight vs To-Pay at Destination</small>
+                    </div>
+                    <div class="ops-card-body">
+                        <div id="opsPaymentTypeChart" style="min-height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. OPERATIONS LIVE FEEDS -->
+        <div class="row g-4">
+            <!-- Feed 1: Recent Bilties -->
+            <div class="col-lg-6">
+                <div class="ops-card">
+                    <div class="ops-card-header">
+                        <h5 class="ops-card-title">
+                            <i class="fa fa-list-alt text-primary"></i> Recent Bilty Bookings Feed
+                        </h5>
+                        <a asp-controller="Bilty" asp-action="Index" class="btn btn-sm btn-link text-decoration-none">View All</a>
+                    </div>
+                    <div class="ops-card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-ops">
+                                <thead>
+                                    <tr>
+                                        <th>Bilty #</th>
+                                        <th>Date</th>
+                                        <th>Party</th>
+                                        <th>Station</th>
+                                        <th class="text-end">Freight</th>
+                                        <th class="text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.RecentBilties.Any())
+                                    {
+                                        foreach (var b in Model.RecentBilties)
+                                        {
+                                            <tr>
+                                                <td class="fw-bold text-dark">@b.DocNo</td>
+                                                <td>@b.DocDate.ToString("dd-MMM")</td>
+                                                <td class="text-truncate" style="max-width: 140px;" title="@b.PartyName">@b.PartyName</td>
+                                                <td>@b.StationName</td>
+                                                <td class="text-end fw-bold text-dark">Rs. @b.Freight.ToString("N0")</td>
+                                                <td class="text-center">
+                                                    @if (b.PType == "Paid")
+                                                    {
+                                                        <span class="badge-bilty-paid">Paid</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge-bilty-topay">ToPay</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">No recent bilties found.</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feed 2: Recent Dispatched Challans -->
+            <div class="col-lg-6">
+                <div class="ops-card">
+                    <div class="ops-card-header">
+                        <h5 class="ops-card-title">
+                            <i class="fa fa-truck text-info"></i> Recent Dispatched Challans (Trips)
+                        </h5>
+                        <a asp-controller="Challan" asp-action="Index" class="btn btn-sm btn-link text-decoration-none">View All</a>
+                    </div>
+                    <div class="ops-card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-ops">
+                                <thead>
+                                    <tr>
+                                        <th>Challan #</th>
+                                        <th>Date</th>
+                                        <th>Vehicle #</th>
+                                        <th>Driver</th>
+                                        <th>Destination</th>
+                                        <th class="text-end">Freight</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.RecentChallans.Any())
+                                    {
+                                        foreach (var c in Model.RecentChallans)
+                                        {
+                                            <tr>
+                                                <td class="fw-bold text-dark">@c.DocNo</td>
+                                                <td>@c.DocDate.ToString("dd-MMM")</td>
+                                                <td class="fw-bold text-primary">@c.VehicleNo</td>
+                                                <td>@c.Driver</td>
+                                                <td>@c.Station</td>
+                                                <td class="text-end fw-bold text-dark">Rs. @c.NetAmt.ToString("N0")</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">No recent challans found.</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const monthlyLabels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MonthlyLabels));
+            const monthlyFreight = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MonthlyFreight));
+            const monthlyBilties = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MonthlyBilties));
+
+            const stationNames = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.StationNames));
+            const stationFreights = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.StationFreights));
+
+            const topBookingParties = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.TopBookingParties));
+            const topBookingFreights = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.TopBookingFreights));
+
+            const paidFreight = @Model.PaidFreightAmount;
+            const toPayFreight = @Model.ToPayFreightAmount;
+
+            // 1. Monthly Cargo Trend
+            if (monthlyLabels && monthlyLabels.length > 0) {
+                new ApexCharts(document.querySelector("#opsMonthlyChart"), {
+                    series: [
+                        { name: 'Freight (Rs)', type: 'area', data: monthlyFreight },
+                        { name: 'Bilties', type: 'column', data: monthlyBilties }
+                    ],
+                    chart: { height: 330, type: 'line', stacked: false, toolbar: { show: false }, fontFamily: 'inherit' },
+                    colors: ['#0284c7', '#10b981'],
+                    fill: {
+                        type: ['gradient', 'solid'],
+                        gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [0, 90, 100] }
+                    },
+                    stroke: { width: [3, 0], curve: 'smooth' },
+                    labels: monthlyLabels,
+                    yaxis: [
+                        {
+                            title: { text: 'Freight (Rs)', style: { color: '#0284c7', fontWeight: 600 } },
+                            labels: {
+                                formatter: function (val) {
+                                    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+                                    if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                                    return val;
+                                }
+                            }
+                        },
+                        {
+                            opposite: true,
+                            title: { text: 'Bilties Booked', style: { color: '#10b981', fontWeight: 600 } },
+                            labels: { formatter: function (val) { return val ? Math.round(val) : 0; } }
+                        }
+                    ],
+                    legend: { position: 'top', horizontalAlign: 'right' }
+                }).render();
+            }
+
+            // 2. Station Cargo Share Donut
+            if (stationNames && stationNames.length > 0) {
+                new ApexCharts(document.querySelector("#opsStationChart"), {
+                    series: stationFreights,
+                    labels: stationNames,
+                    chart: { type: 'donut', height: 330, fontFamily: 'inherit' },
+                    colors: ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'],
+                    legend: { position: 'bottom' },
+                    dataLabels: { enabled: true },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '65%',
+                                labels: {
+                                    show: true,
+                                    total: {
+                                        show: true,
+                                        label: 'Total Cargo',
+                                        formatter: function (w) {
+                                            const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                            return 'Rs. ' + (total >= 1000000 ? (total / 1000000).toFixed(1) + 'M' : total.toLocaleString());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }).render();
+            }
+
+            // 3. Top Booking Parties Horizontal Bar
+            if (topBookingParties && topBookingParties.length > 0) {
+                new ApexCharts(document.querySelector("#opsTopPartiesChart"), {
+                    series: [{ name: 'Booked Freight', data: topBookingFreights }],
+                    chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'inherit' },
+                    colors: ['#0284c7'],
+                    plotOptions: {
+                        bar: { borderRadius: 6, horizontal: true, dataLabels: { position: 'top' } }
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: function (val) {
+                            return (val >= 1000000 ? (val / 1000000).toFixed(2) + 'M' : val.toLocaleString());
+                        },
+                        offsetX: 25,
+                        style: { fontSize: '11px', colors: ['#475569'] }
+                    },
+                    xaxis: {
+                        categories: topBookingParties,
+                        labels: {
+                            formatter: function (val) {
+                                if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+                                return val;
+                            }
+                        }
+                    }
+                }).render();
+            }
+
+            // 4. Payment Type Ratio Donut
+            new ApexCharts(document.querySelector("#opsPaymentTypeChart"), {
+                series: [paidFreight, toPayFreight],
+                labels: ['Paid Freight', 'To-Pay at Destination'],
+                chart: { type: 'donut', height: 300, fontFamily: 'inherit' },
+                colors: ['#10b981', '#f59e0b'],
+                legend: { position: 'bottom' },
+                dataLabels: { enabled: true },
+                tooltip: {
+                    y: {
+                        formatter: function (val) {
+                            return 'Rs. ' + Number(val).toLocaleString();
+                        }
+                    }
+                }
+            }).render();
+        });
+    </script>
+}

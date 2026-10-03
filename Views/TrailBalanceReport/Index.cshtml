@@ -33,7 +33,7 @@
                 <div class="row g-3 align-items-end">
 
                     <!-- Company / Rcocode -->
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label fw-bold">Company / Branch</label>
                         <select class="form-select select2" id="rcocodeSelect" name="rcocode">
                             <option value="" selected="@(string.IsNullOrEmpty(selectedRcocode) ? "selected" : null)">-- All Companies / Branches --</option>
@@ -55,7 +55,7 @@
                     </div>
 
                     <!-- Financial Year Filter -->
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label fw-bold">Financial Year</label>
                         <select class="form-select select2" id="fyIdSelect" name="fyId" required>
                             @if (financialYears != null)
@@ -78,27 +78,36 @@
                         </select>
                     </div>
 
+                    <!-- Report View Mode -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Report View</label>
+                        <select class="form-select select2" id="reportTypeSelect" name="reportType">
+                            <option value="detailed" selected="@((ViewBag.ReportType as string) == "detailed" ? "selected" : null)">Detailed (Account Wise)</option>
+                            <option value="summary" selected="@((ViewBag.ReportType as string) == "summary" ? "selected" : null)">Summary (Control Head Wise)</option>
+                        </select>
+                    </div>
+
                     <!-- BUTTON ROW -->
-                    <div class="col-md-4 d-flex justify-content-end gap-2">
+                    <div class="col-md-3 d-flex justify-content-end gap-2">
                         <!-- EXCEL -->
                         <button type="submit"
-                                class="btn btn-success btn-sm custom-btn px-3 shadow-sm fw-semibold"
+                                class="btn btn-success btn-sm custom-btn px-2 shadow-sm fw-semibold"
                                 asp-action="ExportExcel">
-                            <i class="fa fa-file-excel-o me-1"></i> Export Excel
+                            <i class="fa fa-file-excel-o me-1"></i> Excel
                         </button>
 
                         <!-- PRINT -->
                         <button type="button"
-                                class="btn btn-secondary btn-sm custom-btn px-3 shadow-sm fw-semibold"
+                                class="btn btn-secondary btn-sm custom-btn px-2 shadow-sm fw-semibold"
                                 onclick="printReportFrame()">
                             <i class="fa fa-print me-1"></i> Print
                         </button>
 
                         <!-- ON SCREEN -->
                         <button type="button"
-                                class="btn btn-primary btn-sm custom-btn px-3 shadow-sm fw-semibold"
+                                class="btn btn-primary btn-sm custom-btn px-2 shadow-sm fw-semibold"
                                 onclick="loadOnScreenReport()">
-                            <i class="fa fa-desktop me-1"></i> View Report
+                            <i class="fa fa-desktop me-1"></i> View
                         </button>
                     </div>
 
@@ -140,13 +149,7 @@
     <script>
         $(document).ready(function () {
             if ($.fn.select2) {
-                $('#rcocodeSelect').select2({
-                    theme: 'bootstrap-5',
-                    width: '100%',
-                    allowClear: false
-                });
-
-                $('#fyIdSelect').select2({
+                $('#rcocodeSelect, #fyIdSelect, #reportTypeSelect').select2({
                     theme: 'bootstrap-5',
                     width: '100%',
                     allowClear: false
@@ -156,8 +159,8 @@
             // Auto load report on first view without needing manual search
             loadOnScreenReport();
 
-            // Auto reload when company or financial year changes
-            $('#rcocodeSelect, #fyIdSelect').on('change', function () {
+            // Auto reload when company, financial year, or report view changes
+            $('#rcocodeSelect, #fyIdSelect, #reportTypeSelect').on('change', function () {
                 loadOnScreenReport();
             });
         });
@@ -165,6 +168,7 @@
         function loadOnScreenReport() {
             var rcocode = $('#rcocodeSelect').val() || '';
             var fyId = $('#fyIdSelect').val() || 'All';
+            var reportType = $('#reportTypeSelect').val() || 'detailed';
 
             $('#reportCard').show();
             $('#reportLoader').show();
@@ -172,7 +176,8 @@
 
             var url = '@Url.Action("OnScreenReport", "TrailBalanceReport")'
                 + '?rcocode=' + encodeURIComponent(rcocode)
-                + '&fyId=' + encodeURIComponent(fyId);
+                + '&fyId=' + encodeURIComponent(fyId)
+                + '&reportType=' + encodeURIComponent(reportType);
 
             var frame = document.getElementById('reportFrame');
             if (frame) {

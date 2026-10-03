@@ -45,9 +45,10 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(string? rcocode, string? fyId)
+        public IActionResult Index(string? rcocode, string? fyId, string? reportType)
         {
             string selectedRco = rcocode ?? "";
+            string selectedReportType = string.IsNullOrEmpty(reportType) ? "detailed" : reportType.ToLower();
 
             // Load Companies with "All Companies / Branches" option
             var companies = _context.Companies
@@ -84,11 +85,12 @@ namespace Nskg.Controllers
             ViewBag.Rcocode = selectedRco;
             ViewBag.FinancialYears = financialYears;
             ViewBag.SelectedFyId = selectedFyId;
+            ViewBag.ReportType = selectedReportType;
 
             return View();
         }
 
-        private DataTable GetTrialBalanceData(string? rcocode, string? fyId, int companyId)
+        private DataTable GetTrialBalanceData(string? rcocode, string? fyId, int companyId, string reportType = "detailed")
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
@@ -99,10 +101,11 @@ namespace Nskg.Controllers
 
                 string companyName = "West Wharf-New Shadab Karachi Goods Transports (All Branches)";
                 int targetCompanyId = 0;
+                string targetCocode = "";
 
                 if (!string.IsNullOrWhiteSpace(rcocode))
                 {
-                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Id, Name FROM Companies WHERE Cocode = @Rcocode OR CAST(Id AS NVARCHAR) = @Rcocode", con))
+                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Id, Cocode, Name FROM Companies WHERE Cocode = @Rcocode OR CAST(Id AS NVARCHAR) = @Rcocode", con))
                     {
                         cmdComp.Parameters.AddWithValue("@Rcocode", rcocode.Trim());
                         using (var reader = cmdComp.ExecuteReader())
@@ -111,6 +114,8 @@ namespace Nskg.Controllers
                             {
                                 if (reader["Id"] != DBNull.Value)
                                     targetCompanyId = Convert.ToInt32(reader["Id"]);
+                                if (reader["Cocode"] != DBNull.Value)
+                                    targetCocode = reader["Cocode"].ToString() ?? "";
                                 if (reader["Name"] != DBNull.Value && !string.IsNullOrWhiteSpace(reader["Name"].ToString()))
                                     companyName = reader["Name"].ToString();
                             }
@@ -177,12 +182,35 @@ namespace Nskg.Controllers
 
                 // 2. Trial Balance Query:
                 // Accurately aggregates VoDet and VoHead (Cash/Bank counterpart heads) for the selected Financial Year dates
-                // Eliminates duplicate joins and provides balanced debits and credits
-                string query = @"
+                // Eliminates repeated duplicate rows by using FullCode (AC1 + AC3) for Detailed or AC1 for Summary
+                string aggSelect;
+                string aggGroupBy;
+                string combinedTitle;
+                string joinClause;
+
+                bool isSummary = reportType.Equals("summary", StringComparison.OrdinalIgnoreCase);
+
+                if (isSummary)
+                {
+                    aggSelect = "t.AC1 AS Code, t.COCODE, SUM(t.Debit) AS TotalDr, SUM(t.Credit) AS TotalCr";
+                    aggGroupBy = "t.AC1, t.COCODE";
+                    combinedTitle = "COALESCE(g1.Name, 'HEAD ' + t.Code)";
+                    joinClause = "LEFT JOIN UniqueG1 g1 ON g1.AC1 = t.Code";
+                }
+                else
+                {
+                    aggSelect = "t.FullCode AS Code, t.AC1, t.COCODE, SUM(t.Debit) AS TotalDr, SUM(t.Credit) AS TotalCr";
+                    aggGroupBy = "t.FullCode, t.AC1, t.COCODE";
+                    combinedTitle = "COALESCE(g3.Name, g1.Name, 'ACCOUNT ' + t.Code)";
+                    joinClause = @"LEFT JOIN UniqueG3 g3 ON g3.FullCode = t.Code
+                                   LEFT JOIN UniqueG1 g1 ON g1.AC1 = t.AC1";
+                }
+
+                string query = $@"
                     ;WITH Trans AS (
                         -- VoDet (all detail vouchers)
                         SELECT 
-                            CASE WHEN RTRIM(AC1) IN ('040', '074') THEN RTRIM(AC1) + RTRIM(AC3) ELSE RTRIM(AC1) END AS Code,
+                            COALESCE(NULLIF(RTRIM(AC1) + RTRIM(AC3), ''), RTRIM(AC1)) AS FullCode,
                             RTRIM(AC1) AS AC1,
                             RTRIM(AC3) AS AC3,
                             COCODE,
@@ -191,15 +219,13 @@ namespace Nskg.Controllers
                         FROM VoDet
                         WHERE ISNULL(IsDeleted, 0) = 0
                           AND VODATE >= @YearStartDate AND VODATE <= @YearEndDate
-                          AND (@Rcocode = '' OR (COCODE = @Rcocode OR COCODE = CAST(@TargetCompanyId AS VARCHAR)))
+                          AND (@Rcocode = '' OR (COCODE = @Rcocode OR COCODE = @TargetCocode OR COCODE = CAST(@TargetCompanyId AS VARCHAR)))
 
                         UNION ALL
 
                         -- VoHead (Cash / Bank accounts)
                         SELECT 
-                            CASE WHEN SUBSTRING(COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001'), 1, 3) IN ('040', '074') 
-                                 THEN COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001')
-                                 ELSE SUBSTRING(COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001'), 1, 3) END AS Code,
+                            COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001') AS FullCode,
                             SUBSTRING(COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001'), 1, 3) AS AC1,
                             SUBSTRING(COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001'), 4, 3) AS AC3,
                             COCODE,
@@ -209,18 +235,13 @@ namespace Nskg.Controllers
                         WHERE ISNULL(IsDeleted, 0) = 0
                           AND votype <> 'JV'
                           AND VODATE >= @YearStartDate AND VODATE <= @YearEndDate
-                          AND (@Rcocode = '' OR (COCODE = @Rcocode OR COCODE = CAST(@TargetCompanyId AS VARCHAR)))
+                          AND (@Rcocode = '' OR (COCODE = @Rcocode OR COCODE = @TargetCocode OR COCODE = CAST(@TargetCompanyId AS VARCHAR)))
                     ),
                     TransAgg AS (
                         SELECT 
-                            Code,
-                            AC1,
-                            AC3,
-                            COCODE,
-                            SUM(Debit) AS TotalDr,
-                            SUM(Credit) AS TotalCr
-                        FROM Trans
-                        GROUP BY Code, AC1, AC3, COCODE
+                            {aggSelect}
+                        FROM Trans t
+                        GROUP BY {aggGroupBy}
                     ),
                     UniqueG3 AS (
                         SELECT 
@@ -239,7 +260,7 @@ namespace Nskg.Controllers
                     Combined AS (
                         SELECT 
                             t.Code,
-                            COALESCE(g3.Name, g1.Name, 'HEAD ' + t.Code) AS TitleOfAccount,
+                            {combinedTitle} AS TitleOfAccount,
                             CASE t.COCODE 
                                 WHEN '01' THEN 'W.H' 
                                 WHEN '02' THEN 'M.P' 
@@ -249,8 +270,7 @@ namespace Nskg.Controllers
                             END AS CompanyBranch,
                             t.TotalDr - t.TotalCr AS NetBalance
                         FROM TransAgg t
-                        LEFT JOIN UniqueG3 g3 ON g3.FullCode = t.Code
-                        LEFT JOIN UniqueG1 g1 ON g1.AC1 = t.AC1
+                        {joinClause}
                     )
                     SELECT 
                         Code,
@@ -267,6 +287,7 @@ namespace Nskg.Controllers
                 {
                     cmd.CommandTimeout = 180;
                     cmd.Parameters.AddWithValue("@Rcocode", string.IsNullOrWhiteSpace(rcocode) ? "" : rcocode.Trim());
+                    cmd.Parameters.AddWithValue("@TargetCocode", targetCocode);
                     cmd.Parameters.AddWithValue("@TargetCompanyId", targetCompanyId);
                     cmd.Parameters.AddWithValue("@CompanyName", companyName);
                     cmd.Parameters.AddWithValue("@YearStartDate", (object?)yearStartDate ?? DBNull.Value);
@@ -283,13 +304,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(string? rcocode, string? fyId)
+        public IActionResult OnScreenReport(string? rcocode, string? fyId, string? reportType = "detailed")
         {
             int companyId = GetCompanyId();
+            string selectedReportType = string.IsNullOrEmpty(reportType) ? "detailed" : reportType.ToLower();
 
             try
             {
-                DataTable dt = GetTrialBalanceData(rcocode, fyId, companyId);
+                DataTable dt = GetTrialBalanceData(rcocode, fyId, companyId, selectedReportType);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -309,6 +331,7 @@ namespace Nskg.Controllers
                         selectedYearText = $"{fy.YearName} ({fy.StartDate:dd-MMM-yyyy} to {fy.EndDate:dd-MMM-yyyy})";
                 }
 
+                string subTitleText = selectedReportType == "summary" ? "TRAIL BALANCE (CONTROL HEAD SUMMARY)" : "TRAIL BALANCE (DETAILED ACCOUNT WISE)";
                 string periodText = $"For The Period: {selectedYearText}";
                 string printDateText = $"Print Date: {DateTime.Now:dd-MMM-yy HH:mm:ss}";
 
@@ -347,7 +370,7 @@ namespace Nskg.Controllers
                 sb.Append($@"
     <div class='report-header'>
         <h3>{companyName}</h3>
-        <h2>TRAIL BALANCE</h2>
+        <h2>{subTitleText}</h2>
         <div>{periodText}</div>
         <div class='meta-line'>
             <span>{printDateText}</span>
@@ -358,7 +381,7 @@ namespace Nskg.Controllers
     <table class='report-table'>
         <thead>
             <tr>
-                <th style='width: 80px;'>Code</th>
+                <th style='width: 90px;'>Code</th>
                 <th>Title Of Account</th>
                 <th style='width: 90px; text-align: center;'>Company</th>
                 <th style='width: 140px; text-align: right;'>Debit</th>
@@ -389,6 +412,7 @@ namespace Nskg.Controllers
                 }
 
                 decimal diff = totalDebit - totalCredit;
+                string diffLabel = Math.Abs(diff) < 0.01m ? "Status: Balanced" : "Profit/Loss (Diff):";
 
                 sb.Append($@"
         </tbody>
@@ -399,7 +423,7 @@ namespace Nskg.Controllers
                 <td class='text-right fw-bold'>{totalCredit:#,##0.00}</td>
             </tr>
             <tr class='profit-loss-row'>
-                <td colspan='3' class='text-left fw-bold'>Profit/Loss:</td>
+                <td colspan='3' class='text-left fw-bold'>{diffLabel}</td>
                 <td class='text-right fw-bold'>{diff:#,##0.00}</td>
                 <td class='text-right'></td>
             </tr>
@@ -417,13 +441,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(string? rcocode, string? fyId)
+        public IActionResult ExportExcel(string? rcocode, string? fyId, string? reportType = "detailed")
         {
             int companyId = GetCompanyId();
+            string selectedReportType = string.IsNullOrEmpty(reportType) ? "detailed" : reportType.ToLower();
 
             try
             {
-                DataTable dt = GetTrialBalanceData(rcocode, fyId, companyId);
+                DataTable dt = GetTrialBalanceData(rcocode, fyId, companyId, selectedReportType);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {

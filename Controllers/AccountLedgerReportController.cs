@@ -28,7 +28,7 @@ namespace Nskg.Controllers
 
         private int GetCompanyId(int? companyId = null)
         {
-            if (companyId.HasValue && companyId.Value > 0) return companyId.Value;
+            if (companyId.HasValue) return companyId.Value;
             var compId = User.FindFirst("CompanyId")?.Value;
             if (int.TryParse(compId, out int id) && id > 0) return id;
             return 1006;
@@ -57,12 +57,22 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            var accounts = _context.GLChart3
-                .Where(x => x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null)
+            var query = _context.GLChart3
+                .Where(x => (selectedCompanyId == 0 || x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null) && !string.IsNullOrEmpty(x.Name));
+
+            var accounts = query
                 .Select(x => new
                 {
-                    Code = x.ACC ?? (x.AC1 + x.AC3),
-                    Name = x.Name
+                    Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                    Name = x.Name.Trim()
+                })
+                .Where(x => !string.IsNullOrEmpty(x.Code))
+                .ToList()
+                .GroupBy(x => x.Code)
+                .Select(g => new
+                {
+                    Code = g.Key,
+                    Name = g.First().Name
                 })
                 .OrderBy(x => x.Code)
                 .ToList();
@@ -80,12 +90,22 @@ namespace Nskg.Controllers
         [HttpGet]
         public IActionResult GetAccountsByCompany(int companyId)
         {
-            var accounts = _context.GLChart3
-                .Where(x => x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null)
+            var query = _context.GLChart3
+                .Where(x => (companyId == 0 || x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null) && !string.IsNullOrEmpty(x.Name));
+
+            var accounts = query
                 .Select(x => new
                 {
-                    code = x.ACC ?? (x.AC1 + x.AC3),
-                    name = x.Name
+                    code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                    name = x.Name.Trim()
+                })
+                .Where(x => !string.IsNullOrEmpty(x.code))
+                .ToList()
+                .GroupBy(x => x.code)
+                .Select(g => new
+                {
+                    code = g.Key,
+                    name = g.First().name
                 })
                 .OrderBy(x => x.code)
                 .ToList();
@@ -105,14 +125,56 @@ namespace Nskg.Controllers
                 // 1. Run dbo.PROCESSDETAIL to populate ACCUMULATED & ACCOPEN
                 try
                 {
-                    using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL", con))
+                    if (companyId > 0)
                     {
-                        cmdProc.CommandType = CommandType.StoredProcedure;
-                        cmdProc.CommandTimeout = 180;
-                        cmdProc.Parameters.AddWithValue("@CompanyId", companyId);
-                        cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
-                        cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                        cmdProc.ExecuteNonQuery();
+                        using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL", con))
+                        {
+                            cmdProc.CommandType = CommandType.StoredProcedure;
+                            cmdProc.CommandTimeout = 180;
+                            cmdProc.Parameters.AddWithValue("@CompanyId", companyId);
+                            cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
+                            cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                            cmdProc.ExecuteNonQuery();
+                        }
+                    }
+                    else
+                    {
+                        var activeCompanies = _context.Companies.Where(c => !c.IsDeleted).Select(c => c.Id).ToList();
+                        if (activeCompanies.Count > 0)
+                        {
+                            using (SqlCommand cmdSetup = new SqlCommand(@"
+                                IF OBJECT_ID('tempdb..#AllAcc') IS NOT NULL DROP TABLE #AllAcc;
+                                SELECT TOP 0 * INTO #AllAcc FROM ACCUMULATED;", con))
+                            {
+                                cmdSetup.ExecuteNonQuery();
+                            }
+
+                            foreach (var cId in activeCompanies)
+                            {
+                                using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL", con))
+                                {
+                                    cmdProc.CommandType = CommandType.StoredProcedure;
+                                    cmdProc.CommandTimeout = 180;
+                                    cmdProc.Parameters.AddWithValue("@CompanyId", cId);
+                                    cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
+                                    cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                                    cmdProc.ExecuteNonQuery();
+                                }
+
+                                using (SqlCommand cmdCopy = new SqlCommand("INSERT INTO #AllAcc SELECT * FROM ACCUMULATED;", con))
+                                {
+                                    cmdCopy.ExecuteNonQuery();
+                                }
+                            }
+
+                            using (SqlCommand cmdMerge = new SqlCommand(@"
+                                DELETE FROM ACCUMULATED;
+                                INSERT INTO ACCUMULATED SELECT * FROM #AllAcc;
+                                DROP TABLE #AllAcc;", con))
+                            {
+                                cmdMerge.ExecuteNonQuery();
+                            }
+                        }
                     }
                 }
                 catch
@@ -123,7 +185,7 @@ namespace Nskg.Controllers
                 // 2. Fetch Account Name & Company Name
                 string accName = "";
                 using (SqlCommand cmdAcc = new SqlCommand(
-                    "SELECT TOP 1 Name FROM GLCHART3 WHERE (CompanyId = @CompanyId OR CompanyId = 0 OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
+                    "SELECT TOP 1 Name FROM GLCHART3 WHERE (@CompanyId = 0 OR CompanyId = @CompanyId OR CompanyId = 0 OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
                 {
                     cmdAcc.Parameters.AddWithValue("@CompanyId", companyId);
                     cmdAcc.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
@@ -131,13 +193,16 @@ namespace Nskg.Controllers
                     if (res != null && res != DBNull.Value) accName = res.ToString();
                 }
 
-                string companyName = "West Wharf-New Shadab Karachi Goods Transports";
-                using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
+                string companyName = companyId == 0 ? "All Companies" : "West Wharf-New Shadab Karachi Goods Transports";
+                if (companyId > 0)
                 {
-                    cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
-                    var res = cmdComp.ExecuteScalar();
-                    if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
-                        companyName = res.ToString();
+                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
+                    {
+                        cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
+                        var res = cmdComp.ExecuteScalar();
+                        if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
+                            companyName = res.ToString();
+                    }
                 }
 
                 // 3. Query Opening Balance and Transactions with Running Balance and robust Vehicle/Station resolution
@@ -149,7 +214,7 @@ namespace Nskg.Controllers
                         SELECT @AnnualOpeningBal = ISNULL(SUM(Debit - Credit), 0)
                         FROM OpeningBalances
                         WHERE Accode = @Accode
-                          AND CompanyId = @CompanyId
+                          AND (@CompanyId = 0 OR CompanyId = @CompanyId)
                           AND FinancialYearId = @FinancialYearId;
                     END
 

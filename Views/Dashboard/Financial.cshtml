@@ -2,143 +2,993 @@
 @model FinancialDashboardViewModel
 
 @{
-    ViewData["Title"] = "Financial Dashboard";
+    ViewData["Title"] = "Executive Transport & Financial Dashboard";
 }
 
-<div class="container-fluid my-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="fa fa-chart-line text-primary me-2"></i> Financial Dashboard</h2>
-        <small class="text-muted">Real-time financial snapshot</small>
+@section Styles {
+    <style>
+        :root {
+            --dash-primary: #ff9b44;
+            --dash-dark: #1e293b;
+            --dash-card-bg: #ffffff;
+            --dash-border: #e2e8f0;
+        }
+
+        .dashboard-wrapper {
+            background-color: #f8fafc;
+            padding: 1.5rem 0.5rem;
+            min-height: calc(100vh - 100px);
+        }
+
+        /* Top Filter Card */
+        .dash-filter-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 16px;
+            color: #ffffff;
+            padding: 1.5rem;
+            margin-bottom: 1.75rem;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
+        }
+
+        .dash-filter-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .dash-badge-company {
+            background: rgba(255, 155, 68, 0.2);
+            color: #ff9b44;
+            border: 1px solid rgba(255, 155, 68, 0.4);
+            font-size: 0.82rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 30px;
+            font-weight: 600;
+        }
+
+        /* KPI Balance Cards */
+        .kpi-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid var(--dash-border);
+            padding: 1.35rem;
+            box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.04);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
+        }
+
+        .kpi-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.85rem;
+        }
+
+        .kpi-title {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+        }
+
+        .kpi-icon-wrap {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+        }
+
+        .kpi-amount {
+            font-size: 1.85rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.15;
+            letter-spacing: -0.8px;
+            margin-bottom: 0.4rem;
+        }
+
+        .kpi-currency {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-right: 0.2rem;
+        }
+
+        .kpi-subtext {
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        /* Color Themes for KPI Cards */
+        .kpi-cash { border-top: 4px solid #10b981; }
+        .kpi-cash .kpi-icon-wrap { background: #d1fae5; color: #059669; }
+
+        .kpi-bank { border-top: 4px solid #3b82f6; }
+        .kpi-bank .kpi-icon-wrap { background: #dbeafe; color: #2563eb; }
+
+        .kpi-rec { border-top: 4px solid #8b5cf6; }
+        .kpi-rec .kpi-icon-wrap { background: #ede9fe; color: #7c3aed; }
+
+        .kpi-pay { border-top: 4px solid #ef4444; }
+        .kpi-pay .kpi-icon-wrap { background: #fee2e2; color: #dc2626; }
+
+        .kpi-topay { border-top: 4px solid #f59e0b; }
+        .kpi-topay .kpi-icon-wrap { background: #fef3c7; color: #d97706; }
+
+        .kpi-freight { border-top: 4px solid #06b6d4; }
+        .kpi-freight .kpi-icon-wrap { background: #cffafe; color: #0891b2; }
+
+        .kpi-challan { border-top: 4px solid #6366f1; }
+        .kpi-challan .kpi-icon-wrap { background: #e0e7ff; color: #4f46e5; }
+
+        .kpi-comm { border-top: 4px solid #ec4899; }
+        .kpi-comm .kpi-icon-wrap { background: #fce7f3; color: #db2777; }
+
+        /* Quick Action Bar */
+        .dash-actions-card {
+            background: #ffffff;
+            border-radius: 14px;
+            border: 1px solid var(--dash-border);
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .action-btn-custom {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .action-btn-custom:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Section Headings */
+        .section-header-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-header-title i {
+            color: #ff9b44;
+        }
+
+        /* Charts & Table Cards */
+        .dash-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid var(--dash-border);
+            box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.03);
+            margin-bottom: 1.75rem;
+            overflow: hidden;
+        }
+
+        .dash-card-header {
+            padding: 1.15rem 1.4rem;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+        }
+
+        .dash-card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dash-card-body {
+            padding: 1.4rem;
+        }
+
+        /* Modern Table */
+        .table-dash {
+            width: 100%;
+            margin-bottom: 0;
+            vertical-align: middle;
+        }
+
+        .table-dash thead th {
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .table-dash tbody td {
+            padding: 0.85rem 1rem;
+            font-size: 0.85rem;
+            color: #334155;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .table-dash tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table-dash tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .badge-bilty-paid {
+            background-color: #dcfce7;
+            color: #15803d;
+            font-weight: 600;
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-bilty-topay {
+            background-color: #fef3c7;
+            color: #b45309;
+            font-weight: 600;
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-vo-type {
+            font-weight: 700;
+            padding: 0.3rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-cr { background: #dcfce7; color: #166534; }
+        .badge-cp { background: #fee2e2; color: #991b1b; }
+        .badge-br { background: #dbeafe; color: #1e40af; }
+        .badge-bp { background: #ffedd5; color: #9a3412; }
+        .badge-jv { background: #f3e8ff; color: #6b21a8; }
+    </style>
+}
+
+<div class="dashboard-wrapper">
+    <div class="container-fluid px-3 px-md-4">
+
+        <!-- 1. EXECUTIVE FILTER & TITLE BAR -->
+        <div class="dash-filter-card">
+            <form method="get" asp-controller="Dashboard" asp-action="Financial" id="dashFilterForm">
+                <div class="row align-items-center g-3">
+                    <div class="col-lg-5 col-md-12">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="dash-badge-company d-none d-sm-inline-flex">
+                                <i class="fa fa-truck me-1"></i> NSKG LOGISTICS ERP
+                            </div>
+                            <span class="badge bg-secondary px-2 py-1 text-light">FY @Model.SelectedFyName</span>
+                        </div>
+                        <h2 class="dash-filter-title mt-2 mb-1">
+                            Executive Transport & Financial Dashboard
+                        </h2>
+                        <div class="text-white-50 small">
+                            Real-time operational balances, cashflow, and freight distribution for <strong>@Model.SelectedCompanyName</strong>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7 col-md-12">
+                        <div class="row g-2 justify-content-lg-end">
+                            <!-- Company Filter -->
+                            <div class="col-sm-5 col-12">
+                                <label class="text-white-50 small fw-bold mb-1">Select Branch / Company</label>
+                                <select name="companyId" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="0" selected="@(Model.SelectedCompanyId == 0)">All Companies / Branches</option>
+                                    @foreach (var comp in Model.Companies)
+                                    {
+                                        <option value="@comp.Id" selected="@(Model.SelectedCompanyId == comp.Id)">@comp.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Financial Year Filter -->
+                            <div class="col-sm-4 col-8">
+                                <label class="text-white-50 small fw-bold mb-1">Financial Year</label>
+                                <select name="fyId" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    @foreach (var fy in Model.FinancialYears)
+                                    {
+                                        <option value="@fy.Id" selected="@(Model.SelectedFyId == fy.Id)">
+                                            @fy.YearName @(!fy.IsClosed ? " [Active]" : "")
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Refresh Button -->
+                            <div class="col-sm-3 col-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold shadow-sm">
+                                    <i class="fa fa-refresh me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- 2. QUICK ACTIONS BAR -->
+        <div class="dash-actions-card">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold text-dark small"><i class="fa fa-money text-success me-1"></i> Financial Vouchers & Ledger:</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a asp-controller="Voucher" asp-action="Create" asp-route-type="CR" class="btn btn-outline-success btn-sm action-btn-custom">
+                    <i class="fa fa-arrow-down"></i> Cash Receipt (CR)
+                </a>
+                <a asp-controller="Voucher" asp-action="Create" asp-route-type="CP" class="btn btn-outline-danger btn-sm action-btn-custom">
+                    <i class="fa fa-arrow-up"></i> Cash Payment (CP)
+                </a>
+                <a asp-controller="Voucher" asp-action="Create" asp-route-type="BR" class="btn btn-outline-primary btn-sm action-btn-custom">
+                    <i class="fa fa-university"></i> Bank Receipt (BR)
+                </a>
+                <a asp-controller="Voucher" asp-action="Create" asp-route-type="BP" class="btn btn-outline-warning btn-sm action-btn-custom text-dark">
+                    <i class="fa fa-credit-card"></i> Bank Payment (BP)
+                </a>
+                <a asp-controller="Voucher" asp-action="Create" asp-route-type="JV" class="btn btn-outline-secondary btn-sm action-btn-custom">
+                    <i class="fa fa-balance-scale"></i> Journal Voucher (JV)
+                </a>
+                <a asp-controller="ReceivablePayableReport" asp-action="Index" class="btn btn-outline-info btn-sm action-btn-custom">
+                    <i class="fa fa-users"></i> Receivables & Payables
+                </a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-dark btn-sm action-btn-custom">
+                    <i class="fa fa-truck"></i> Transport Operations Dashboard &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- 3. TOP FINANCIAL BALANCES (BIG FONT KPI CARDS) -->
+        <div class="mb-4">
+            <div class="section-header-title">
+                <i class="fa fa-money"></i> Core Financial Balances (Closing Position)
+            </div>
+            <div class="row g-3">
+                <!-- 1. Cash Balance -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="kpi-card kpi-cash">
+                        <div class="kpi-top">
+                            <div>
+                                <div class="kpi-title">Cash In Hand</div>
+                                <div class="kpi-amount">
+                                    <span class="kpi-currency">Rs.</span>@(Model.CashBalance.ToString("N0"))
+                                </div>
+                            </div>
+                            <div class="kpi-icon-wrap">
+                                <i class="fa fa-money"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-subtext text-success">
+                            <i class="fa fa-check-circle"></i> Real-time Liquid Cash
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Bank Balance -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="kpi-card kpi-bank">
+                        <div class="kpi-top">
+                            <div>
+                                <div class="kpi-title">Bank Accounts Balance</div>
+                                <div class="kpi-amount">
+                                    <span class="kpi-currency">Rs.</span>@(Model.BankBalance.ToString("N0"))
+                                </div>
+                            </div>
+                            <div class="kpi-icon-wrap">
+                                <i class="fa fa-university"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-subtext text-primary">
+                            <i class="fa fa-shield"></i> All Active Banks
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Total Receivables -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="kpi-card kpi-rec">
+                        <div class="kpi-top">
+                            <div>
+                                <div class="kpi-title">Total Receivables (Parties)</div>
+                                <div class="kpi-amount">
+                                    <span class="kpi-currency">Rs.</span>@(Model.TotalReceivables.ToString("N0"))
+                                </div>
+                            </div>
+                            <div class="kpi-icon-wrap">
+                                <i class="fa fa-arrow-circle-down"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-subtext text-purple" style="color: #7c3aed;">
+                            <i class="fa fa-users"></i> Wajib-ul-Wasool (Debtors)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Total Payables -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="kpi-card kpi-pay">
+                        <div class="kpi-top">
+                            <div>
+                                <div class="kpi-title">Total Payables (Transporters)</div>
+                                <div class="kpi-amount">
+                                    <span class="kpi-currency">Rs.</span>@(Model.TotalPayables.ToString("N0"))
+                                </div>
+                            </div>
+                            <div class="kpi-icon-wrap">
+                                <i class="fa fa-arrow-circle-up"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-subtext text-danger">
+                            <i class="fa fa-exclamation-triangle"></i> Wajib-ul-Ada (Creditors)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. LOGISTICS & OPERATIONAL CARDS -->
+        <div class="mb-4">
+            <div class="section-header-title">
+                <i class="fa fa-cubes"></i> Freight Operations & Trip Overview
+            </div>
+            <div class="row g-3">
+                <!-- 5. Pending To-Pay Bilties -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="kpi-card kpi-topay">
+                        <div class="kpi-top">
+                            <div>
+                                <div class="kpi-title">Pending To-Pay Freight</div>
+                                <div class="kpi-amount text-warning">
+                                    <span class="kpi-currency">Rs.</span>@(Model.PendingToPayAmount.ToString("N0"))
+                                </div>
+                            </div>
+                            <div class="kpi-icon-wrap">
+                                <i class="fa fa-clock-o"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-subtext text-dark">
+                            <span class="badge bg-warning text-dark px-2 py-1">@Model.PendingToPayCount Bilties</span> Uncollected at Destination
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Total Freight Booked -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="kpi-card kpi-freight">
+                        <div class="kpi-top">
+                            <div>
+                                <div class="kpi-title">Total Freight Booked (FY)</div>
+                                <div class="kpi-amount text-info">
+                                    <span class="kpi-currency">Rs.</span>@(Model.TotalFreightBooked.ToString("N0"))
+                                </div>
+                            </div>
+                            <div class="kpi-icon-wrap">
+                                <i class="fa fa-calculator"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-subtext text-secondary">
+                            <strong>@Model.TotalBiltiesCount.ToString("N0")</strong> Total Bilties Booked
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Trucks & Challans Dispatched -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="kpi-card kpi-challan">
+                        <div class="kpi-top">
+                            <div>
+                                <div class="kpi-title">Challans & Dispatches</div>
+                                <div class="kpi-amount" style="color: #4f46e5;">
+                                    @Model.TotalChallansCount.ToString("N0") <span style="font-size: 1.1rem; font-weight:600; color: #64748b;">Trips</span>
+                                </div>
+                            </div>
+                            <div class="kpi-icon-wrap">
+                                <i class="fa fa-truck"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-subtext text-secondary">
+                            <strong>@Model.ActiveVehiclesCount</strong> Unique Trucks Active
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. Net Commission & Margins -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="kpi-card kpi-comm">
+                        <div class="kpi-top">
+                            <div>
+                                <div class="kpi-title">Net Commission Book</div>
+                                <div class="kpi-amount" style="color: #db2777;">
+                                    <span class="kpi-currency">Rs.</span>@(Model.TotalNetCommission.ToString("N0"))
+                                </div>
+                            </div>
+                            <div class="kpi-icon-wrap">
+                                <i class="fa fa-pie-chart"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-subtext text-secondary">
+                            <i class="fa fa-line-chart text-pink"></i> Adda & Broker Commission
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. CHARTS & ANALYTICS ROW -->
+        <div class="row g-4 mb-4">
+            <!-- Chart 1: Monthly Freight Trend -->
+            <div class="col-lg-8">
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h5 class="dash-card-title">
+                            <i class="fa fa-line-chart text-primary"></i> Monthly Freight Booking Trend
+                        </h5>
+                        <span class="badge bg-light text-dark border px-2 py-1">Last 12 Months</span>
+                    </div>
+                    <div class="dash-card-body">
+                        <div id="monthlyFreightChart" style="min-height: 330px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart 2: Station Freight Distribution -->
+            <div class="col-lg-4">
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h5 class="dash-card-title">
+                            <i class="fa fa-map-marker text-danger"></i> Top Stations Freight Share
+                        </h5>
+                    </div>
+                    <div class="dash-card-body">
+                        <div id="stationDistributionChart" style="min-height: 330px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. TOP DEBTORS & CREDITORS ROW -->
+        <div class="row g-4 mb-4">
+            <!-- Chart 3: Top Outstanding Debtors -->
+            <div class="col-lg-6">
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h5 class="dash-card-title">
+                            <i class="fa fa-user-times text-warning"></i> Top Outstanding Parties (Debtors)
+                        </h5>
+                        <small class="text-muted">Highest balance receivables</small>
+                    </div>
+                    <div class="dash-card-body">
+                        <div id="topPartiesChart" style="min-height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart 4: Top Transporters Payables -->
+            <div class="col-lg-6">
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h5 class="dash-card-title">
+                            <i class="fa fa-truck text-info"></i> Top Transporters / Creditors (Payables)
+                        </h5>
+                        <small class="text-muted">Highest pending payouts</small>
+                    </div>
+                    <div class="dash-card-body">
+                        <div id="topTransportersChart" style="min-height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. RECENT TRANSACTIONS & ACTIVITY FEEDS -->
+        <div class="row g-4">
+            <!-- Feed 1: Recent Bilties -->
+            <div class="col-lg-6">
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h5 class="dash-card-title">
+                            <i class="fa fa-list-alt text-primary"></i> Recent Bilty Bookings
+                        </h5>
+                        <a asp-controller="Bilty" asp-action="Index" class="btn btn-sm btn-link text-decoration-none">View All</a>
+                    </div>
+                    <div class="dash-card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dash">
+                                <thead>
+                                    <tr>
+                                        <th>Bilty #</th>
+                                        <th>Date</th>
+                                        <th>Party</th>
+                                        <th>Station</th>
+                                        <th class="text-end">Freight</th>
+                                        <th class="text-center">Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.RecentBilties.Any())
+                                    {
+                                        foreach (var b in Model.RecentBilties)
+                                        {
+                                            <tr>
+                                                <td class="fw-bold text-dark">@b.DocNo</td>
+                                                <td>@b.DocDate.ToString("dd-MMM")</td>
+                                                <td class="text-truncate" style="max-width: 150px;" title="@b.PartyName">@b.PartyName</td>
+                                                <td>@b.StationName</td>
+                                                <td class="text-end fw-bold text-dark">Rs. @b.Freight.ToString("N0")</td>
+                                                <td class="text-center">
+                                                    @if (b.PType == "Paid")
+                                                    {
+                                                        <span class="badge-bilty-paid">Paid</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge-bilty-topay">ToPay</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">No recent bilties recorded.</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feed 2: Recent Vouchers -->
+            <div class="col-lg-6">
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h5 class="dash-card-title">
+                            <i class="fa fa-book text-success"></i> Recent Financial Vouchers
+                        </h5>
+                        <a asp-controller="Voucher" asp-action="Index" class="btn btn-sm btn-link text-decoration-none">View All</a>
+                    </div>
+                    <div class="dash-card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dash">
+                                <thead>
+                                    <tr>
+                                        <th>Voucher #</th>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Account</th>
+                                        <th class="text-end">Amount</th>
+                                        <th>Narration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.RecentTransactions.Any())
+                                    {
+                                        foreach (var v in Model.RecentTransactions)
+                                        {
+                                            var badgeClass = v.VoType switch
+                                            {
+                                                "CR" => "badge-cr",
+                                                "CP" => "badge-cp",
+                                                "BR" => "badge-br",
+                                                "BP" => "badge-bp",
+                                                _ => "badge-jv"
+                                            };
+                                            var amount = v.Debit > 0 ? v.Debit : v.Credit;
+                                            <tr>
+                                                <td class="fw-bold text-dark">@v.DocNo</td>
+                                                <td>@v.Date.ToString("dd-MMM")</td>
+                                                <td><span class="badge-vo-type @badgeClass">@v.VoType</span></td>
+                                                <td class="text-truncate" style="max-width: 140px;" title="@v.Account">@v.Account</td>
+                                                <td class="text-end fw-bold text-dark">Rs. @amount.ToString("N0")</td>
+                                                <td class="text-truncate text-muted small" style="max-width: 150px;" title="@v.Narration">@v.Narration</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">No recent vouchers found.</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
-
-    <div class="row g-3 mb-3">
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6 class="text-muted">Total Revenue</h6>
-                    <h3 class="mt-2">@Model.TotalRevenue.ToString("C")</h3>
-                    <small class="text-success">Month over month +3.5%</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6 class="text-muted">Total Expenses</h6>
-                    <h3 class="mt-2">@Model.TotalExpenses.ToString("C")</h3>
-                    <small class="text-danger">Stable</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6 class="text-muted">Receivables</h6>
-                    <h3 class="mt-2">@Model.TotalReceivables.ToString("C")</h3>
-                    <small class="text-warning">Due 30 days</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6 class="text-muted">Cash Balance</h6>
-                    <h3 class="mt-2">@Model.CashBalance.ToString("C")</h3>
-                    <small class="text-muted">Updated now</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <strong>Revenue (last 6 months)</strong>
-                    <small class="text-muted">Trend</small>
-                </div>
-                <div class="card-body">
-                    <canvas id="revenueChart" height="120"></canvas>
-                </div>
-            </div>
-
-            <div class="card mb-3">
-                <div class="card-header">
-                    <strong>Quick Insights</strong>
-                </div>
-                <div class="card-body">
-                    <ul>
-                        <li>Top performing account: Sales</li>
-                        <li>Largest expense category: Transport</li>
-                        <li>Average invoice cycle: 18 days</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card mb-3">
-                <div class="card-header">
-                    <strong>Recent Transactions</strong>
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Account</th>
-                                <th class="text-end">Debit</th>
-                                <th class="text-end">Credit</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach(var t in Model.RecentTransactions)
-                            {
-                                <tr>
-                                    <td>@t.Date.ToString("dd-MMM")</td>
-                                    <td>@t.Account</td>
-                                    <td class="text-end">@t.Debit.ToString("N2")</td>
-                                    <td class="text-end">@t.Credit.ToString("N2")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ApexCharts Library -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
-        const labels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MonthlyLabels));
-        const data = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MonthlyRevenue));
+        document.addEventListener('DOMContentLoaded', function () {
+            // Data from Model
+            const monthlyLabels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MonthlyLabels));
+            const monthlyFreight = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MonthlyFreight));
+            const monthlyBilties = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MonthlyBilties));
 
-        const ctx = document.getElementById('revenueChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Revenue',
-                    data: data,
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13,110,253,0.12)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: { beginAtZero: true }
-                }
+            const stationNames = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.StationNames));
+            const stationFreights = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.StationFreights));
+
+            const topPartyNames = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.TopPartyNames));
+            const topPartyBalances = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.TopPartyBalances));
+
+            const topTransNames = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.TopTransporterNames));
+            const topTransBalances = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.TopTransporterBalances));
+
+            // 1. Monthly Freight Booking Trend Chart
+            if (monthlyLabels && monthlyLabels.length > 0) {
+                const monthlyOptions = {
+                    series: [
+                        {
+                            name: 'Freight Booked (Rs)',
+                            type: 'area',
+                            data: monthlyFreight
+                        },
+                        {
+                            name: 'Bilties Count',
+                            type: 'column',
+                            data: monthlyBilties
+                        }
+                    ],
+                    chart: {
+                        height: 330,
+                        type: 'line',
+                        stacked: false,
+                        toolbar: { show: false },
+                        fontFamily: 'inherit'
+                    },
+                    colors: ['#0284c7', '#ff9b44'],
+                    fill: {
+                        type: ['gradient', 'solid'],
+                        gradient: {
+                            shadeIntensity: 1,
+                            opacityFrom: 0.45,
+                            opacityTo: 0.05,
+                            stops: [0, 90, 100]
+                        }
+                    },
+                    stroke: {
+                        width: [3, 0],
+                        curve: 'smooth'
+                    },
+                    dataLabels: { enabled: false },
+                    labels: monthlyLabels,
+                    yaxis: [
+                        {
+                            title: { text: 'Freight Amount (Rs)', style: { color: '#0284c7', fontWeight: 600 } },
+                            labels: {
+                                formatter: function (val) {
+                                    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+                                    if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                                    return val;
+                                }
+                            }
+                        },
+                        {
+                            opposite: true,
+                            title: { text: 'Bilties Booked', style: { color: '#ff9b44', fontWeight: 600 } },
+                            labels: {
+                                formatter: function (val) { return val ? Math.round(val) : 0; }
+                            }
+                        }
+                    ],
+                    tooltip: {
+                        shared: true,
+                        intersect: false,
+                        y: {
+                            formatter: function (y, { seriesIndex }) {
+                                if (seriesIndex === 0) return 'Rs. ' + Number(y).toLocaleString();
+                                return y + ' Bilties';
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'top',
+                        horizontalAlign: 'right'
+                    }
+                };
+                new ApexCharts(document.querySelector("#monthlyFreightChart"), monthlyOptions).render();
+            } else {
+                document.querySelector("#monthlyFreightChart").innerHTML = '<div class="text-center text-muted py-5">No monthly trend data available.</div>';
+            }
+
+            // 2. Station Freight Share (Donut Chart)
+            if (stationNames && stationNames.length > 0) {
+                const stationOptions = {
+                    series: stationFreights,
+                    labels: stationNames,
+                    chart: {
+                        type: 'donut',
+                        height: 330,
+                        fontFamily: 'inherit'
+                    },
+                    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'],
+                    legend: {
+                        position: 'bottom'
+                    },
+                    dataLabels: { enabled: true },
+                    tooltip: {
+                        y: {
+                            formatter: function (val) {
+                                return 'Rs. ' + Number(val).toLocaleString();
+                            }
+                        }
+                    },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '65%',
+                                labels: {
+                                    show: true,
+                                    total: {
+                                        show: true,
+                                        label: 'Top Stations',
+                                        formatter: function (w) {
+                                            const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                            return 'Rs. ' + (total >= 1000000 ? (total / 1000000).toFixed(1) + 'M' : total.toLocaleString());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+                new ApexCharts(document.querySelector("#stationDistributionChart"), stationOptions).render();
+            } else {
+                document.querySelector("#stationDistributionChart").innerHTML = '<div class="text-center text-muted py-5">No station data found.</div>';
+            }
+
+            // 3. Top Debtors Horizontal Bar Chart
+            if (topPartyNames && topPartyNames.length > 0) {
+                const debtorsOptions = {
+                    series: [{
+                        name: 'Receivable Balance',
+                        data: topPartyBalances
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 300,
+                        toolbar: { show: false },
+                        fontFamily: 'inherit'
+                    },
+                    colors: ['#8b5cf6'],
+                    plotOptions: {
+                        bar: {
+                            borderRadius: 6,
+                            horizontal: true,
+                            dataLabels: { position: 'top' }
+                        }
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: function (val) {
+                            return 'Rs. ' + Number(val).toLocaleString();
+                        },
+                        offsetX: 25,
+                        style: { fontSize: '11px', colors: ['#475569'] }
+                    },
+                    xaxis: {
+                        categories: topPartyNames,
+                        labels: {
+                            formatter: function (val) {
+                                if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+                                if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                                return val;
+                            }
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: function (val) {
+                                return 'Rs. ' + Number(val).toLocaleString();
+                            }
+                        }
+                    }
+                };
+                new ApexCharts(document.querySelector("#topPartiesChart"), debtorsOptions).render();
+            } else {
+                document.querySelector("#topPartiesChart").innerHTML = '<div class="text-center text-muted py-5">No debtor balances available.</div>';
+            }
+
+            // 4. Top Transporters Creditors Horizontal Bar Chart
+            if (topTransNames && topTransNames.length > 0) {
+                const transporterOptions = {
+                    series: [{
+                        name: 'Payable Balance',
+                        data: topTransBalances
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 300,
+                        toolbar: { show: false },
+                        fontFamily: 'inherit'
+                    },
+                    colors: ['#ef4444'],
+                    plotOptions: {
+                        bar: {
+                            borderRadius: 6,
+                            horizontal: true,
+                            dataLabels: { position: 'top' }
+                        }
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: function (val) {
+                            return 'Rs. ' + Number(val).toLocaleString();
+                        },
+                        offsetX: 25,
+                        style: { fontSize: '11px', colors: ['#475569'] }
+                    },
+                    xaxis: {
+                        categories: topTransNames,
+                        labels: {
+                            formatter: function (val) {
+                                if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+                                if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                                return val;
+                            }
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: function (val) {
+                                return 'Rs. ' + Number(val).toLocaleString();
+                            }
+                        }
+                    }
+                };
+                new ApexCharts(document.querySelector("#topTransportersChart"), transporterOptions).render();
+            } else {
+                document.querySelector("#topTransportersChart").innerHTML = '<div class="text-center text-muted py-5">No transporter balances available.</div>';
             }
         });
     </script>
