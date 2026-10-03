@@ -80,7 +80,9 @@ namespace Nskg.Controllers
                     searchValue = searchValue.Trim().ToLower();
                     query = query.Where(x =>
                         (x.Vono != null && x.Vono.ToLower().Contains(searchValue)) ||
-                        (x.Votype != null && x.Votype.ToLower().Contains(searchValue))
+                        (x.Votype != null && x.Votype.ToLower().Contains(searchValue)) ||
+                        (x.Totdramt != null && x.Totdramt.ToString().Contains(searchValue)) ||
+                        (x.Totcramt != null && x.Totcramt.ToString().Contains(searchValue))
                     );
                 }
 
@@ -88,6 +90,7 @@ namespace Nskg.Controllers
                 var col0Search = Request.Form["columns[0][search][value]"].FirstOrDefault();
                 var col1Search = Request.Form["columns[1][search][value]"].FirstOrDefault();
                 var col2Search = Request.Form["columns[2][search][value]"].FirstOrDefault();
+                var col3Search = Request.Form["columns[3][search][value]"].FirstOrDefault();
 
                 if (!string.IsNullOrWhiteSpace(col0Search))
                 {
@@ -115,6 +118,15 @@ namespace Nskg.Controllers
                     query = query.Where(x => x.Votype != null && x.Votype.ToLower().Contains(val2));
                 }
 
+                if (!string.IsNullOrWhiteSpace(col3Search))
+                {
+                    var val3 = col3Search.Trim();
+                    query = query.Where(x =>
+                        (x.Totdramt != null && x.Totdramt.ToString().Contains(val3)) ||
+                        (x.Totcramt != null && x.Totcramt.ToString().Contains(val3))
+                    );
+                }
+
                 int filterRecords = query.Count();
 
                 // Sorting
@@ -129,20 +141,34 @@ namespace Nskg.Controllers
                     case "2":
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.Votype).ThenByDescending(x => x.Vodate).ThenByDescending(x => x.Vono) : query.OrderByDescending(x => x.Votype).ThenByDescending(x => x.Vodate).ThenByDescending(x => x.Vono);
                         break;
+                    case "3":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => (x.Totdramt ?? x.Totcramt ?? 0)).ThenByDescending(x => x.Vodate).ThenByDescending(x => x.Vono) : query.OrderByDescending(x => (x.Totdramt ?? x.Totcramt ?? 0)).ThenByDescending(x => x.Vodate).ThenByDescending(x => x.Vono);
+                        break;
                     default:
                         query = query.OrderByDescending(x => x.Vodate).ThenByDescending(x => x.Vono).ThenByDescending(x => x.Id);
                         break;
                 }
 
-                var data = query.Skip(skip).Take(pageSize)
+                var rawData = query.Skip(skip).Take(pageSize)
                     .Select(v => new
                     {
-                        id = v.Id,
-                        vono = v.Vono ?? "",
-                        vodate = v.Vodate.HasValue ? v.Vodate.Value.ToString("dd-MMM-yyyy") : "",
-                        votype = v.Votype ?? ""
+                        v.Id,
+                        v.Vono,
+                        v.Vodate,
+                        v.Votype,
+                        v.Totdramt,
+                        v.Totcramt
                     })
                     .ToList();
+
+                var data = rawData.Select(v => new
+                {
+                    id = v.Id,
+                    vono = v.Vono ?? "",
+                    vodate = v.Vodate.HasValue ? v.Vodate.Value.ToString("dd-MMM-yyyy") : "",
+                    votype = v.Votype ?? "",
+                    amount = ((v.Totdramt.HasValue && v.Totdramt.Value > 0 ? v.Totdramt.Value : (v.Totcramt ?? 0))).ToString("N2")
+                }).ToList();
 
                 return Json(new
                 {

@@ -69,7 +69,9 @@ namespace Nskg.Controllers
                     searchValue = searchValue.Trim().ToLower();
                     query = query.Where(x =>
                         (x.DocNo != null && x.DocNo.ToLower().Contains(searchValue)) ||
-                        (x.CusName != null && x.CusName.ToLower().Contains(searchValue))
+                        (x.CusName != null && x.CusName.ToLower().Contains(searchValue)) ||
+                        (x.BillTiNo != null && x.BillTiNo.ToString().Contains(searchValue)) ||
+                        (x.BilNo != null && x.BilNo.ToString().Contains(searchValue))
                     );
                 }
 
@@ -77,6 +79,8 @@ namespace Nskg.Controllers
                 var col0Search = Request.Form["columns[0][search][value]"].FirstOrDefault();
                 var col1Search = Request.Form["columns[1][search][value]"].FirstOrDefault();
                 var col2Search = Request.Form["columns[2][search][value]"].FirstOrDefault();
+                var col3Search = Request.Form["columns[3][search][value]"].FirstOrDefault();
+                var col4Search = Request.Form["columns[4][search][value]"].FirstOrDefault();
 
                 if (!string.IsNullOrWhiteSpace(col0Search))
                 {
@@ -87,21 +91,33 @@ namespace Nskg.Controllers
                 if (!string.IsNullOrWhiteSpace(col1Search))
                 {
                     var val1 = col1Search.Trim();
-                    if (DateTime.TryParse(val1, out var parsedDate))
+                    query = query.Where(x => x.BillTiNo != null && x.BillTiNo.ToString().Contains(val1));
+                }
+
+                if (!string.IsNullOrWhiteSpace(col2Search))
+                {
+                    var val2 = col2Search.Trim();
+                    query = query.Where(x => x.BilNo != null && x.BilNo.ToString().Contains(val2));
+                }
+
+                if (!string.IsNullOrWhiteSpace(col3Search))
+                {
+                    var val3 = col3Search.Trim();
+                    if (DateTime.TryParse(val3, out var parsedDate))
                     {
                         var targetDate = parsedDate.Date;
                         query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.Date == targetDate);
                     }
                     else
                     {
-                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.ToString().Contains(val1));
+                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.ToString().Contains(val3));
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(col2Search))
+                if (!string.IsNullOrWhiteSpace(col4Search))
                 {
-                    var val2 = col2Search.Trim().ToLower();
-                    query = query.Where(x => x.CusName != null && x.CusName.ToLower().Contains(val2));
+                    var val4 = col4Search.Trim().ToLower();
+                    query = query.Where(x => x.CusName != null && x.CusName.ToLower().Contains(val4));
                 }
 
                 int filterRecords = query.Count();
@@ -113,9 +129,15 @@ namespace Nskg.Controllers
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocNo) : query.OrderByDescending(x => x.DocNo);
                         break;
                     case "1":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.BillTiNo).ThenByDescending(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.BillTiNo).ThenByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
                     case "2":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.BilNo).ThenByDescending(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.BilNo).ThenByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
+                        break;
+                    case "3":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
+                        break;
+                    case "4":
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.CusName) : query.OrderByDescending(x => x.CusName);
                         break;
                     default:
@@ -128,6 +150,8 @@ namespace Nskg.Controllers
                     {
                         b.Id,
                         b.DocNo,
+                        b.BillTiNo,
+                        b.BilNo,
                         b.DocDate,
                         b.CusName
                     })
@@ -137,6 +161,8 @@ namespace Nskg.Controllers
                 {
                     id = b.Id,
                     docNo = b.DocNo ?? "",
+                    biltyNo = b.BillTiNo.HasValue ? (b.BillTiNo.Value % 1 == 0 ? b.BillTiNo.Value.ToString("0") : b.BillTiNo.Value.ToString()) : "",
+                    bilNo = b.BilNo.HasValue ? (b.BilNo.Value % 1 == 0 ? b.BilNo.Value.ToString("0") : b.BilNo.Value.ToString()) : "",
                     docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
                     cusName = b.CusName ?? ""
                 }).ToList();

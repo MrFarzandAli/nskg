@@ -40,6 +40,8 @@
                         <thead>
                             <tr>
                                 <th>Document No</th>
+                                <th>Comm Book No</th>
+                                <th>Vehicle No</th>
                                 <th>Date</th>
                                 <th>Station</th>
                                 <th>Transporter</th>
@@ -47,9 +49,11 @@
                             </tr>
                             <tr class="filters">
                                 <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Doc No" data-column="0" /></th>
-                                <th><input type="date" class="form-control form-control-sm column-search" placeholder="Search Date" data-column="1" /></th>
-                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Station" data-column="2" /></th>
-                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Transporter" data-column="3" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Comm Book No" data-column="1" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Vehicle No" data-column="2" /></th>
+                                <th><input type="date" class="form-control form-control-sm column-search" placeholder="Search Date" data-column="3" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Station" data-column="4" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Transporter" data-column="5" /></th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -88,6 +92,8 @@
                             return `<h2 class="table-avatar"><a href="#">${data || ''}</a></h2>`;
                         }
                     },
+                    { "data": "chalNo" },
+                    { "data": "vehicleNo" },
                     { "data": "docDate" },
                     { "data": "station" },
                     { "data": "transporter" },
@@ -109,7 +115,7 @@
                         }
                     }
                 ],
-                "order": [[1, "desc"]],
+                "order": [[3, "desc"], [0, "desc"]],
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,

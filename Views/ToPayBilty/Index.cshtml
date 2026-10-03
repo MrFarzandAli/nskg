@@ -41,14 +41,18 @@
                         <thead>
                             <tr>
                                 <th>Document No</th>
+                                <th>Bilty No</th>
+                                <th>Bil No</th>
                                 <th>Date</th>
                                 <th>Customer</th>
                                 <th class="text-end">Action</th>
                             </tr>
                             <tr class="filters">
                                 <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Doc No" data-column="0" /></th>
-                                <th><input type="date" class="form-control form-control-sm column-search" placeholder="Search Date" data-column="1" /></th>
-                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Customer" data-column="2" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Bilty No" data-column="1" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Bil No" data-column="2" /></th>
+                                <th><input type="date" class="form-control form-control-sm column-search" placeholder="Search Date" data-column="3" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Customer" data-column="4" /></th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -87,6 +91,8 @@
                             return `<h2 class="table-avatar"><a href="#">${data || ''}</a></h2>`;
                         }
                     },
+                    { "data": "biltyNo" },
+                    { "data": "bilNo" },
                     { "data": "docDate" },
                     { "data": "cusName" },
                     {
@@ -107,7 +113,7 @@
                         }
                     }
                 ],
-                "order": [[1, "desc"]],
+                "order": [[3, "desc"], [0, "desc"]],
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,

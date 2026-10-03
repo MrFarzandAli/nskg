@@ -65,6 +65,8 @@ namespace Nskg.Controllers
                     searchValue = searchValue.Trim().ToLower();
                     query = query.Where(x =>
                         (x.DocNo != null && x.DocNo.ToLower().Contains(searchValue)) ||
+                        (x.ChalNo != null && x.ChalNo.ToString().Contains(searchValue)) ||
+                        (x.VehicleNo != null && x.VehicleNo.ToLower().Contains(searchValue)) ||
                         (x.Station != null && x.Station.ToLower().Contains(searchValue)) ||
                         (x.Transporter != null && x.Transporter.ToLower().Contains(searchValue))
                     );
@@ -75,6 +77,8 @@ namespace Nskg.Controllers
                 var col1Search = Request.Form["columns[1][search][value]"].FirstOrDefault();
                 var col2Search = Request.Form["columns[2][search][value]"].FirstOrDefault();
                 var col3Search = Request.Form["columns[3][search][value]"].FirstOrDefault();
+                var col4Search = Request.Form["columns[4][search][value]"].FirstOrDefault();
+                var col5Search = Request.Form["columns[5][search][value]"].FirstOrDefault();
 
                 if (!string.IsNullOrWhiteSpace(col0Search))
                 {
@@ -85,27 +89,39 @@ namespace Nskg.Controllers
                 if (!string.IsNullOrWhiteSpace(col1Search))
                 {
                     var val1 = col1Search.Trim();
-                    if (DateTime.TryParse(val1, out var parsedDate))
+                    query = query.Where(x => x.ChalNo != null && x.ChalNo.ToString().Contains(val1));
+                }
+
+                if (!string.IsNullOrWhiteSpace(col2Search))
+                {
+                    var val2 = col2Search.Trim().ToLower();
+                    query = query.Where(x => x.VehicleNo != null && x.VehicleNo.ToLower().Contains(val2));
+                }
+
+                if (!string.IsNullOrWhiteSpace(col3Search))
+                {
+                    var val3 = col3Search.Trim();
+                    if (DateTime.TryParse(val3, out var parsedDate))
                     {
                         var targetDate = parsedDate.Date;
                         query = query.Where(x => x.DocDate.Date == targetDate);
                     }
                     else
                     {
-                        query = query.Where(x => x.DocDate.ToString().Contains(val1));
+                        query = query.Where(x => x.DocDate.ToString().Contains(val3));
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(col2Search))
+                if (!string.IsNullOrWhiteSpace(col4Search))
                 {
-                    var val2 = col2Search.Trim().ToLower();
-                    query = query.Where(x => x.Station != null && x.Station.ToLower().Contains(val2));
+                    var val4 = col4Search.Trim().ToLower();
+                    query = query.Where(x => x.Station != null && x.Station.ToLower().Contains(val4));
                 }
 
-                if (!string.IsNullOrWhiteSpace(col3Search))
+                if (!string.IsNullOrWhiteSpace(col5Search))
                 {
-                    var val3 = col3Search.Trim().ToLower();
-                    query = query.Where(x => x.Transporter != null && x.Transporter.ToLower().Contains(val3));
+                    var val5 = col5Search.Trim().ToLower();
+                    query = query.Where(x => x.Transporter != null && x.Transporter.ToLower().Contains(val5));
                 }
 
                 int filterRecords = query.Count();
@@ -117,12 +133,18 @@ namespace Nskg.Controllers
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocNo) : query.OrderByDescending(x => x.DocNo);
                         break;
                     case "1":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.ChalNo).ThenByDescending(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.ChalNo).ThenByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
                     case "2":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Station) : query.OrderByDescending(x => x.Station);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.VehicleNo) : query.OrderByDescending(x => x.VehicleNo);
                         break;
                     case "3":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.DocDate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
+                        break;
+                    case "4":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Station) : query.OrderByDescending(x => x.Station);
+                        break;
+                    case "5":
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.Transporter) : query.OrderByDescending(x => x.Transporter);
                         break;
                     default:
@@ -135,6 +157,8 @@ namespace Nskg.Controllers
                     {
                         b.Id,
                         b.DocNo,
+                        b.ChalNo,
+                        b.VehicleNo,
                         b.DocDate,
                         b.Station,
                         b.Transporter
@@ -145,6 +169,8 @@ namespace Nskg.Controllers
                 {
                     id = b.Id,
                     docNo = b.DocNo ?? "",
+                    chalNo = b.ChalNo.HasValue ? b.ChalNo.Value.ToString() : "",
+                    vehicleNo = b.VehicleNo ?? "",
                     docDate = b.DocDate != default ? b.DocDate.ToString("dd-MMM-yyyy") : "",
                     station = b.Station ?? "",
                     transporter = b.Transporter ?? ""

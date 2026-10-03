@@ -45,12 +45,14 @@
                                 <th>Voucher No</th>
                                 <th>Date</th>
                                 <th>Type</th>
+                                <th class="text-end">Amount</th>
                                 <th class="text-end">Action</th>
                             </tr>
                             <tr class="filters">
                                 <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Voucher No" data-column="0" /></th>
                                 <th><input type="date" class="form-control form-control-sm column-search" placeholder="Search Date" data-column="1" /></th>
                                 <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Type" data-column="2" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search text-end" placeholder="Search Amount" data-column="3" /></th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -97,6 +99,10 @@
                         "render": function (data, type, row) {
                             return `<span class="badge bg-info text-dark">${data || ''}</span>`;
                         }
+                    },
+                    {
+                        "data": "amount",
+                        "className": "text-end fw-semibold"
                     },
                     {
                         "data": "id",
