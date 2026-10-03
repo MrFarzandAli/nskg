@@ -55,9 +55,17 @@ namespace Nskg.Controllers
                 int pageSize = length != null ? Convert.ToInt32(length) : 10;
                 int skip = start != null ? Convert.ToInt32(start) : 0;
 
+                int companyId = User.GetCompanyId();
+                string companyCode = User.GetCompanyCode();
+
                 var query = _context.VoHead
                     .AsNoTracking()
                     .Where(x => !x.IsDeleted);
+
+                if (companyId > 0)
+                {
+                    query = query.Where(x => x.CompanyId == companyId || (!string.IsNullOrEmpty(companyCode) && companyCode != "0" && x.Cocode == companyCode));
+                }
 
                 if (!string.IsNullOrWhiteSpace(type))
                 {
@@ -76,22 +84,53 @@ namespace Nskg.Controllers
                     );
                 }
 
+                // Column-wise Searching
+                var col0Search = Request.Form["columns[0][search][value]"].FirstOrDefault();
+                var col1Search = Request.Form["columns[1][search][value]"].FirstOrDefault();
+                var col2Search = Request.Form["columns[2][search][value]"].FirstOrDefault();
+
+                if (!string.IsNullOrWhiteSpace(col0Search))
+                {
+                    var val0 = col0Search.Trim().ToLower();
+                    query = query.Where(x => x.Vono != null && x.Vono.ToLower().Contains(val0));
+                }
+
+                if (!string.IsNullOrWhiteSpace(col1Search))
+                {
+                    var val1 = col1Search.Trim();
+                    if (DateTime.TryParse(val1, out var parsedDate))
+                    {
+                        var targetDate = parsedDate.Date;
+                        query = query.Where(x => x.Vodate.HasValue && x.Vodate.Value.Date == targetDate);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.Vodate.HasValue && x.Vodate.Value.ToString().Contains(val1));
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(col2Search))
+                {
+                    var val2 = col2Search.Trim().ToLower();
+                    query = query.Where(x => x.Votype != null && x.Votype.ToLower().Contains(val2));
+                }
+
                 int filterRecords = query.Count();
 
                 // Sorting
                 switch (sortColumnIndex)
                 {
                     case "0":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Vono) : query.OrderByDescending(x => x.Vono);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Vono).ThenByDescending(x => x.Vodate).ThenBy(x => x.Id) : query.OrderByDescending(x => x.Vono).ThenByDescending(x => x.Vodate).ThenByDescending(x => x.Id);
                         break;
                     case "1":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Vodate) : query.OrderByDescending(x => x.Vodate);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Vodate).ThenBy(x => x.Vono).ThenBy(x => x.Id) : query.OrderByDescending(x => x.Vodate).ThenByDescending(x => x.Vono).ThenByDescending(x => x.Id);
                         break;
                     case "2":
-                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Votype) : query.OrderByDescending(x => x.Votype);
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Votype).ThenByDescending(x => x.Vodate).ThenByDescending(x => x.Vono) : query.OrderByDescending(x => x.Votype).ThenByDescending(x => x.Vodate).ThenByDescending(x => x.Vono);
                         break;
                     default:
-                        query = query.OrderByDescending(x => x.Id);
+                        query = query.OrderByDescending(x => x.Vodate).ThenByDescending(x => x.Vono).ThenByDescending(x => x.Id);
                         break;
                 }
 

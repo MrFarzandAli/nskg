@@ -46,8 +46,16 @@ namespace Nskg.Controllers
                 int drawVal = 0;
                 int.TryParse(draw, out drawVal);
 
+                int companyId = User.GetCompanyId();
+
                 var query = _context.CommHead
-                    .AsNoTracking();
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted);
+
+                if (companyId > 0)
+                {
+                    query = query.Where(x => x.CompanyId == companyId);
+                }
 
                 int totalRecords = query.Count();
 

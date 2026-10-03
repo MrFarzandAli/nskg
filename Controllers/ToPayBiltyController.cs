@@ -51,10 +51,18 @@ namespace Nskg.Controllers
                 int drawVal = 0;
                 int.TryParse(draw, out drawVal);
 
+                int companyId = User.GetCompanyId();
+                string companyCode = User.GetCompanyCode();
+
                 // Filter only "ToPay" bilties
                 var query = _context.IssHead
                     .AsNoTracking()
                     .Where(x => !x.IsDeleted && x.PType == "ToPay");
+
+                if (companyId > 0)
+                {
+                    query = query.Where(x => x.CompanyId == companyId || (!string.IsNullOrEmpty(companyCode) && companyCode != "0" && x.CoCode == companyCode));
+                }
 
                 int totalRecords = query.Count();
 

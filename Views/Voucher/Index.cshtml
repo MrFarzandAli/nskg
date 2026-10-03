@@ -22,7 +22,8 @@
             <a asp-controller="Voucher"
                    asp-action="Create"
                    asp-route-type="@ViewBag.type"
-                   class="btn add-btn">
+                   class="btn add-btn"
+                   id="addVoucherBtn">
                 <i class="fa fa-plus"></i> Add Voucher
             </a>
         </div>
@@ -46,6 +47,12 @@
                                 <th>Type</th>
                                 <th class="text-end">Action</th>
                             </tr>
+                            <tr class="filters">
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Voucher No" data-column="0" /></th>
+                                <th><input type="date" class="form-control form-control-sm column-search" placeholder="Search Date" data-column="1" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Type" data-column="2" /></th>
+                                <th></th>
+                            </tr>
                         </thead>
                         <tbody>
                         </tbody>
@@ -65,9 +72,10 @@
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
             const voucherType = "@(ViewBag.Type ?? "")";
 
-            $('#voucherTable').DataTable({
+            var table = $('#voucherTable').DataTable({
                 "processing": true,
                 "serverSide": true,
+                "orderCellsTop": true,
                 "ajax": {
                     "url": "@Url.Action("GetVoucherList", "Voucher")",
                     "type": "POST",
@@ -108,7 +116,7 @@
                         }
                     }
                 ],
-                "order": [[0, "desc"]],
+                "order": [[1, "desc"], [0, "desc"]],
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,
@@ -117,6 +125,32 @@
                 "autoWidth": false,
                 "responsive": true
             });
+
+            // Column-wise search input events
+            $('.column-search').on('keyup change clear', function () {
+                var colIdx = $(this).data('column');
+                if (table.column(colIdx).search() !== this.value) {
+                    table.column(colIdx).search(this.value).draw();
+                }
+            });
+
+            // Focus on Add Voucher button when page loads
+            setTimeout(function() {
+                $('#addVoucherBtn').focus();
+
+                $('#addVoucherBtn').css({
+                    'box-shadow': '0 0 0 0.2rem rgba(13, 110, 253, 0.5)',
+                    'border-color': '#0d6efd',
+                    'transition': 'all 0.3s ease'
+                });
+
+                setTimeout(function() {
+                    $('#addVoucherBtn').css({
+                        'box-shadow': '',
+                        'border-color': ''
+                    });
+                }, 3000);
+            }, 100);
 
         });
 
@@ -148,3 +182,22 @@
         }
     </script>
 }
+
+<style>
+    /* Focus styling for Add Voucher button */
+    #addVoucherBtn:focus {
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.5) !important;
+        border-color: #0d6efd !important;
+        transform: scale(1.02);
+        transition: all 0.3s ease;
+    }
+
+    #addVoucherBtn:hover {
+        transform: scale(1.05);
+        transition: all 0.3s ease;
+    }
+
+    #addVoucherBtn {
+        transition: all 0.3s ease;
+    }
+</style>
