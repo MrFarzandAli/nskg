@@ -264,12 +264,23 @@ namespace Nskg.Controllers
                             COALESCE(
                                 a.QTY,
                                 CASE 
+                                    WHEN a.VOTYPE IN ('BL', 'SL') 
+                                    THEN (
+                                        SELECT TOP 1 ih.Qty 
+                                        FROM IssHead ih 
+                                        WHERE RTRIM(ih.DocNo) = RTRIM(a.VONO) 
+                                          AND (RTRIM(ih.CusCode) = RTRIM(@Accode) OR RTRIM(ih.AccCode) = RTRIM(@Accode))
+                                          AND (CAST(ih.CompanyId AS VARCHAR) = RTRIM(a.COCODE) OR ih.Cocode = RTRIM(a.COCODE) OR @CompanyId = 0)
+                                          AND ISNULL(ih.IsDeleted, 0) = 0
+                                        ORDER BY ih.Id DESC
+                                    )
                                     WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 
                                     THEN (
                                         SELECT TOP 1 ih.Qty 
                                         FROM IssHead ih 
                                         WHERE ih.BillTiNo = a.BILLTINO 
                                           AND (ih.BilNo = a.BILNO OR a.BILNO IS NULL)
+                                          AND (RTRIM(ih.CusCode) = RTRIM(@Accode) OR RTRIM(ih.AccCode) = RTRIM(@Accode))
                                           AND ISNULL(ih.IsDeleted, 0) = 0
                                         ORDER BY ih.Id DESC
                                     )

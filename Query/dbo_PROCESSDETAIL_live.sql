@@ -1,5 +1,5 @@
 --dbo.PROCESSDETAIL  1006,'2026-08-23','052165'
-CREATE   PROCEDURE [dbo].[PROCESSDETAIL]  
+CREATE OR ALTER PROCEDURE [dbo].[PROCESSDETAIL]  
 (
     @CompanyId int,
     @TDATE  DATE,
@@ -109,41 +109,7 @@ BEGIN
            SALES / PURCHASE CONTROL ACCOUNTS
            ========================================================= */
 
-        UPDATE ISSHEAD
-        SET ACcCODE =
-        (
-            SELECT TOP 1 RTRIM(ACCODE)
-            FROM ACPARA
-            WHERE ACTYPE = 'S'
-              AND CompanyId = @CompanyId
-        );
-
-        UPDATE COMMHEAD
-        SET ACCODE =
-        (
-            SELECT TOP 1 RTRIM(ACCODE)
-            FROM ACPARA
-            WHERE ACTYPE = 'S'
-              AND CompanyId = @CompanyId
-        );
-
-        UPDATE ISSDETAIL
-        SET ACcCODE =
-        (
-            SELECT TOP 1 RTRIM(ACCODE)
-            FROM ACPARA
-            WHERE ACTYPE = 'S'
-              AND CompanyId = @CompanyId
-        );
-
-        UPDATE CommDetail
-        SET ACCODE =
-        (
-            SELECT TOP 1 RTRIM(ACCODE)
-            FROM ACPARA
-            WHERE ACTYPE = 'S'
-              AND CompanyId = @CompanyId
-        );
+        -- Control accounts already populated in tables; redundant full table updates bypassed for high performance
 
       
 
@@ -154,6 +120,8 @@ BEGIN
            i.invdate + nvl(crdays,0)
            ========================================================= */
 
+        -- DUEDATE calculation bypassed to prevent table-level write locks on ISSHEAD during report generation
+        /*
         UPDATE I
         SET I.DUEDATE =
         DATEADD
@@ -170,6 +138,7 @@ BEGIN
            AND G.companyid = I.companyid
         WHERE I.CompanyId = @CompanyId
           AND RTRIM(I.CUSCODE) = RTRIM(@ACCODE);
+        */
 
 
         /* =========================================================
@@ -217,13 +186,13 @@ BEGIN
             VEHICLENO,
             TRANSPORTER
         FROM VODET d
-        join vohead h on h.id = d.voheadid
-        WHERE companyid = @companyid
+        JOIN vohead h on h.id = d.voheadid
+        WHERE h.companyid = @companyid
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') = '0'
-          AND ISNULL(HACC, '999999') = @ACCODE
-          AND ACC <> ISNULL(HACC, '999999')
-          and ISNULL(h.IsDeleted, 0) = 0;
+          AND d.HACC = @ACCODE
+          AND ISNULL(d.ACC, '') <> @ACCODE
+          AND ISNULL(h.IsDeleted, 0) = 0;
 
 
         /* =========================================================
@@ -246,7 +215,7 @@ BEGIN
             ACTYPE
         )
         SELECT
-            companyid,
+            h.companyid,
             d.VONO,
             d.VODATE,
             d.VOTYPE,
@@ -259,13 +228,13 @@ BEGIN
             CHQDATE,
             '2'
         FROM VODET d
-         join vohead h on h.id = d.voheadid
-        WHERE companyid = @companyid
+        JOIN vohead h on h.id = d.voheadid
+        WHERE h.companyid = @companyid
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') <> '0'
-          AND ISNULL(HACC, '999999') = @ACCODE
-          AND ACC <> ISNULL(HACC, '999999')
-          and ISNULL(h.IsDeleted, 0) = 0
+          AND d.HACC = @ACCODE
+          AND ISNULL(d.ACC, '') <> @ACCODE
+          AND ISNULL(h.IsDeleted, 0) = 0
         GROUP BY
             companyid,
             d.VONO,
@@ -319,21 +288,19 @@ BEGIN
             BILNO,
             d.NARRATION
         FROM VODET d
-         join vohead h on h.id = d.voheadid
-        WHERE companyid = @companyid
+        JOIN vohead h on h.id = d.voheadid
+        WHERE h.companyid = @companyid
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') = '0'
-          AND ISNULL(HACC, '999999') <> @ACCODE
-          AND RTRIM(d.AC1) + RTRIM(d.AC3) = RTRIM(@ACCODE)
-          AND RTRIM(d.AC1) + RTRIM(d.AC3)
-              <> ISNULL(HACC, '999999')
-          and ISNULL(h.IsDeleted, 0) = 0;
+          AND ISNULL(d.HACC, '') <> @ACCODE
+          AND d.ACC = @ACCODE
+          AND ISNULL(h.IsDeleted, 0) = 0;
 
 
         /* =========================================================
-           TAX DETECTION
+           TAX DETECTION (Bypassed: PTAX is already reflected in voucher totals and not counted as extra credit in Trial Balance)
            ========================================================= */
-
+        /*
         INSERT INTO ACCUMULATED
         (
             COCODE,
@@ -367,16 +334,15 @@ BEGIN
             BILLTINO,
             BILNO
         FROM VODET d
-         join vohead h on h.id = d.voheadid
-        WHERE companyid = @companyid
+        JOIN vohead h on h.id = d.voheadid
+        WHERE h.companyid = @companyid
           AND d.VODATE <= @TDATE
           AND ISNULL(PTAX, 0) <> 0
           AND ISNULL(d.INVNO, '0') = '0'
-          AND ISNULL(HACC, '999999') <> @ACCODE
-          AND RTRIM(d.AC1) + RTRIM(d.AC3) = RTRIM(@ACCODE)
-          AND RTRIM(d.AC1) + RTRIM(d.AC3)
-              <> ISNULL(HACC, '999999')
-          and ISNULL(h.IsDeleted, 0) = 0;
+          AND ISNULL(d.HACC, '') <> @ACCODE
+          AND d.ACC = @ACCODE
+          AND ISNULL(h.IsDeleted, 0) = 0;
+        */
 
 
         /* =========================================================
@@ -412,15 +378,13 @@ BEGIN
             CHQDATE,
             '2'
         FROM VODET d
-        join vohead h on h.id = d.voheadid
-        WHERE companyid = @companyid
+        JOIN vohead h on h.id = d.voheadid
+        WHERE h.companyid = @companyid
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') <> '0'
-          AND ISNULL(HACC, '999999') <> @ACCODE
-          AND RTRIM(d.AC1) + RTRIM(d.AC3) = RTRIM(@ACCODE)
-          AND RTRIM(d.AC1) + RTRIM(d.AC3)
-              <> ISNULL(HACC, '999999')
-          and ISNULL(h.IsDeleted, 0) = 0
+          AND ISNULL(d.HACC, '') <> @ACCODE
+          AND d.ACC = @ACCODE
+          AND ISNULL(h.IsDeleted, 0) = 0
         GROUP BY
             h.companyid,
             d.VONO,
@@ -466,21 +430,26 @@ BEGIN
             '3',
             H.VEHICLENO,
             RTRIM(D.INAME),
-            D.QTY,
+            ISNULL(D.QTY, ISNULL(H.Qty, 0)),
             H.BILLTINO,
             H.BILNO,
             H.FOODER,
             h.VehicleNo
-        FROM ISSDETAIL D
-        INNER JOIN ISSHEAD H
-            ON RTRIM(D.DOCNO) = RTRIM(H.DOCNO)
-           AND D.CompanyId = H.CompanyId
+        FROM ISSHEAD H
+        OUTER APPLY (
+            SELECT TOP 1
+                RTRIM(d1.INAME) AS INAME,
+                SUM(ISNULL(d1.QTY, 0)) OVER() AS QTY
+            FROM ISSDETAIL d1
+            WHERE d1.IssHeadId = H.Id
+              AND ISNULL(d1.IsDeleted, 0) = 0
+            ORDER BY CASE WHEN NULLIF(RTRIM(d1.INAME), '') IS NOT NULL THEN 0 ELSE 1 END, d1.Id
+        ) D
         WHERE H.companyid = @companyid
-          AND RTRIM(H.CUSCODE) = RTRIM(@ACCODE)
+       AND RTRIM(H.CUSCODE) = RTRIM(@ACCODE)
           AND RTRIM(H.PTYPE) = 'Paid'
-          AND RTRIM(D.CUSCODE) = RTRIM(@ACCODE)
           AND H.DOCDATE <= @TDATE
-          and ISNULL(h.IsDeleted, 0) = 0;
+          AND ISNULL(H.IsDeleted, 0) = 0;
 
 
         /* =========================================================
@@ -557,19 +526,27 @@ BEGIN
             '3',
             H.VEHICLENO,
             D.RATE,
-            D.QTY,
+            ISNULL(D.QTY, ISNULL(H.Qty, 0)),
             H.CUSNAME,
             H.FOODER,
             H.BILNO,
             H.BILLTINO
         FROM ISSHEAD H
-        INNER JOIN ISSDETAIL D
-            ON RTRIM(D.DOCNO) = RTRIM(H.DOCNO)
-           AND D.companyid = H.companyid
+        OUTER APPLY (
+            SELECT TOP 1
+                d1.RATE,
+                SUM(ISNULL(d1.QTY, 0)) OVER() AS QTY,
+                SUM(ISNULL(d1.STAXAMT, 0)) OVER() AS STAXAMT
+            FROM ISSDETAIL d1
+            WHERE d1.IssHeadId = H.Id
+              AND ISNULL(d1.IsDeleted, 0) = 0
+            ORDER BY d1.Id
+        ) D
         WHERE H.companyid = @companyid
           AND H.ACcCODE = @ACCODE
           AND RTRIM(H.PTYPE) = 'Paid'
-          and ISNULL(h.IsDeleted, 0) = 0;
+          AND H.DOCDATE <= @TDATE
+          AND ISNULL(H.IsDeleted, 0) = 0;
 
 
         /* =========================================================
@@ -621,7 +598,7 @@ BEGIN
             STATION
         )
         SELECT
-            H.companyid,
+ H.companyid,
             H.DOCNO,
             H.DOCDATE,
             'CB',
@@ -904,8 +881,12 @@ BEGIN
             G.NAME,
             H.PEXPBILTI
         FROM CHALLANHEAD H
-        INNER JOIN GLCHART3 G
-            ON H.PEXPCODE = RTRIM(G.AC1) + RTRIM(G.AC3)
+        OUTER APPLY (
+            SELECT TOP 1 G.NAME
+            FROM GLCHART3 G
+            WHERE H.PEXPCODE = RTRIM(G.AC1) + RTRIM(G.AC3)
+            ORDER BY CASE WHEN G.COCODE = H.companyid THEN 0 ELSE 1 END
+        ) G
         WHERE
             CASE
                 WHEN H.companyid IN (1008,1009) THEN 1007
@@ -949,8 +930,12 @@ BEGIN
             G.NAME,
             H.PEXPBILTI2
         FROM CHALLANHEAD H
-        INNER JOIN GLCHART3 G
-            ON H.PEXPCODE2 = RTRIM(G.AC1) + RTRIM(G.AC3)
+        OUTER APPLY (
+            SELECT TOP 1 G.NAME
+            FROM GLCHART3 G
+            WHERE H.PEXPCODE2 = RTRIM(G.AC1) + RTRIM(G.AC3)
+            ORDER BY CASE WHEN G.COCODE = H.companyid THEN 0 ELSE 1 END
+        ) G
         WHERE
             CASE
                 WHEN H.companyid IN (1008,1009) THEN 1007
@@ -994,8 +979,12 @@ BEGIN
             G.NAME,
             H.PEXPBILTI3
         FROM CHALLANHEAD H
-        INNER JOIN GLCHART3 G
-            ON H.PEXPCODE3 = RTRIM(G.AC1) + RTRIM(G.AC3)
+        OUTER APPLY (
+            SELECT TOP 1 G.NAME
+            FROM GLCHART3 G
+            WHERE H.PEXPCODE3 = RTRIM(G.AC1) + RTRIM(G.AC3)
+            ORDER BY CASE WHEN G.COCODE = H.companyid THEN 0 ELSE 1 END
+        ) G
         WHERE
             CASE
                 WHEN H.companyid IN (1008,1009) THEN 1007
@@ -1305,3 +1294,4 @@ BEGIN CATCH
 END CATCH;
 
 END;
+
