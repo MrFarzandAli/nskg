@@ -70,6 +70,81 @@
 				width: 16px !important;
 				height: 16px !important;
 			}
+			.select2-container {
+				width: 100% !important;
+			}
+
+			/* Responsive Header & Company Title */
+			.header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.header .page-title-box {
+				display: flex !important;
+				align-items: center;
+				flex: 1 1 auto;
+				min-width: 0;
+				max-width: calc(100vw - 320px);
+				padding: 0 15px !important;
+				height: 60px;
+			}
+			.header .page-title-box h3 {
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				font-size: 16px !important;
+				font-weight: 600;
+				margin: 0;
+				color: #fff;
+			}
+			.header .user-menu {
+				flex-shrink: 0;
+				margin-left: auto;
+				position: static !important;
+			}
+
+			/* Tablet and Small Screen Navbar Adjustments */
+			@@media (max-width: 1199px) {
+				.header .page-title-box {
+					max-width: calc(100vw - 280px);
+				}
+				.header .page-title-box h3 {
+					font-size: 14px !important;
+				}
+			}
+			@@media (max-width: 991px) {
+				.header .page-title-box {
+					display: flex !important;
+					max-width: calc(100vw - 200px);
+					padding: 0 10px !important;
+				}
+				.header .page-title-box h3 {
+					font-size: 13px !important;
+				}
+				.header .page-title-box .badge {
+					font-size: 11px !important;
+				}
+				.header .header-left {
+					width: auto !important;
+					min-width: 60px;
+					padding: 0 10px !important;
+				}
+			}
+			@@media (max-width: 767px) {
+				.header .page-title-box {
+					max-width: calc(100vw - 140px);
+				}
+				.header .page-title-box .btn-switch-comp span {
+					display: none;
+				}
+			}
+
+			/* Global Table & Report Responsive Wrapper */
+			.table-responsive {
+				overflow-x: auto !important;
+				-webkit-overflow-scrolling: touch;
+			}
 		</style>
 
 		@await RenderSectionAsync("Styles", required: false)
@@ -140,8 +215,8 @@
 			{
 				<span class="badge bg-light text-dark ms-2 font-weight-bold" style="font-size: 13px;">Branch: @companyCode</span>
 			}
-			<a asp-controller="AccountSetup" asp-action="SwitchCompany" class="btn btn-sm btn-outline-light ms-3" title="Switch Company in this browser" style="font-size: 11px; padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.15); color: #fff;">
-				<i class="fa fa-exchange-alt me-1"></i> Switch Company
+			<a asp-controller="AccountSetup" asp-action="SwitchCompany" class="btn btn-sm btn-outline-light ms-3 btn-switch-comp text-nowrap" title="Switch Company in this browser" style="font-size: 11px; padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.15); color: #fff;">
+				<i class="fa fa-exchange-alt me-1"></i><span> Switch Company</span>
 			</a>
 		</div>
 				<!-- /Header Title -->

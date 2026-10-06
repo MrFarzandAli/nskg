@@ -105,39 +105,39 @@
     <div class="card shadow-sm border-0 mb-3">
         <div class="card-body">
             <div class="row g-3">
-                <div class="col-md-2">
+                <div class="col-12 col-sm-6 col-md-2">
                     <label><i class="fa fa-hashtag"></i>Challan No</label>
                     <input asp-for="Head.ChalNo" id="ChalNo" class="form-control form-control-sm" tabindex="1" />
                 </div>
 
-                <div class="col-md-2">
+                <div class="col-12 col-sm-6 col-md-2">
                     <label><i class="fa fa-calendar"></i>Date</label>
                     <input asp-for="Head.DocDate" type="date" value="@(Model?.Head?.DocDate.HasValue == true ? Model.Head.DocDate.Value.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-12 col-sm-6 col-md-4">
                     <label><i class="fa fa-map-marker"></i>Station</label>
                     <select asp-for="Head.StationId" id="StationId" class="form-select form-select-sm select2" tabindex="3"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text", Model != null && Model.Head != null && Model.Head.StationId > 0 ? Model.Head.StationId.ToString() : ""))"></select>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-12 col-sm-6 col-md-4">
                     <label><i class="fa fa-truck"></i>Transporter</label>
                     <select asp-for="Head.TransId" id="TransId" class="form-select form-select-sm select2" tabindex="4"
                             asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text", Model != null && Model.Head != null && Model.Head.TransId > 0 ? Model.Head.TransId.ToString() : ""))"></select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-12 col-sm-6 col-md-3">
                     <label><i class="fa fa-car"></i>Vehicle No</label>
                     <input asp-for="Head.VehicleNo" class="form-control form-control-sm" tabindex="5" />
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-12 col-sm-6 col-md-3">
                     <label><i class="fa fa-user"></i>Party Name</label>
                     <input asp-for="Head.Driver" class="form-control form-control-sm" tabindex="6" />
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <label><i class="fa fa-comment"></i>Remarks</label>
                     <input asp-for="Head.Narration" class="form-control form-control-sm" tabindex="7" />
                 </div>

@@ -35,7 +35,7 @@
                 <div class="row g-3 align-items-end">
 
                     <!-- Company / Rcocode -->
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-6 col-lg-3">
                         <label class="form-label fw-bold">Company / Branch</label>
                         <select class="form-select select2" id="rcocodeSelect" name="rcocode">
                             <option value="ALL" selected="@(selectedRcocode == "ALL" ? "selected" : null)">-- All Companies (Linked) --</option>
@@ -57,7 +57,7 @@
                     </div>
 
                     <!-- Financial Year Filter -->
-                    <div class="col-md-2">
+                    <div class="col-12 col-sm-6 col-lg-2">
                         <label class="form-label fw-bold">Financial Year</label>
                         <select class="form-select select2" id="fyIdSelect" name="fyId">
                             @if (financialYears != null)
@@ -81,19 +81,19 @@
                     </div>
 
                     <!-- From Date -->
-                    <div class="col-md-2">
+                    <div class="col-12 col-sm-6 col-lg-2">
                         <label class="form-label fw-bold">From Date</label>
                         <input type="date" class="form-control" id="fromDateInput" name="fromDate" value="@fromDate" required />
                     </div>
 
                     <!-- To Date -->
-                    <div class="col-md-2">
+                    <div class="col-12 col-sm-6 col-lg-2">
                         <label class="form-label fw-bold">To Date</label>
                         <input type="date" class="form-control" id="toDateInput" name="toDate" value="@toDate" required />
                     </div>
 
                     <!-- Report View Mode -->
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-6 col-lg-3">
                         <label class="form-label fw-bold">Report View</label>
                         <select class="form-select select2" id="reportTypeSelect" name="reportType">
                             <option value="summary" selected="@((ViewBag.ReportType as string) == "summary" ? "selected" : null)">Summary (Control Head & Expense Level 2)</option>
