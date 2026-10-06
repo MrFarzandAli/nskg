@@ -10,80 +10,85 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-3">
             <div>
-                <h3 class="mb-0">
-                    <i class="fa fa-edit text-warning me-2"></i>
+                <h3 class="mb-0 fw-bold text-navy">
+                    <i class="fa fa-pencil-square-o text-primary me-2"></i>
                     Edit Paid Bilty
                 </h3>
-                <small class="text-muted">Update Paid Bilty</small>
+                <small class="text-muted"><i class="fa fa-info-circle me-1"></i> Update Paid Bilty</small>
             </div>
-            <span class="badge bg-dark fs-6 px-3 py-2"><i class="fa fa-file-text me-1"></i>DC No: @Model.Head.DocNo</span>
+            <span class="badge bg-primary fs-6 px-3 py-2 shadow-sm"><i class="fa fa-file-text me-1"></i>DC No: @Model.Head.DocNo</span>
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-1">
             @if (ViewBag.PrevId != null)
             {
-                <a href="@Url.Action("Edit", new { id = ViewBag.PrevId })" class="btn btn-outline-secondary btn-sm" title="Previous Entry">
+                <a href="@Url.Action("Edit", new { id = ViewBag.PrevId })" class="btn btn-outline-secondary btn-sm custom-btn" title="Previous Entry">
                     <i class="fa fa-arrow-left me-1"></i> Prev
                 </a>
             }
             else
             {
-                <button type="button" class="btn btn-outline-secondary btn-sm disabled" disabled>
+                <button type="button" class="btn btn-outline-secondary btn-sm custom-btn disabled" disabled>
                     <i class="fa fa-arrow-left me-1"></i> Prev
                 </button>
             }
 
             @if (ViewBag.NextId != null)
             {
-                <a href="@Url.Action("Edit", new { id = ViewBag.NextId })" class="btn btn-outline-secondary btn-sm" title="Next Entry">
+                <a href="@Url.Action("Edit", new { id = ViewBag.NextId })" class="btn btn-outline-secondary btn-sm custom-btn" title="Next Entry">
                     Next <i class="fa fa-arrow-right ms-1"></i>
                 </a>
             }
             else
             {
-                <button type="button" class="btn btn-outline-secondary btn-sm disabled" disabled>
+                <button type="button" class="btn btn-outline-secondary btn-sm custom-btn disabled" disabled>
                     Next <i class="fa fa-arrow-right ms-1"></i>
                 </button>
             }
 
-            <a asp-action="Create" class="btn btn-outline-primary btn-sm me-2" title="New Entry">
+            <a asp-action="Create" class="btn btn-outline-primary btn-sm custom-btn me-2" title="New Entry">
                 <i class="fa fa-plus-circle me-1"></i> New
             </a>
 
-            <button type="button" class="btn btn-outline-primary btn-sm me-1" onclick="addRow()">
-                <i class="fa fa-plus"></i> Add Item
+            <button type="button" class="btn btn-outline-primary btn-sm custom-btn me-1" onclick="addRow()">
+                <i class="fa fa-plus me-1"></i> Add Item
             </button>
 
-            <button type="submit" id="btnUpdate" class="btn btn-warning btn-sm">
-                <i class="fa fa-save"></i> Update Bilty
+            <button type="submit" id="btnUpdate" class="btn btn-primary btn-sm custom-btn shadow-sm">
+                <i class="fa fa-save me-1"></i> Update Bilty
             </button>
         </div>
     </div>
 
     <!-- MASTER SECTION -->
-    <div class="card shadow-sm border-0 mb-3">
+    <div class="card custom-card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-sliders text-primary me-2"></i> General Details
+            </h6>
+        </div>
         <div class="card-body">
             <div class="row g-3">
 
                 <div class="col-md-2">
-                    <label>Bilty No</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-hashtag text-primary me-1"></i> Bilty No</label>
                     <input asp-for="Head.BillTiNo" id="BiltyNo" class="form-control form-control-sm" tabindex="1" />
                 </div>
 
                 <div class="col-md-2">
-                    <label>Bilty Date</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-calendar text-primary me-1"></i> Bilty Date</label>
                     <input asp-for="Head.DocDate" id="BiltyDate" type="date" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
                 <div class="col-md-4">
-                    <label>Station</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-map-marker text-primary me-1"></i> Station</label>
                     <select asp-for="Head.StationId" id="Station" class="form-select form-select-sm select2" tabindex="3"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text"))">
                     </select>
                 </div>
 
                 <div class="col-md-4">
-                    <label>Party Name</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-user text-primary me-1"></i> Party Name</label>
 
                     <div class="input-group input-group-sm">
                         <select asp-for="Head.CustomerId"
@@ -102,17 +107,17 @@
                 </div>
 
                 <div class="col-md-3">
-                    <label>Send To</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-paper-plane text-primary me-1"></i> Send To</label>
                     <input asp-for="Head.SendTo" id="SendTo" class="form-control form-control-sm" tabindex="5" />
                 </div>
 
                 <div class="col-md-3">
-                    <label>Bill No</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-file-text-o text-primary me-1"></i> Bill No</label>
                     <input asp-for="Head.BilNo" id="BillNo" class="form-control form-control-sm" tabindex="6" />
                 </div>
 
                 <div class="col-md-6">
-                    <label>Remarks</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-comment text-primary me-1"></i> Remarks</label>
                     <input asp-for="Head.Narration" id="Remarks" class="form-control form-control-sm" tabindex="7" />
                 </div>
 
@@ -121,10 +126,10 @@
     </div>
 
     <!-- DETAIL GRID -->
-    <div class="card shadow-sm border-0 mb-3">
-        <div class="card-header bg-white">
-            <h6 class="mb-0">
-                <i class="fa fa-list me-1 text-primary"></i>
+    <div class="card custom-card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-list text-primary me-2"></i>
                 Bilty Items
             </h6>
         </div>
@@ -135,10 +140,10 @@
                 <table class="table table-bordered table-hover mb-0" id="tblItems">
                     <thead class="table-light text-center">
                         <tr>
-                            <th>Item</th>
-                            <th width="120">Qty</th>
-                            <th width="120">Weight</th>
-                            <th width="80">Action</th>
+                            <th><i class="fa fa-cube text-primary me-1"></i> Item</th>
+                            <th width="120"><i class="fa fa-cubes text-primary me-1"></i> Qty</th>
+                            <th width="120"><i class="fa fa-balance-scale text-primary me-1"></i> Weight</th>
+                            <th width="80"><i class="fa fa-cog text-primary me-1"></i> Action</th>
                         </tr>
                     </thead>
 
@@ -156,10 +161,10 @@
     </div>
 
     <!-- EXPENSE SECTION -->
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white">
-            <h6 class="mb-0">
-                <i class="fa fa-money me-1 text-success"></i>
+    <div class="card custom-card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-calculator text-primary me-2"></i>
                 Expense Details
             </h6>
         </div>
@@ -168,48 +173,48 @@
             <div class="row g-3">
 
                 <div class="col-md-2">
-                    <label>Freight</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Freight</label>
                     <input id="Cartage1" asp-for="Head.Cartage1" class="form-control form-control-sm calc-net" tabindex="100" />
                 </div>
 
                 <div class="col-md-2">
-                    <label>Labour</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Labour</label>
                     <input id="Labour" asp-for="Head.Labour" class="form-control form-control-sm calc-net" tabindex="101" />
                 </div>
 
                 <div class="col-md-2">
-                    <label>T.T</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> T.T</label>
                     <input id="T_T" asp-for="Head.T_T" class="form-control form-control-sm calc-net" tabindex="102" />
                 </div>
 
                 <div class="col-md-2">
-                    <label>Lifter</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Lifter</label>
                     <input id="Cartage3" asp-for="Head.Cartage3" class="form-control form-control-sm calc-net" tabindex="103" />
                 </div>
 
                 <div class="col-md-2">
-                    <label>Local Freight</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Local Freight</label>
                     <input id="Cartage2" asp-for="Head.Cartage2" class="form-control form-control-sm calc-net" tabindex="104" />
                 </div>
 
                 <div class="col-md-2">
-                    <label>Party Expense</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Party Expense</label>
                     <input id="PartyEx" asp-for="Head.PartyEx" class="form-control form-control-sm calc-net" tabindex="105" />
                 </div>
 
                 <div class="col-md-2">
-                    <label>Lifter2</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Lifter2</label>
                     <input id="Lifter2" asp-for="Head.Lifter2" class="form-control form-control-sm calc-net" tabindex="106" />
                 </div>
 
                 <div class="col-md-2">
-                    <label>Other</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Other</label>
                     <input id="OtherEx" asp-for="Head.OtherEx" class="form-control form-control-sm calc-net" tabindex="107" />
                 </div>
 
                 <div class="col-md-3">
-                    <label>Net Amount</label>
-                    <input asp-for="Head.NetAmt" readonly class="form-control form-control-sm bg-light" />
+                    <label class="form-label small text-navy fw-bold mb-1"><i class="fa fa-calculator text-primary me-1"></i> Net Amount</label>
+                    <input asp-for="Head.NetAmt" readonly class="form-control form-control-sm bg-light fw-bold text-navy" />
                 </div>
 
             </div>
@@ -350,8 +355,6 @@
                 e.preventDefault();
 
                 var currentElement = $(this);
-                var currentId = currentElement.attr('id');
-                var currentTabIndex = parseInt(currentElement.attr('tabindex')) || 0;
 
                 // Check if it's a Qty field
                 if (currentElement.hasClass('qty')) {
@@ -361,29 +364,24 @@
 
                     // If Qty is empty or null, go to Freight
                     if (!qtyValue || qtyValue.trim() === '') {
-                        $('#Cartage1').focus();
-                        highlightField('#Cartage1');
+                        AppNav.focusElement($('#Cartage1'));
                         return;
                     }
 
                     // If Qty has value, go to Weight field in same row
                     if (weightField.length) {
-                        weightField.focus();
-                        highlightField(weightField);
+                        AppNav.focusElement(weightField);
                     }
                     return;
                 }
 
                 // Check if it's a Weight field
                 if (currentElement.hasClass('qtyperpack')) {
-                    var currentRow = currentElement.closest('tr');
-                    var qtyField = currentRow.find('.qty');
                     var weightValue = currentElement.val();
 
                     // If Weight is empty or null, go to Freight
                     if (!weightValue || weightValue.trim() === '') {
-                        $('#Cartage1').focus();
-                        highlightField('#Cartage1');
+                        AppNav.focusElement($('#Cartage1'));
                         return;
                     }
 
@@ -392,41 +390,13 @@
                     var newRow = $('#tbodyItems tr:last-child');
                     setTimeout(function() {
                         var newQty = newRow.find('.qty');
-                        newQty.focus();
-                        highlightField(newQty);
+                        AppNav.focusElement(newQty);
                     }, 50);
                     return;
                 }
 
-                // Check if it's an expense field (tabindex 100+)
-                if (currentTabIndex >= 100) {
-                    var nextExpense = $('[tabindex="' + (currentTabIndex + 1) + '"]');
-                    if (nextExpense.length) {
-                        nextExpense.focus();
-                        highlightField(nextExpense);
-                    } else {
-                        // After last expense, go to Update button
-                        $('#btnUpdate').focus();
-                        highlightField('#btnUpdate');
-                    }
-                    return;
-                }
-
-                // Navigation for master fields (tabindex 1-7)
-                var nextTabIndex = currentTabIndex + 1;
-                var nextField = $('[tabindex="' + nextTabIndex + '"]');
-
-                if (nextField.length) {
-                    nextField.focus();
-                    highlightField(nextField);
-                } else {
-                    // After remarks (tabindex 7), go to first item Qty
-                    var firstQty = $('#tbodyItems .qty:first');
-                    if (firstQty.length) {
-                        firstQty.focus();
-                        highlightField(firstQty);
-                    }
-                }
+                // Master & Expense fields: delegate to AppNav
+                AppNav.moveToNext(currentElement);
             }
         });
 

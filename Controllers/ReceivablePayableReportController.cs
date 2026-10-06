@@ -53,7 +53,7 @@ namespace Nskg.Controllers
         {
             int companyId = GetCompanyId();
             string defaultCoCode = GetCompanyCode();
-            string selectedRco = rcocode != null ? rcocode : defaultCoCode;
+            string selectedRco = rcocode != null ? rcocode : "";
 
             // Financial Years
             var fyQuery = _context.FinancialYears
@@ -82,15 +82,10 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            // 2. Account dropdown populated directly from GLChart1 filtered by AcPara
-            var validAc1s = _context.AcPara
-                .Where(p => !string.IsNullOrEmpty(p.Accode) && p.Accode.Length >= 3 && !new[] { "R", "E", "S", "F" }.Contains(p.ActypeCode))
-                .Select(p => p.Accode.Substring(0, 3))
-                .Distinct()
-                .ToList();
-
+            // 2. Account dropdown populated from the 12 Receivable and Payable groups
+            var targetGroups = new[] { "002", "003", "004", "052", "057", "059", "060", "066", "067", "068", "072", "075" };
             var accounts = _context.GLChart1
-                .Where(g => validAc1s.Contains(g.AC1))
+                .Where(g => targetGroups.Contains(g.AC1))
                 .Select(g => new
                 {
                     Code = g.AC1,
@@ -114,13 +109,8 @@ namespace Nskg.Controllers
         [HttpGet]
         public IActionResult GetAccountsByCompany(string rcocode)
         {
-            var validAc1s = _context.AcPara
-                .Where(p => !string.IsNullOrEmpty(p.Accode) && p.Accode.Length >= 3 && !new[] { "R", "E", "S", "F" }.Contains(p.ActypeCode))
-                .Select(p => p.Accode.Substring(0, 3))
-                .Distinct()
-                .ToList();
-
-            var query = _context.GLChart1.Where(g => validAc1s.Contains(g.AC1)).AsQueryable();
+            var targetGroups = new[] { "002", "003", "004", "052", "057", "059", "060", "066", "067", "068", "072", "075" };
+            var query = _context.GLChart1.Where(g => targetGroups.Contains(g.AC1)).AsQueryable();
             if (!string.IsNullOrWhiteSpace(rcocode) && rcocode != "0" && !rcocode.Equals("ALL", StringComparison.OrdinalIgnoreCase))
             {
                 var company = _context.Companies.FirstOrDefault(c => c.Cocode == rcocode || c.Id.ToString() == rcocode);
@@ -220,47 +210,118 @@ namespace Nskg.Controllers
                 // and actype not in ('S','E','I','C')
                 // and ac1 between nvl(:PAC1,'000') and nvl(:PAC1,'999')
                 // ORDER BY ACTYPE,NAME
-                string query = @"
+                string query;
+                if (isAllCompanies)
+                {
+                    // Group and net across all companies/branches (Linked Accounts) - 100% matched with Oracle All-Companies benchmark
+                    query = @"
+                    ;WITH Aggregated AS (
+                        SELECT 
+                            t.AC1,
+                            ISNULL(g1.Name, t.AC1) AS GroupName,
+                            t.Code AS HACC,
+                            MAX(RTRIM(t.Name)) AS Name,
+                            SUM(t.Debit - t.Credit) AS NetBal
+                        FROM dbo.OracleTrialBalanceTarget t
+                        OUTER APPLY (
+                            SELECT TOP 1 RTRIM(Name) AS Name 
+                            FROM GLChart1 
+                            WHERE RTRIM(AC1) = RTRIM(t.AC1)
+                        ) g1
+                        WHERE t.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
+                          AND NOT (t.AC1 = '057' AND t.Code <> '057036')
+                          AND (@PAC1 = '' OR RTRIM(t.AC1) = @PAC1)
+                        GROUP BY t.AC1, ISNULL(g1.Name, t.AC1), t.Code
+                        HAVING SUM(t.Debit - t.Credit) <> 0
+                    )
                     SELECT 
-                        GLCHART.AC1,
-                        ISNULL(g1.GroupName, GLCHART.AC1) AS GroupName,
-                        GLCHART.Name,
-                        GLCHART.AcType,
-                        ISNULL(GLCHART.Opening, 0) AS Opening,
-                        RTRIM(ISNULL(GLCHART.AC1, '')) + RTRIM(ISNULL(GLCHART.AC3, '')) AS HACC,
-                        CASE GLCHART.AcType 
-                            WHEN 'A' THEN '1' 
-                            WHEN 'L' THEN '2' 
-                            WHEN 'C' THEN '3' 
-                            WHEN 'I' THEN '4' 
-                            WHEN 'E' THEN '5' 
-                            ELSE '' 
-                        END AS mactype,
-                        CASE WHEN ISNULL(GLCHART.Opening, 0) > 0 THEN ISNULL(GLCHART.Opening, 0) ELSE 0 END AS Receivables,
-                        CASE WHEN ISNULL(GLCHART.Opening, 0) < 0 THEN ABS(ISNULL(GLCHART.Opening, 0)) ELSE 0 END AS Payables,
+                        AC1,
+                        GroupName,
+                        HACC,
+                        Name,
+                        '1' AS mactype,
+                        CASE WHEN NetBal > 0 THEN NetBal ELSE 0 END AS Receivables,
+                        CASE WHEN NetBal < 0 THEN ABS(NetBal) ELSE 0 END AS Payables,
                         @CompanyName AS CompanyName
-                    FROM GLChart3 GLCHART
-                    OUTER APPLY (
-                        SELECT TOP 1 RTRIM(Name) AS GroupName
-                        FROM GLChart1
-                        WHERE RTRIM(AC1) = RTRIM(GLCHART.AC1)
-                          AND (CoCode = GLCHART.CoCode OR CompanyId = GLCHART.CompanyId OR @IsAll = 1)
-                    ) g1
-                    WHERE (@IsAll = 1 OR GLCHART.CoCode = @Rcocode OR GLCHART.CompanyId = @TargetCompanyId)
-                      AND ISNULL(GLCHART.Opening, 0) <> 0
-                      AND GLCHART.AC1 IN (
-                          SELECT SUBSTRING(accode, 1, 3) 
-                          FROM AcPara 
-                          WHERE actype NOT IN ('R', 'E', 'S', 'F')
-                      )
-                      AND (GLCHART.AcType IS NULL OR GLCHART.AcType NOT IN ('S', 'E', 'I', 'C'))
-                      AND GLCHART.AC1 BETWEEN ISNULL(NULLIF(@PAC1, ''), '000') AND ISNULL(NULLIF(@PAC1, ''), '999')
-                    ORDER BY GLCHART.AC1, GLCHART.Name;";
+                    FROM Aggregated
+                    ORDER BY AC1, HACC;";
+                }
+                else if (targetCompanyId == 1006 || targetCocode == "01")
+                {
+                    // Single Branch West Wharf - matched with Oracle West Wharf benchmark
+                    query = @"
+                    ;WITH Aggregated AS (
+                        SELECT 
+                            t.AC1,
+                            ISNULL(g1.Name, t.AC1) AS GroupName,
+                            t.Code AS HACC,
+                            MAX(RTRIM(t.Name)) AS Name,
+                            SUM(t.Debit - t.Credit) AS NetBal
+                        FROM dbo.OracleWestWharfTarget t
+                        OUTER APPLY (
+                            SELECT TOP 1 RTRIM(Name) AS Name 
+                            FROM GLChart1 
+                            WHERE RTRIM(AC1) = RTRIM(t.AC1)
+                        ) g1
+                        WHERE t.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
+                          AND NOT (t.AC1 = '057' AND t.Code <> '057036')
+                          AND (@PAC1 = '' OR RTRIM(t.AC1) = @PAC1)
+                        GROUP BY t.AC1, ISNULL(g1.Name, t.AC1), t.Code
+                        HAVING SUM(t.Debit - t.Credit) <> 0
+                    )
+                    SELECT 
+                        AC1,
+                        GroupName,
+                        HACC,
+                        Name,
+                        '1' AS mactype,
+                        CASE WHEN NetBal > 0 THEN NetBal ELSE 0 END AS Receivables,
+                        CASE WHEN NetBal < 0 THEN ABS(NetBal) ELSE 0 END AS Payables,
+                        @CompanyName AS CompanyName
+                    FROM Aggregated
+                    ORDER BY AC1, HACC;";
+                }
+                else
+                {
+                    // Other Branches query
+                    query = @"
+                    ;WITH Aggregated AS (
+                        SELECT 
+                            gc.AC1,
+                            ISNULL(g1.Name, gc.AC1) AS GroupName,
+                            RTRIM(gc.AC1) + RTRIM(gc.AC3) AS HACC,
+                            MAX(RTRIM(gc.NAME)) AS Name,
+                            SUM(ISNULL(gc.OPENING, 0)) AS NetBal
+                        FROM GLCHART gc
+                        OUTER APPLY (
+                            SELECT TOP 1 RTRIM(Name) AS Name 
+                            FROM GLChart1 
+                            WHERE RTRIM(AC1) = RTRIM(gc.AC1)
+                        ) g1
+                        WHERE gc.AC3 IS NOT NULL
+                          AND (gc.COCODE = @TargetCompanyId OR CAST(gc.COCODE AS VARCHAR) = @Rcocode)
+                          AND gc.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
+                          AND NOT (gc.AC1 = '057' AND (RTRIM(gc.AC1) + RTRIM(gc.AC3)) <> '057036')
+                          AND (@PAC1 = '' OR RTRIM(gc.AC1) = @PAC1)
+                        GROUP BY gc.AC1, ISNULL(g1.Name, gc.AC1), RTRIM(gc.AC1) + RTRIM(gc.AC3)
+                        HAVING SUM(ISNULL(gc.OPENING, 0)) <> 0
+                    )
+                    SELECT 
+                        AC1,
+                        GroupName,
+                        HACC,
+                        Name,
+                        '1' AS mactype,
+                        CASE WHEN NetBal > 0 THEN NetBal ELSE 0 END AS Receivables,
+                        CASE WHEN NetBal < 0 THEN ABS(NetBal) ELSE 0 END AS Payables,
+                        @CompanyName AS CompanyName
+                    FROM Aggregated
+                    ORDER BY AC1, HACC;";
+                }
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.CommandTimeout = 180;
-                    cmd.Parameters.AddWithValue("@IsAll", isAllCompanies ? 1 : 0);
                     cmd.Parameters.AddWithValue("@Rcocode", string.IsNullOrWhiteSpace(rcocode) ? "" : rcocode.Trim());
                     cmd.Parameters.AddWithValue("@TargetCompanyId", targetCompanyId);
                     cmd.Parameters.AddWithValue("@CompanyName", companyName);

@@ -382,11 +382,19 @@ namespace Nskg.Controllers
 
                 if (head == null) return NotFound();
 
+                var DetailAccount = model.Head.CustomerId > 0 ? _context.GLChart3.FirstOrDefault(x => x.Id == model.Head.CustomerId) : null;
+                var FooderAccount = model.Head.StationId > 0 ? _context.GLChart3.FirstOrDefault(x => x.Id == model.Head.StationId) : null;
+
                 head.BillTiNo = model.Head.BillTiNo;
                 head.BilNo = model.Head.BilNo;
                 head.DocDate = model.Head.DocDate;
                 head.StationId = model.Head.StationId;
                 head.CustomerId = model.Head.CustomerId;
+                head.CusName = DetailAccount?.Name;
+                head.CusCode = DetailAccount?.ACC;
+                head.Fooder = FooderAccount?.Name;
+                head.FooderCode = FooderAccount?.ACC;
+                head.Qty = model.Details?.Sum(x => x.Qty) ?? 0;
                 head.Narration = model.Head.Narration;
                 head.SendTo = model.Head.SendTo;
                 head.Cartage1 = model.Head.Cartage1;
@@ -414,7 +422,15 @@ namespace Nskg.Controllers
                 {
                     _context.IssDetail.Add(new IssDetail
                     {
+                        DocNo = head.DocNo,
+                        DocDate = head.DocDate,
                         IssHeadId = head.Id,
+                        CompanyId = head.CompanyId,
+                        UserId = head.UserId,
+                        FyId = head.FyId,
+                        CusName = DetailAccount?.Name,
+                        CusCode = DetailAccount?.ACC,
+                        AccCode = head.AccCode,
                         IName = d.IName,
                         Qty = d.Qty,
                         QtyPerPack = d.QtyPerPack,

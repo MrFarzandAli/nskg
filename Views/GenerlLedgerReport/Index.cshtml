@@ -29,17 +29,22 @@
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold"><i class="fa fa-book me-2 text-primary"></i> General Ledger Report</h3>
+        <div>
+            <h3 class="fw-bold mb-0 text-navy">
+                <i class="fa fa-book me-2 text-primary"></i> General Ledger Report
+            </h3>
+            <small class="text-muted">Standard account ledger with debit, credit, and running balance totals</small>
+        </div>
     </div>
 
     <!-- Filter Card -->
     <div class="card custom-card mb-4 shadow-sm border-0">
-        <div class="card-header bg-primary text-white py-3">
+        <div class="card-header card-header-brand py-3">
             <h5 class="mb-0 fw-semibold">
                 <i class="fa fa-filter me-2"></i> Filter Parameters
             </h5>
         </div>
-        <div class="card-body p-4 bg-light">
+        <div class="card-body report-filter-body">
             <form method="get">
                 <div class="row g-3">
                     <!-- Company Dropdown -->
@@ -125,7 +130,7 @@
 
     <!-- ON SCREEN REPORT PREVIEW -->
     <div id="reportCard" class="card shadow border-0" style="display:none;">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+        <div class="card-header card-header-brand text-white d-flex justify-content-between align-items-center py-2">
             <h5 class="mb-0 fs-6"><i class="fa fa-file-text-o me-2"></i> Report Preview</h5>
             <button type="button" class="btn btn-sm btn-outline-light" onclick="$('#reportCard').hide()">
                 <i class="fa fa-times"></i> Close

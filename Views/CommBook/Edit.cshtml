@@ -104,65 +104,70 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-3">
             <div>
-                <h3 class="mb-0">
-                    <i class="fa fa-truck text-primary me-2"></i>
-                    Commission Book Entry - Edit
+                <h3 class="mb-0 fw-bold text-navy">
+                    <i class="fa fa-pencil-square-o text-primary me-2"></i>
+                    Edit Commission Book
                 </h3>
-                <small class="text-muted">Goods Dispatch / Transport Challan</small>
+                <small class="text-muted"><i class="fa fa-info-circle me-1"></i> Update Commission Book / Trip Settlements</small>
             </div>
-            <span class="badge bg-dark fs-6 px-3 py-2"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
+            <span class="badge bg-primary fs-6 px-3 py-2 shadow-sm"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-1">
             @if (ViewBag.PrevId != null)
             {
-                <a href="@Url.Action("Edit", new { id = ViewBag.PrevId })" class="btn btn-outline-secondary btn-sm" title="Previous Entry">
+                <a href="@Url.Action("Edit", new { id = ViewBag.PrevId })" class="btn btn-outline-secondary btn-sm custom-btn" title="Previous Entry">
                     <i class="fa fa-arrow-left me-1"></i> Prev
                 </a>
             }
             else
             {
-                <button type="button" class="btn btn-outline-secondary btn-sm disabled" disabled>
+                <button type="button" class="btn btn-outline-secondary btn-sm custom-btn disabled" disabled>
                     <i class="fa fa-arrow-left me-1"></i> Prev
                 </button>
             }
 
             @if (ViewBag.NextId != null)
             {
-                <a href="@Url.Action("Edit", new { id = ViewBag.NextId })" class="btn btn-outline-secondary btn-sm" title="Next Entry">
+                <a href="@Url.Action("Edit", new { id = ViewBag.NextId })" class="btn btn-outline-secondary btn-sm custom-btn" title="Next Entry">
                     Next <i class="fa fa-arrow-right ms-1"></i>
                 </a>
             }
             else
             {
-                <button type="button" class="btn btn-outline-secondary btn-sm disabled" disabled>
+                <button type="button" class="btn btn-outline-secondary btn-sm custom-btn disabled" disabled>
                     Next <i class="fa fa-arrow-right ms-1"></i>
                 </button>
             }
 
-            <a asp-action="Create" class="btn btn-outline-primary btn-sm me-2" title="New Entry">
+            <a asp-action="Create" class="btn btn-outline-primary btn-sm custom-btn me-2" title="New Entry">
                 <i class="fa fa-plus-circle me-1"></i> New
             </a>
 
             <button type="button"
                     id="btnAddChallan"
-                    class="btn btn-outline-primary btn-sm me-1"
+                    class="btn btn-outline-primary btn-sm custom-btn me-1"
                     data-bs-toggle="modal"
                     data-bs-target="#biltyModal">
-                <i class="fa fa-plus"></i> Add Challan
+                <i class="fa fa-plus me-1"></i> Add Challan
             </button>
-            <button type="button" class="btn btn-outline-primary btn-sm me-1" onclick="addEmptyRow()">
-                <i class="fa fa-plus"></i> Add Empty Row
+            <button type="button" class="btn btn-outline-secondary btn-sm custom-btn me-1" onclick="addEmptyRow()">
+                <i class="fa fa-plus me-1"></i> Add Empty Row
             </button>
 
-            <button type="submit" id="btnSaveComm" class="btn btn-success btn-sm">
-                <i class="fa fa-save"></i> Update Commission Book
+            <button type="submit" id="btnSaveComm" class="btn btn-primary btn-sm custom-btn shadow-sm">
+                <i class="fa fa-save me-1"></i> Update Commission Book
             </button>
         </div>
     </div>
 
     <!-- MASTER -->
-    <div class="card shadow-sm border-0 mb-3">
+    <div class="card custom-card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-sliders text-primary me-2"></i> General Details
+            </h6>
+        </div>
         <div class="card-body">
             <div class="row g-3">
                 <input asp-for="Head.Id" hidden id="Head_Id"/>
@@ -170,57 +175,57 @@
 
                 <!-- Row 1: Comm No (2), Date (2), Vehicle No (2), Station (3), Station Amt (3) = 12 -->
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label><i class="fa fa-hashtag text-primary me-1"></i>Comm No</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-hashtag text-primary me-1"></i> Comm No</label>
                     <input asp-for="Head.ChalNo" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label><i class="fa fa-calendar text-primary me-1"></i>Date</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-calendar text-primary me-1"></i> Date</label>
                     <input asp-for="Head.DocDate" type="date" value="@(Model != null && Model.Head != null ? Model.Head.DocDate.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label><i class="fa fa-car text-primary me-1"></i>Vehicle No</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-car text-primary me-1"></i> Vehicle No</label>
                     <input asp-for="Head.VehicleNo" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label><i class="fa fa-map-marker text-danger me-1"></i>Station</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-map-marker text-primary me-1"></i> Station</label>
                     <select asp-for="Head.StationId" id="Head_StationId" class="form-select form-select-sm select2"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text", Model?.Head?.StationId?.ToString() ?? ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label><i class="fa fa-money text-success me-1"></i>Station Amt</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Station Amt</label>
                     <input asp-for="Head.StationAmt" class="form-control form-control-sm text-end" />
                 </div>
 
                 <!-- Row 2: Transporter (3), Transporter Amt (3), Advance (3), Advance Amt (3) = 12 -->
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label><i class="fa fa-truck text-info me-1"></i>Transporter</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-truck text-primary me-1"></i> Transporter</label>
                     <select asp-for="Head.TransId" id="Head_TransId" class="form-select form-select-sm select2"
                             asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text", Model?.Head?.TransId?.ToString() ?? ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label><i class="fa fa-money text-success me-1"></i>Transporter Amt</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Transporter Amt</label>
                     <input asp-for="Head.TransporterAmt" class="form-control form-control-sm text-end" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label><i class="fa fa-hand-holding-usd text-warning me-1"></i>Advance</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-hand-holding-usd text-primary me-1"></i> Advance</label>
                     <select asp-for="Head.AdvanceId" id="Head_AdvanceId" class="form-select form-select-sm select2"
                             asp-items="@(new SelectList(ViewBag.Advances, "Value", "Text", Model?.Head?.AdvanceId?.ToString() ?? ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label><i class="fa fa-money text-success me-1"></i>Advance Amt</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Advance Amt</label>
                     <input asp-for="Head.AdvanceAmt" class="form-control form-control-sm text-end" />
                 </div>
 
                 <!-- Row 3: Remarks (12) -->
                 <div class="col-12">
-                    <label><i class="fa fa-comment text-secondary me-1"></i>Remarks</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-comment text-primary me-1"></i> Remarks</label>
                     <input asp-for="Head.Narration" id="Head_Narration" class="form-control form-control-sm" />
                 </div>
             </div>
@@ -228,10 +233,10 @@
     </div>
 
     <!-- DETAIL -->
-    <div class="card shadow-sm border-0 mb-3">
-        <div class="card-header bg-white">
-            <h6 class="mb-0">
-                <i class="fa fa-list text-primary me-1"></i>
+    <div class="card custom-card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-list text-primary me-2"></i>
                 Challan Details
             </h6>
         </div>
@@ -241,17 +246,17 @@
                 <table class="table table-bordered table-hover mb-0" id="tblItems">
                     <thead class="table-light text-center">
                         <tr>
-                            <th width="100">Challan No</th>
-                            <th width="100">Station</th>
-                            <th width="150">Transporter</th>
-                            <th width="150">Party Name</th>
-                            <th width="100">Billti Amt</th>
-                            <th width="100">Paid Amt</th>
-                            <th width="100">To Paid Amt</th>
-                            <th width="100">Delivery Amt</th>
-                            <th width="100">Local Amt</th>
-                            <th width="100">Net Amt</th>
-                            <th width="90"><i class="fa fa-cog"></i></th>
+                            <th width="100"><i class="fa fa-hashtag text-primary me-1"></i> Challan No</th>
+                            <th width="100"><i class="fa fa-map-marker text-primary me-1"></i> Station</th>
+                            <th width="150"><i class="fa fa-truck text-primary me-1"></i> Transporter</th>
+                            <th width="150"><i class="fa fa-user text-primary me-1"></i> Party Name</th>
+                            <th width="100"><i class="fa fa-money text-primary me-1"></i> Bilty Amt</th>
+                            <th width="100"><i class="fa fa-credit-card text-primary me-1"></i> Paid Amt</th>
+                            <th width="100"><i class="fa fa-money text-primary me-1"></i> To Paid Amt</th>
+                            <th width="100"><i class="fa fa-truck text-primary me-1"></i> Delivery Amt</th>
+                            <th width="100"><i class="fa fa-map-marker text-primary me-1"></i> Local Amt</th>
+                            <th width="100"><i class="fa fa-calculator text-primary me-1"></i> Net Amt</th>
+                            <th width="90"><i class="fa fa-cog text-primary me-1"></i> Action</th>
                         </tr>
                         <tr class="total-row">
                             <td colspan="4" class="text-end fw-bold">Total:</td>
@@ -1042,21 +1047,8 @@
                     return;
                 }
 
-                // General form navigation: find all visible focusable elements in the form
-                var $focusable = $('#CommBookForm').find('input, select, textarea, button').filter(':visible').not('[type="hidden"]');
-                var pos = $focusable.index(this);
-                if (pos >= 0 && pos < $focusable.length - 1) {
-                    var $next = $focusable.eq(pos + 1);
-                    $next.focus();
-                    highlightField($next);
-                } else {
-                    // If at end, move to first detail row field if present
-                    var $firstDetail = $('#tbodyItems').find('input, select, textarea').filter(':visible').first();
-                    if ($firstDetail.length) {
-                        $firstDetail.focus();
-                        highlightField($firstDetail);
-                    }
-                }
+                // General form navigation via AppNav
+                AppNav.moveToNext($el);
             }
         });
 

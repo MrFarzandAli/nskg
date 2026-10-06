@@ -67,78 +67,83 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-3">
             <div>
-                <h3 class="mb-0">
-                    <i class="fa fa-truck text-primary me-2"></i>
+                <h3 class="mb-0 fw-bold text-navy">
+                    <i class="fa fa-road text-primary me-2"></i>
                     Challan Entry
                 </h3>
-                <small class="text-muted">Goods Dispatch / Transport Challan</small>
+                <small class="text-muted"><i class="fa fa-info-circle me-1"></i> Goods Dispatch / Transport Challan</small>
             </div>
-            <span class="badge bg-primary fs-6 px-3 py-2"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
+            <span class="badge bg-primary fs-6 px-3 py-2 shadow-sm"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
         </div>
 
         <div>
             <button type="button"
-                    class="btn btn-outline-primary btn-sm me-2"
+                    class="btn btn-outline-primary btn-sm custom-btn me-2"
                     onclick="openBiltyModal('ToPay')"
                     id="addToPayBiltyBtn"
                     tabindex="8">
                 <i class="fa fa-hand-holding-usd me-1"></i> To Pay Bilty
             </button>
             <button type="button"
-                    class="btn btn-outline-success btn-sm me-2"
+                    class="btn btn-outline-success btn-sm custom-btn me-2"
                     onclick="openBiltyModal('Paid')"
                     id="addPaidBiltyBtn"
                     tabindex="9">
                 <i class="fa fa-check-circle me-1"></i> Paid Bilty
             </button>
-            <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="addEmptyRow()" id="addEmptyRowBtn">
-                <i class="fa fa-plus"></i> Add Empty Row
+            <button type="button" class="btn btn-outline-secondary btn-sm custom-btn me-2" onclick="addEmptyRow()" id="addEmptyRowBtn">
+                <i class="fa fa-plus me-1"></i> Add Empty Row
             </button>
 
-            <button type="submit" class="btn btn-success btn-sm" onclick="return validateBeforeSubmit()" id="btnSave">
-                <i class="fa fa-save"></i> Save Challan
+            <button type="submit" class="btn btn-success btn-sm custom-btn shadow-sm" onclick="return validateBeforeSubmit()" id="btnSave">
+                <i class="fa fa-save me-1"></i> Save Challan
             </button>
         </div>
     </div>
 
     <!-- MASTER -->
-    <div class="card shadow-sm border-0 mb-3">
+    <div class="card custom-card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-sliders text-primary me-2"></i> General Details
+            </h6>
+        </div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label><i class="fa fa-hashtag"></i>Challan No</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-hashtag text-primary me-1"></i> Challan No</label>
                     <input asp-for="Head.ChalNo" id="ChalNo" class="form-control form-control-sm" tabindex="1" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label><i class="fa fa-calendar"></i>Date</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-calendar text-primary me-1"></i> Date</label>
                     <input asp-for="Head.DocDate" type="date" value="@(Model?.Head?.DocDate.HasValue == true ? Model.Head.DocDate.Value.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-4">
-                    <label><i class="fa fa-map-marker"></i>Station</label>
-                    <select asp-for="Head.StationId" id="StationId" class="form-select form-select-sm select2" tabindex="3"
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-map-marker text-primary me-1"></i> Station</label>
+                    <select asp-for="Head.StationId" id="Head_StationId" class="form-select form-select-sm select2" tabindex="3"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text", Model != null && Model.Head != null && Model.Head.StationId > 0 ? Model.Head.StationId.ToString() : ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-4">
-                    <label><i class="fa fa-truck"></i>Transporter</label>
-                    <select asp-for="Head.TransId" id="TransId" class="form-select form-select-sm select2" tabindex="4"
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-truck text-primary me-1"></i> Transporter</label>
+                    <select asp-for="Head.TransId" id="Head_TransId" class="form-select form-select-sm select2" tabindex="4"
                             asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text", Model != null && Model.Head != null && Model.Head.TransId > 0 ? Model.Head.TransId.ToString() : ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label><i class="fa fa-car"></i>Vehicle No</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-car text-primary me-1"></i> Vehicle No</label>
                     <input asp-for="Head.VehicleNo" class="form-control form-control-sm" tabindex="5" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label><i class="fa fa-user"></i>Party Name</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-user text-primary me-1"></i> Party Name</label>
                     <input asp-for="Head.Driver" class="form-control form-control-sm" tabindex="6" />
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <label><i class="fa fa-comment"></i>Remarks</label>
+                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-comment text-primary me-1"></i> Remarks</label>
                     <input asp-for="Head.Narration" class="form-control form-control-sm" tabindex="7" />
                 </div>
             </div>
@@ -146,10 +151,10 @@
     </div>
 
     <!-- DETAIL -->
-    <div class="card shadow-sm border-0 mb-3">
-        <div class="card-header bg-white">
-            <h6 class="mb-0">
-                <i class="fa fa-list text-primary me-1"></i>
+    <div class="card custom-card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-list text-primary me-2"></i>
                 Bilty Details
             </h6>
         </div>
@@ -159,13 +164,13 @@
                 <table class="table table-bordered table-hover mb-0" id="tblItems">
                     <thead class="table-light text-center">
                         <tr>
-                            <th><i class="fa fa-barcode"></i> Bilty No</th>
-                            <th><i class="fa fa-user"></i> Party Name</th>
-                            <th><i class="fa fa-share"></i> Send To</th>
-                            <th width="100"><i class="fa fa-cubes"></i> Qty</th>
-                            <th width="120"><i class="fa fa-money"></i> Bilty Amt</th>
-                            <th width="120"><i class="fa fa-credit-card"></i> Paid Amt</th>
-                            <th width="80"><i class="fa fa-cog"></i></th>
+                            <th><i class="fa fa-barcode text-primary me-1"></i> Bilty No</th>
+                            <th><i class="fa fa-user text-primary me-1"></i> Party Name</th>
+                            <th><i class="fa fa-share text-primary me-1"></i> Send To</th>
+                            <th width="100"><i class="fa fa-cubes text-primary me-1"></i> Qty</th>
+                            <th width="120"><i class="fa fa-money text-primary me-1"></i> Bilty Amt</th>
+                            <th width="120"><i class="fa fa-credit-card text-primary me-1"></i> Paid Amt</th>
+                            <th width="80"><i class="fa fa-cog text-primary me-1"></i> Action</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyItems">
@@ -461,12 +466,13 @@
 
             // Prevent focus from going back to Add Bilty button and check station
             $('#biltyModal').on('show.bs.modal', function(e) {
-                var stationId = $('#Head_StationId').val();
+                var stationId = $('#Head_StationId').val() || $('#StationId').val();
                 if (!stationId || stationId === "" || stationId === "0") {
                     alert("Please select Station first.");
                     e.preventDefault();
-                    $('#Head_StationId').focus();
-                    highlightField('#Head_StationId');
+                    var $st = $('#Head_StationId').length ? $('#Head_StationId') : $('#StationId');
+                    $st.focus();
+                    highlightField($st);
                     return false;
                 }
                 filterBiltiesByStation(stationId);
@@ -529,31 +535,8 @@
                     return;
                 }
 
-                // Check if it's an expense field (tabindex 100+)
-                if (currentTabIndex >= 100) {
-                    var nextExpense = $('[tabindex="' + (currentTabIndex + 1) + '"]');
-                    if (nextExpense.length) {
-                        nextExpense.focus();
-                        highlightField(nextExpense);
-                    } else {
-                        $('#btnSave').focus();
-                        highlightField('#btnSave');
-                    }
-                    return;
-                }
-
-                // Navigation for master fields (tabindex 1-7)
-                var nextTabIndex = currentTabIndex + 1;
-                var nextField = $('[tabindex="' + nextTabIndex + '"]');
-
-                if (nextField.length) {
-                    nextField.focus();
-                    highlightField(nextField);
-                } else {
-                    // After remarks (tabindex 7), go to Add Bilty button
-                    $('#addBiltyBtn').focus();
-                    highlightField('#addBiltyBtn');
-                }
+                // Master & Expense fields: delegate to AppNav
+                AppNav.moveToNext(currentElement);
             }
         });
 
@@ -577,11 +560,12 @@
             type = type || 'All';
             currentBiltyFilterType = type;
 
-            var stationId = $('#Head_StationId').val();
+            var stationId = $('#Head_StationId').val() || $('#StationId').val();
             if (!stationId || stationId === "" || stationId === "0") {
                 alert("Please select Station first.");
-                $('#Head_StationId').focus();
-                highlightField('#Head_StationId');
+                var $st = $('#Head_StationId').length ? $('#Head_StationId') : $('#StationId');
+                $st.focus();
+                highlightField($st);
                 return;
             }
 
@@ -599,7 +583,7 @@
 
         function setBiltyFilterType(type) {
             currentBiltyFilterType = type;
-            var stationId = $('#Head_StationId').val();
+            var stationId = $('#Head_StationId').val() || $('#StationId').val();
             updateBiltyFilterButtons(type);
             filterBiltiesByStation(stationId, type);
         }
@@ -614,7 +598,8 @@
         // Filter modal bilty rows by selected station and bilty type
         function filterBiltiesByStation(stationId, biltyType) {
             biltyType = biltyType || currentBiltyFilterType || 'All';
-            var selectedText = $("#Head_StationId option:selected").text().toLowerCase().trim();
+            var $st = $('#Head_StationId').length ? $('#Head_StationId') : $('#StationId');
+            var selectedText = ($st.find("option:selected").text() || "").toLowerCase().trim();
             var stationName = selectedText.replace(/\s*\([^)]*\)/g, '').trim();
 
             var visibleCount = 0;

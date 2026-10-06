@@ -212,6 +212,137 @@
 				overflow-x: auto !important;
 				-webkit-overflow-scrolling: touch;
 			}
+
+			/* ================================================================
+			   NSKG ENTERPRISE BRANDING & UNIFIED DESIGN SYSTEM
+			   Theme synchronized with SmartHR Warm Sunset Palette (#ff9b44 -> #fc6075)
+			   ================================================================ */
+			:root {
+				--brand-primary: #ff9b44;       /* SmartHR Warm Amber / Coral Orange */
+				--brand-secondary: #fc6075;     /* Warm Sunset Crimson / Rose */
+				--brand-gradient: linear-gradient(135deg, #ff9b44 0%, #fc6075 100%);
+				--brand-dark: #1e293b;          /* Professional Slate 800 */
+				--brand-light: #fffaf5;         /* Subtle Warm Tint */
+				--brand-border: #f1dfd3;        /* Soft Warm Border */
+			}
+
+			.bg-brand, .bg-brand-gradient, .card-header-brand {
+				background: linear-gradient(135deg, #ff9b44 0%, #fc6075 100%) !important;
+				color: #ffffff !important;
+				border-bottom: none !important;
+			}
+			.card-header-brand h5, .card-header-brand h6 {
+				color: #ffffff !important;
+			}
+			.card-header-brand small, .card-header-brand .text-white-50, .card-header-brand .text-muted {
+				color: rgba(255, 255, 255, 0.88) !important;
+			}
+
+			.text-brand, .text-navy {
+				color: #e65100 !important;      /* Elegant Deep Warm Amber */
+			}
+
+			.btn-brand {
+				background: linear-gradient(135deg, #ff9b44 0%, #fc6075 100%) !important;
+				border: none !important;
+				color: #ffffff !important;
+				box-shadow: 0 2px 6px rgba(255, 155, 68, 0.35);
+			}
+			.btn-brand:hover {
+				background: linear-gradient(135deg, #f78523 0%, #e84a60 100%) !important;
+				color: #ffffff !important;
+				box-shadow: 0 4px 10px rgba(255, 155, 68, 0.45);
+			}
+
+			.card.custom-card, .card.report-card {
+				border-radius: 8px !important;
+				border: 1px solid #f1e5dc !important;
+				box-shadow: 0 4px 14px rgba(255, 155, 68, 0.08) !important;
+				overflow: hidden;
+			}
+
+			.custom-btn {
+				border-radius: 5px !important;
+				font-weight: 500 !important;
+				transition: all 0.2s ease-in-out;
+			}
+			.custom-btn:hover {
+				transform: translateY(-1px);
+				box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+			}
+
+			.report-filter-body {
+				background-color: #fdfdfd !important;
+				padding: 1.25rem !important;
+			}
+
+			.report-page-header h3 {
+				color: #e65100 !important;
+				font-weight: 700 !important;
+			}
+
+			/* Unified Form Label & Icon Standard */
+			.form-label, label {
+				font-weight: 500;
+				color: #334155;
+			}
+			.form-label i, label i {
+				color: #ff9b44 !important;
+			}
+
+			/* Master and Detail Card Header Standard */
+			.card-header-subtle {
+				background: #ffffff !important;
+				border-bottom: 1px solid #f1dfd3 !important;
+				padding: 0.6rem 1rem !important;
+			}
+			.card-header-subtle h6 {
+				color: #e65100 !important;
+				font-weight: 600 !important;
+				margin-bottom: 0;
+			}
+
+			/* Table header icons and card header icons unified warm theme */
+			.table-light th i, table thead th i {
+				color: #ff9b44 !important;
+			}
+			h3 i.text-primary, h4 i.text-primary, h5 i.text-primary, h6 i.text-primary {
+				color: #ff9b44 !important;
+			}
+			.badge.bg-primary {
+				background: linear-gradient(135deg, #ff9b44 0%, #fc6075 100%) !important;
+			}
+
+			/* Buttons aesthetic harmony */
+			.btn-primary {
+				background: linear-gradient(135deg, #ff9b44 0%, #fc6075 100%) !important;
+				border: none !important;
+				color: #ffffff !important;
+				box-shadow: 0 2px 5px rgba(255, 155, 68, 0.28) !important;
+			}
+			.btn-primary:hover, .btn-primary:focus {
+				background: linear-gradient(135deg, #f78523 0%, #e84a60 100%) !important;
+				color: #ffffff !important;
+				box-shadow: 0 4px 10px rgba(255, 155, 68, 0.4) !important;
+			}
+			.btn-outline-primary {
+				color: #ff9b44 !important;
+				border-color: #ff9b44 !important;
+			}
+			.btn-outline-primary:hover {
+				background: linear-gradient(135deg, #ff9b44 0%, #fc6075 100%) !important;
+				color: #ffffff !important;
+				border-color: transparent !important;
+			}
+
+			/* Spinner & Focus highlight */
+			.spinner-border.text-primary {
+				color: #ff9b44 !important;
+			}
+			.form-control:focus, .form-select:focus, .select2-container--default.select2-container--focus .select2-selection--single {
+				border-color: #ff9b44 !important;
+				box-shadow: 0 0 0 0.2rem rgba(255, 155, 68, 0.2) !important;
+			}
 		</style>
 
 		@await RenderSectionAsync("Styles", required: false)
@@ -461,7 +592,7 @@
 				@if (User.IsInRole("Admin"))
 				{
 					
-						var adminControllers = new[] { "Company", "FinancialYear", "Security", "auditlogreport" };
+						var adminControllers = new[] { "Company", "FinancialYear", "Security", "auditlogreport", "Backup" };
 						var showAdmin = isControllerIn(adminControllers);
 					
 					<li class="submenu@(showAdmin ? " active" : "")">
@@ -472,6 +603,7 @@
 							<li><a class="@(isActive("FinancialYear","CloseYear") ? "active" : "")" asp-controller="FinancialYear" asp-action="CloseYear">Financial Years Closing</a></li>
 							<li><a class="@(isActive("Security","Index") ? "active" : "")" asp-controller="Security" asp-action="Index">Security</a></li>
 							<li><a class="@(isActive("auditlogreport","Index") ? "active" : "")" asp-controller="auditlogreport" asp-action="Index">Audit Log Report</a></li>
+							<li><a class="@(isActive("Backup","Index") ? "active" : "")" asp-controller="Backup" asp-action="Index"><i class="la la-database"></i> Database Backup</a></li>
 						</ul>
 					</li>
 					
@@ -1510,6 +1642,359 @@
 
 				return false;
 		}
+		</script>
+
+		<!-- Global Enter Navigation and Arrow Key Open for Select2 Dropdowns across Transactions & Operations -->
+		<style>
+			/* Active field focus indicator for keyboard navigation across all views */
+			.active-field,
+			.select2-container.active-field .select2-selection {
+				border-color: #0d6efd !important;
+				box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+				outline: 0 !important;
+			}
+		</style>
+		<script>
+		window.AppNav = {
+			// Focus target element properly (handles Select2 container, text selection, etc.)
+			focusElement: function(el) {
+				if (!el) return false;
+				var $el = $(el);
+				if (!$el.length) return false;
+
+				// If it's a select element
+				if ($el.is('select')) {
+					if ($el.hasClass('select2') || $el.data('select2') || $el.hasClass('select2-hidden-accessible')) {
+						var $s2 = $el.data('select2') ? $el.data('select2').$container : null;
+						if (!$s2 || !$s2.length) $s2 = $el.nextAll('.select2-container').first();
+						if (!$s2 || !$s2.length) $s2 = $el.closest('.input-group').find('.select2-container');
+						if (!$s2 || !$s2.length) $s2 = $el.parent().find('.select2-container');
+						if ($s2 && $s2.length) {
+							var $selection = $s2.find('.select2-selection');
+							if ($selection.length) {
+								$selection.focus();
+								AppNav.highlightField($s2);
+								return true;
+							}
+						}
+					}
+				}
+
+				// If it's already a select2-selection
+				if ($el.hasClass('select2-selection')) {
+					$el.focus();
+					AppNav.highlightField($el.closest('.select2-container'));
+					return true;
+				}
+
+				// Normal element
+				$el.focus();
+				if ($el.is('input:text, input[type=number], input[type=date]')) {
+					try { $el.select(); } catch (e) {}
+				}
+				AppNav.highlightField($el);
+				return true;
+			},
+
+			// Apply visual highlight to the currently active element
+			highlightField: function(el) {
+				$('.active-field').removeClass('active-field');
+				var $target = $(el);
+				if ($target.hasClass('select2-selection')) {
+					$target.closest('.select2-container').addClass('active-field');
+				} else {
+					$target.addClass('active-field');
+				}
+			},
+
+			// Get the underlying <select> element from a .select2-selection
+			getSelectFromSelection: function($selection) {
+				var $container = $selection.closest('.select2-container');
+				var $select = $container.prev('select');
+				if (!$select.length) $select = $container.closest('.input-group').find('select');
+				if (!$select.length) $select = $container.parent().find('select');
+				if (!$select.length) {
+					$select = $('select').filter(function () {
+						var inst = $(this).data('select2');
+						return inst && inst.$container && inst.$container[0] === $container[0];
+					});
+				}
+				return $select;
+			},
+
+			// Open a Select2 dropdown
+			openSelect2: function($select) {
+				if ($select && $select.length) {
+					if (!$select.data('select2')) {
+						try { $select.select2(); } catch (e) {}
+					}
+					try {
+						$select.select2('open');
+					} catch (e) {
+						console.error('Error opening Select2', e);
+					}
+				}
+			},
+
+			// Find all focusable elements in logical visual order within a container
+			getFocusableElements: function($container) {
+				if (!$container || !$container.length) $container = $(document.body);
+
+				// Exclude top-header toolbar submit buttons from linear field tab sequence
+				var candidates = $container.find('input:visible:not([disabled]):not([type=hidden]):not([type=button]):not([type=submit]), select:not([disabled]), textarea:visible:not([disabled]), #addBiltyBtn:visible, #btnAddChallan:visible, #btnSave:visible, #btnSaveComm:visible, #btnUpdate:visible');
+
+				var focusable = [];
+				candidates.each(function () {
+					var $el = $(this);
+					if ($el.hasClass('select2-search__field')) return; // ignore dropdown search box
+
+					// Ignore header toolbar buttons
+					if ($el.is('button') && ($el.closest('.header').length || $el.closest('.d-flex.justify-content-between').length)) {
+						return;
+					}
+
+					if ($el.is('select')) {
+						if ($el.hasClass('select2') || $el.data('select2') || $el.hasClass('select2-hidden-accessible')) {
+							var $s2 = $el.data('select2') ? $el.data('select2').$container : null;
+							if (!$s2 || !$s2.length) $s2 = $el.nextAll('.select2-container').first();
+							if (!$s2 || !$s2.length) $s2 = $el.closest('.input-group').find('.select2-container');
+							if (!$s2 || !$s2.length) $s2 = $el.parent().find('.select2-container');
+							if ($s2 && $s2.length && $s2.is(':visible') && $s2.css('visibility') !== 'hidden') {
+								var $selection = $s2.find('.select2-selection');
+								if ($selection.length) {
+									focusable.push($selection[0]);
+								}
+							}
+						} else if ($el.is(':visible') && $el.css('visibility') !== 'hidden') {
+							focusable.push($el[0]);
+						}
+					} else if ($el.is(':visible') && $el.css('visibility') !== 'hidden') {
+						focusable.push($el[0]);
+					}
+				});
+
+				return $(focusable);
+			},
+
+			// Move to next field intelligently
+			moveToNext: function($current) {
+				if (!$current || !$current.length) return false;
+
+				var $form = $current.closest('form');
+				if (!$form.length) $form = $current.closest('.card, body');
+
+				// Explicit navigation for Voucher Master fields (prevents any accidental jumps to Save/Update)
+				if ($current.is('input[name*="Vono"], #Head_Vono')) {
+					var $vodate = $form.find('input[name*="Vodate"]:visible').first();
+					if ($vodate.length) return AppNav.focusElement($vodate);
+				}
+
+				if ($current.is('input[name*="Vodate"], #Head_Vodate')) {
+					var $entryDate = $form.find('input[name*="EntryDate"]:not([readonly]):visible').first();
+					if ($entryDate.length) return AppNav.focusElement($entryDate);
+					var $acc = $form.find('select[name*="gl3Id"]').first();
+					if ($acc.length) return AppNav.focusElement($acc);
+				}
+
+				if ($current.is('input[name*="EntryDate"], #Head_EntryDate')) {
+					var $acc = $form.find('select[name*="gl3Id"]').first();
+					if ($acc.length) return AppNav.focusElement($acc);
+				}
+
+				// Master Narration in Voucher -> First detail row Account
+				if ($current.is('input[name="Head.Narration"], #Head_Narration') && $('#tbl').length) {
+					var $firstDetailAcc = $('#tbl tbody tr:not(#noDataRow) select[name*="gl3Id"]').first();
+					if ($firstDetailAcc.length) return AppNav.focusElement($firstDetailAcc);
+				}
+
+				// Check if inside Voucher detail table row:
+				if ($current.closest('#tbl tbody tr').length) {
+					// If in narration of detail row, add row and focus new row's Account
+					if ($current.is('input[name*="Narration"]')) {
+						if (typeof addRow === 'function') {
+							addRow();
+							setTimeout(function () {
+								var $lastRow = $('#tbl tbody tr:not(#noDataRow)').last();
+								var $newAcc = $lastRow.find('select[name*="gl3Id"]');
+								if ($newAcc.length) {
+									AppNav.focusElement($newAcc);
+								}
+							}, 50);
+							return true;
+						}
+					}
+				}
+
+				// 1. Check if $current has positive tabindex or if its underlying select has tabindex
+				var tabIndex = 0;
+				if ($current.hasClass('select2-selection')) {
+					var $sel = AppNav.getSelectFromSelection($current);
+					tabIndex = parseInt($sel.attr('data-orig-tabindex')) || parseInt($sel.data('tabindex')) || parseInt($sel.attr('tabindex')) || 0;
+				} else {
+					tabIndex = parseInt($current.attr('data-orig-tabindex')) || parseInt($current.data('tabindex')) || parseInt($current.attr('tabindex')) || 0;
+				}
+
+				// If tabindex-based navigation is used on this form:
+				if (tabIndex > 0) {
+					// Master fields (tabindex 1-99)
+					if (tabIndex < 100) {
+						var nextIdx = tabIndex + 1;
+						var $next = $('[data-orig-tabindex="' + nextIdx + '"]:visible, [tabindex="' + nextIdx + '"]:visible, select[data-orig-tabindex="' + nextIdx + '"], select[tabindex="' + nextIdx + '"]').first();
+						if ($next.length) {
+							return AppNav.focusElement($next);
+						}
+
+						// Check common next targets after master fields:
+						var $firstItem = $('#tbodyItems .qty:first:visible, #tbodyItems input:first:visible');
+						if ($firstItem.length) return AppNav.focusElement($firstItem);
+
+						var $addBilty = $('#addBiltyBtn:visible, #btnAddChallan:visible');
+						if ($addBilty.length) return AppNav.focusElement($addBilty);
+					}
+					// Expense fields (tabindex >= 100)
+					else {
+						var nextExpIdx = tabIndex + 1;
+						var $nextExp = $('[data-orig-tabindex="' + nextExpIdx + '"]:visible, [tabindex="' + nextExpIdx + '"]:visible, select[data-orig-tabindex="' + nextExpIdx + '"], select[tabindex="' + nextExpIdx + '"]').first();
+						if ($nextExp.length) {
+							return AppNav.focusElement($nextExp);
+						}
+						var $save = $('#btnSave:visible, #btnSaveComm:visible, #btnUpdate:visible').first();
+						if ($save.length) return AppNav.focusElement($save);
+					}
+				}
+
+				// 2. DOM-based navigation using DOM tree order (compareDocumentPosition)
+				var $focusable = AppNav.getFocusableElements($form);
+				
+				// Identify current container element so we compare from its end and NEVER refocus itself
+				var $compareFrom = $current;
+				if ($current.hasClass('select2-selection')) {
+					$compareFrom = $current.closest('.select2-container');
+				} else if ($current.is('select')) {
+					var $s2 = $current.data('select2') ? $current.data('select2').$container : $current.nextAll('.select2-container').first();
+					if (!$s2 || !$s2.length) $s2 = $current.closest('.input-group').find('.select2-container');
+					if ($s2 && $s2.length) $compareFrom = $s2;
+				}
+				var compareDomEl = $compareFrom[0];
+
+				// Identify all elements that belong to current field so we never refocus current field
+				var $selfElements = $current;
+				if ($current.hasClass('select2-selection')) {
+					var $underlying = AppNav.getSelectFromSelection($current);
+					$selfElements = $current.add($current.closest('.select2-container')).add($underlying);
+				} else if ($current.is('select')) {
+					var $s2Cont = $current.data('select2') ? $current.data('select2').$container : $current.nextAll('.select2-container').first();
+					$selfElements = $current.add($s2Cont);
+					if ($s2Cont && $s2Cont.length) $selfElements = $selfElements.add($s2Cont.find('*'));
+				}
+
+				// Find the first focusable element that appears AFTER compareDomEl in document order
+				for (var i = 0; i < $focusable.length; i++) {
+					var el = $focusable[i];
+					if ($selfElements.is(el) || $.contains(compareDomEl, el)) continue;
+					if (compareDomEl.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) {
+						return AppNav.focusElement(el);
+					}
+				}
+
+				return false;
+			}
+		};
+
+		$(document).ready(function () {
+			// Backward compatibility for views that call highlightField directly
+			window.highlightField = AppNav.highlightField;
+
+			// Cache original tabindexes before Select2 alters them
+			function cacheTabindexes() {
+				$('[tabindex]').each(function () {
+					var t = $(this).attr('tabindex');
+					if (t && parseInt(t) > 0 && !$(this).attr('data-orig-tabindex')) {
+						$(this).attr('data-orig-tabindex', t).data('tabindex', parseInt(t));
+					}
+				});
+			}
+			cacheTabindexes();
+			$(document).ajaxComplete(function () { cacheTabindexes(); });
+
+			// 1. ArrowUp / ArrowDown on Select2 container opens the dropdown list
+			$(document).on('keydown', '.select2-selection', function (e) {
+				if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+					var $container = $(this).closest('.select2-container');
+					if (!$container.hasClass('select2-container--open')) {
+						e.preventDefault();
+						var $select = AppNav.getSelectFromSelection($(this));
+						AppNav.openSelect2($select);
+					}
+				}
+			});
+
+			$(document).on('keydown', 'select:not(.select2-hidden-accessible)', function (e) {
+				if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+					if ($(this).data('select2') && !$(this).data('select2').isOpen()) {
+						e.preventDefault();
+						AppNav.openSelect2($(this));
+					}
+				}
+			});
+
+			// 2. Select2: When an item is selected from dropdown, advance immediately to next field!
+			$(document).on('select2:select', 'select', function (e) {
+				var $sel = $(this);
+				setTimeout(function () {
+					AppNav.moveToNext($sel);
+				}, 100);
+			});
+
+			// 3. Enter key handling:
+			// - On Select2 selection container:
+			//   If closed:
+			//     - If has value -> advance to NEXT field!
+			//     - If empty / unselected -> 1st Enter opens the dropdown list!
+			$(document).on('keydown', '.select2-selection', function (e) {
+				if (e.key === 'Enter') {
+					var $container = $(this).closest('.select2-container');
+					// If dropdown is currently OPEN, let Select2 pick the item
+					if ($container.hasClass('select2-container--open')) {
+						return;
+					}
+
+					e.preventDefault();
+					var $select = AppNav.getSelectFromSelection($(this));
+
+					var val = $select.val();
+					if (!val || val === '' || val === '0') {
+						// 1st Enter: Opens the dropdown list if empty
+						AppNav.openSelect2($select);
+					} else {
+						// Already has value -> advance to NEXT field!
+						AppNav.moveToNext($select.length ? $select : $(this));
+					}
+				}
+			});
+
+			// - On normal inputs, standard selects, and textareas:
+			$(document).on('keydown', 'input:not([type=submit]):not([type=button]):not([type=checkbox]):not([type=radio]), select:not(.select2-hidden-accessible), textarea', function (e) {
+				if (e.key === 'Enter') {
+					// Ignore if dropdown popup search field or dropdown is open
+					if ($(this).hasClass('select2-search__field') || $('.select2-container--open').length > 0) {
+						return;
+					}
+
+					if ($(this).is('textarea') && e.shiftKey) {
+						return;
+					}
+
+					e.preventDefault();
+					AppNav.moveToNext($(this));
+				}
+			});
+
+			// Ensure active focus highlighting on focus
+			$(document).on('focus', 'input, select, textarea, .select2-selection, button', function () {
+				AppNav.highlightField(this);
+			});
+		});
 		</script>
 
 		@await RenderSectionAsync("Scripts", required: false)

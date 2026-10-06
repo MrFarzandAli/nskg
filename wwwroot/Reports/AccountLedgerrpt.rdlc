@@ -42,6 +42,10 @@
             <TablixColumn>
               <Width>0.45in</Width>
             </TablixColumn>
+            <!-- 9.5 Initials -->
+            <TablixColumn>
+              <Width>0.55in</Width>
+            </TablixColumn>
             <!-- 10. DEBIT -->
             <TablixColumn>
               <Width>1.05in</Width>
@@ -203,6 +207,23 @@
                       <Paragraphs>
                         <Paragraph>
                           <TextRuns><TextRun><Value>Qty</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>2pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>2pt</PaddingTop><PaddingBottom>2pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="HdrInitials">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>Initials</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns>
                           <Style><TextAlign>Center</TextAlign></Style>
                         </Paragraph>
                       </Paragraphs>
@@ -433,6 +454,24 @@
                   </CellContents>
                 </TablixCell>
 
+                <!-- Initials -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="ValInitials">
+                      <Paragraphs>
+                        <Paragraph>
+                          <TextRuns><TextRun><Value>=Fields!Initials.Value</Value><Style><FontFamily>Arial</FontFamily><FontSize>8pt</FontSize></Style></TextRun></TextRuns>
+                          <Style><TextAlign>Center</TextAlign></Style>
+                        </Paragraph>
+                      </Paragraphs>
+                      <Style>
+                        <Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border>
+                        <PaddingLeft>2pt</PaddingLeft><PaddingRight>2pt</PaddingRight><PaddingTop>1pt</PaddingTop><PaddingBottom>1pt</PaddingBottom>
+                      </Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
                 <!-- DEBIT -->
                 <TablixCell>
                   <CellContents>
@@ -591,6 +630,16 @@
                   </CellContents>
                 </TablixCell>
 
+                <!-- 9.5 Initials -->
+                <TablixCell>
+                  <CellContents>
+                    <Textbox Name="TotInitials">
+                      <Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs>
+                      <Style><Border><Color>Black</Color><Style>Solid</Style><Width>0.5pt</Width></Border></Style>
+                    </Textbox>
+                  </CellContents>
+                </TablixCell>
+
                 <!-- 10. Total Debit -->
                 <TablixCell>
                   <CellContents>
@@ -651,6 +700,7 @@
 
         <TablixColumnHierarchy>
           <TablixMembers>
+            <TablixMember />
             <TablixMember />
             <TablixMember />
             <TablixMember />
@@ -1040,6 +1090,10 @@
         <Field Name="Qty">
           <DataField>Qty</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Initials">
+          <DataField>Initials</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Debit">
           <DataField>Debit</DataField>

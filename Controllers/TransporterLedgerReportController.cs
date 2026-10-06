@@ -185,10 +185,10 @@ namespace Nskg.Controllers
             {
                 con.Open();
 
-                // 1. Run dbo.PROCESSDETAIL_Transporter to populate ACCUMULATED & ACCOPEN
+                // 1. Run dbo.sp_ProcessTransporterLedger to populate ACCUMULATED & ACCOPEN
                 try
                 {
-                    using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_Transporter", con))
+                    using (SqlCommand cmdProc = new SqlCommand("dbo.sp_ProcessTransporterLedger", con))
                     {
                         cmdProc.CommandType = CommandType.StoredProcedure;
                         cmdProc.CommandTimeout = 180;
@@ -210,25 +210,11 @@ namespace Nskg.Controllers
                             cmdProc2.Parameters.AddWithValue("@CompanyId", companyId);
                             cmdProc2.Parameters.AddWithValue("@TDATE", toDate.Date);
                             cmdProc2.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                            cmdProc2.Parameters.AddWithValue("@VehicleNo", vehicleNo?.Trim() ?? "");
                             cmdProc2.ExecuteNonQuery();
                         }
                     }
-                    catch
-                    {
-                        try
-                        {
-                            using (SqlCommand cmdProc3 = new SqlCommand("dbo.PROCESSDETAIL", con))
-                            {
-                                cmdProc3.CommandType = CommandType.StoredProcedure;
-                                cmdProc3.CommandTimeout = 180;
-                                cmdProc3.Parameters.AddWithValue("@CompanyId", companyId);
-                                cmdProc3.Parameters.AddWithValue("@TDATE", toDate.Date);
-                                cmdProc3.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                                cmdProc3.ExecuteNonQuery();
-                            }
-                        }
-                        catch { }
-                    }
+                    catch { }
                 }
 
                 // 2. Fetch Account Name & Company Name
@@ -252,7 +238,9 @@ namespace Nskg.Controllers
                         accName += $" (VEHICLE: {vehicleNo.Trim()})";
                 }
 
-                string companyName = companyId == 0 ? "All Companies" : "West Wharf-New Shadab Karachi Goods Transports";
+                string companyName = companyId == 0 
+                    ? "New Shadab Karachi Goods Transport Company (All Branches - Linked)" 
+                    : "West Wharf-New Shadab Karachi Goods Transports";
                 if (companyId > 0)
                 {
                     using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))

@@ -238,6 +238,7 @@ namespace Nskg.Controllers
                             CAST('' AS VARCHAR(100)) AS Station,
                             CAST('' AS VARCHAR(250)) AS IName,
                             CAST(NULL AS DECIMAL(18,2)) AS Qty,
+                            CAST('' AS VARCHAR(100)) AS Initials,
                             CASE WHEN @OpeningBal > 0 THEN @OpeningBal ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
                             CASE WHEN @OpeningBal < 0 THEN ABS(@OpeningBal) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
                             @OpeningBal AS Balance,
@@ -260,7 +261,45 @@ namespace Nskg.Controllers
                             END AS VehicleNo,
                             ISNULL(RTRIM(LTRIM(a.STATION)), '') AS Station,
                             ISNULL(a.INAME, ISNULL(a.NARRATION, '')) AS IName,
-                            a.QTY AS Qty,
+                            COALESCE(
+                                a.QTY,
+                                CASE 
+                                    WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 
+                                    THEN (
+                                        SELECT TOP 1 ih.Qty 
+                                        FROM IssHead ih 
+                                        WHERE ih.BillTiNo = a.BILLTINO 
+                                          AND (ih.BilNo = a.BILNO OR a.BILNO IS NULL)
+                                          AND ISNULL(ih.IsDeleted, 0) = 0
+                                        ORDER BY ih.Id DESC
+                                    )
+                                    ELSE NULL
+                                END
+                            ) AS Qty,
+                            CASE 
+                                WHEN a.VOTYPE IN ('JV','CB','BB','SB','PV','RV','CR','CP','BR','BP') THEN (
+                                    SELECT TOP 1 COALESCE(NULLIF(RTRIM(vh.UserId),''), NULLIF(RTRIM(vh.CreatedBy),''), '')
+                                    FROM VoHead vh 
+                                    WHERE RTRIM(vh.Vono) = RTRIM(a.VONO) 
+                                      AND (CAST(vh.CompanyId AS VARCHAR) = RTRIM(a.COCODE) OR vh.Cocode = RTRIM(a.COCODE) OR @CompanyId = 0)
+                                      AND ISNULL(vh.IsDeleted, 0) = 0
+                                )
+                                WHEN a.VOTYPE IN ('BL','SL') THEN (
+                                    SELECT TOP 1 COALESCE(NULLIF(RTRIM(ih.UserId),''), NULLIF(RTRIM(ih.CreatedBy),''), '')
+                                    FROM IssHead ih 
+                                    WHERE RTRIM(ih.DocNo) = RTRIM(a.VONO) 
+                                      AND (CAST(ih.CompanyId AS VARCHAR) = RTRIM(a.COCODE) OR ih.Cocode = RTRIM(a.COCODE) OR @CompanyId = 0)
+                                      AND ISNULL(ih.IsDeleted, 0) = 0
+                                )
+                                WHEN a.VOTYPE = 'CL' THEN (
+                                    SELECT TOP 1 COALESCE(NULLIF(RTRIM(ch.CreatedBy),''), '')
+                                    FROM ChallanHead ch 
+                                    WHERE RTRIM(ch.DocNo) = RTRIM(a.VONO) 
+                                      AND (CAST(ch.CompanyId AS VARCHAR) = RTRIM(a.COCODE) OR ch.Cocode = RTRIM(a.COCODE) OR @CompanyId = 0)
+                                      AND ISNULL(ch.IsDeleted, 0) = 0
+                                )
+                                ELSE ''
+                            END AS Initials,
                             ISNULL(a.DRAMT, 0) AS Debit,
                             ISNULL(a.CRAMT, 0) AS Credit,
                             @OpeningBal + SUM(ISNULL(a.DRAMT, 0) - ISNULL(a.CRAMT, 0)) OVER (
@@ -282,6 +321,7 @@ namespace Nskg.Controllers
                         Station,
                         INAME,
                         Qty,
+                        Initials,
                         Debit,
                         Credit,
                         Balance,
@@ -405,7 +445,7 @@ namespace Nskg.Controllers
                 sb.Append($"</div>");
 
                 sb.Append("<table><thead><tr>");
-                sb.Append("<th>Date</th><th>Doc #</th><th>Typ</th><th>Bilty #</th><th>Bill #</th><th>Vehicle No</th><th>Station</th><th>Party / Item</th><th class='num'>Qty</th><th class='num'>Debit</th><th class='num'>Credit</th><th class='num'>Balance</th>");
+                sb.Append("<th>Date</th><th>Doc #</th><th>Typ</th><th>Bilty #</th><th>Bill #</th><th>Vehicle No</th><th>Station</th><th>Party / Item</th><th class='num'>Qty</th><th>Initials</th><th class='num'>Debit</th><th class='num'>Credit</th><th class='num'>Balance</th>");
                 sb.Append("</tr></thead><tbody>");
 
                 foreach (DataRow row in dt.Rows)
@@ -419,6 +459,7 @@ namespace Nskg.Controllers
                     string station = row["Station"]?.ToString() ?? "";
                     string iname = row["IName"]?.ToString() ?? "";
                     string qty = row["Qty"] != DBNull.Value && row["Qty"] != null ? (row["Qty"]?.ToString() ?? "") : "";
+                    string initials = row["Initials"]?.ToString() ?? "";
 
                     decimal debit = row["Debit"] != DBNull.Value && row["Debit"] != null ? Convert.ToDecimal(row["Debit"]) : 0;
                     decimal credit = row["Credit"] != DBNull.Value && row["Credit"] != null ? Convert.ToDecimal(row["Credit"]) : 0;
@@ -436,12 +477,12 @@ namespace Nskg.Controllers
                     string creditStr = credit != 0 ? credit.ToString("#,##0.00") : "";
 
                     sb.Append($"<tr {rowClass}>");
-                    sb.Append($"<td>{docDate}</td><td>{docNo}</td><td>{votype}</td><td>{biltiNo}</td><td>{bilNo}</td><td>{vNo}</td><td>{station}</td><td>{iname}</td><td class='num'>{qty}</td><td class='num'>{debitStr}</td><td class='num'>{creditStr}</td><td class='num bold'>{balance:#,##0.00}</td>");
+                    sb.Append($"<td>{docDate}</td><td>{docNo}</td><td>{votype}</td><td>{biltiNo}</td><td>{bilNo}</td><td>{vNo}</td><td>{station}</td><td>{iname}</td><td class='num'>{qty}</td><td>{initials}</td><td class='num'>{debitStr}</td><td class='num'>{creditStr}</td><td class='num bold'>{balance:#,##0.00}</td>");
                     sb.Append($"</tr>");
                 }
 
                 sb.Append("</tbody><tfoot><tr>");
-                sb.Append($"<td colspan='9' style='text-align:right;' class='bold'>TOTALS:</td><td class='num bold'>{totalDebit:#,##0.00}</td><td class='num bold'>{totalCredit:#,##0.00}</td><td></td>");
+                sb.Append($"<td colspan='10' style='text-align:right;' class='bold'>TOTALS:</td><td class='num bold'>{totalDebit:#,##0.00}</td><td class='num bold'>{totalCredit:#,##0.00}</td><td></td>");
                 sb.Append("</tr></tfoot></table></body></html>");
 
                 return Content(sb.ToString(), "text/html");
@@ -478,7 +519,7 @@ namespace Nskg.Controllers
                 sb.AppendLine();
 
                 // Table Header
-                sb.AppendLine("Doc.Date,Doc. #,Typ,BilltiNo,Bill. No,Vehicle No,Station,Party name / Item,Qty,DEBIT,CREDIT,BALANCE");
+                sb.AppendLine("Doc.Date,Doc. #,Typ,BilltiNo,Bill. No,Vehicle No,Station,Party name / Item,Qty,Initials,DEBIT,CREDIT,BALANCE");
 
                 foreach (DataRow row in dt.Rows)
                 {
@@ -491,11 +532,12 @@ namespace Nskg.Controllers
                     string station = EscapeCsv(row["Station"]?.ToString() ?? "");
                     string iname = EscapeCsv(row["IName"]?.ToString() ?? "");
                     string qty = row["Qty"] != DBNull.Value && row["Qty"] != null ? (row["Qty"]?.ToString() ?? "") : "";
+                    string initials = EscapeCsv(row["Initials"]?.ToString() ?? "");
                     string debit = row["Debit"] != DBNull.Value && Convert.ToDecimal(row["Debit"]) != 0 ? Convert.ToDecimal(row["Debit"]).ToString("F2") : "";
                     string credit = row["Credit"] != DBNull.Value && Convert.ToDecimal(row["Credit"]) != 0 ? Convert.ToDecimal(row["Credit"]).ToString("F2") : "";
                     string balance = row["Balance"] != DBNull.Value ? Convert.ToDecimal(row["Balance"]).ToString("F2") : "";
 
-                    sb.AppendLine($"{docDate},{docNo},{votype},{billtiNo},{bilNo},{vehicleNo},{station},{iname},{qty},{debit},{credit},{balance}");
+                    sb.AppendLine($"{docDate},{docNo},{votype},{billtiNo},{bilNo},{vehicleNo},{station},{iname},{qty},{initials},{debit},{credit},{balance}");
                 }
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());

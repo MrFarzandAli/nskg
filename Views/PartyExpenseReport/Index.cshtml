@@ -31,23 +31,29 @@
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold"><i class="fa fa-book me-2 text-danger"></i> Party Expense Report (Detailed Ledger)</h3>
+        <div>
+            <h3 class="fw-bold mb-0 text-navy">
+                <i class="fa fa-money me-2 text-primary"></i> Party Expense Report (Detailed Ledger)
+            </h3>
+            <small class="text-muted">Vehicle-wise and account-wise freight expense ledger entries</small>
+        </div>
     </div>
 
     <!-- Filter Card -->
     <div class="card custom-card mb-4 shadow-sm border-0">
-        <div class="card-header bg-danger text-white py-3">
+        <div class="card-header card-header-brand py-3">
             <h5 class="mb-0 fw-semibold">
-                <i class="fa fa-filter me-2"></i> Filter Parameters
+                <i class="fa fa-sliders me-2"></i> Filter Parameters
             </h5>
+            <small class="text-white-50">Filter by Company, Party Account, Vehicle, and Date Range</small>
         </div>
-        <div class="card-body p-4 bg-light">
+        <div class="card-body report-filter-body">
             <form method="get" id="partyExpenseForm">
                 <div class="row g-3">
                     
                     <!-- Company Filter -->
                     <div class="col-md-3">
-                        <label class="form-label fw-bold">Company</label>
+                        <label class="form-label fw-semibold small text-secondary">Company</label>
                         <select class="form-select select2" id="companySelect" name="companyId">
                             <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
                             @if (companyList != null)
@@ -64,7 +70,7 @@
 
                     <!-- Account / Party Filter -->
                     <div class="col-md-3">
-                        <label class="form-label fw-bold">Select Party / Account</label>
+                        <label class="form-label fw-semibold small text-secondary">Select Party / Account</label>
                         <select class="form-control select2" id="accodeSelect" name="accode">
                             <option value="">-- Select Party / Account --</option>
                             @if (ViewBag.AccountList != null)
@@ -82,7 +88,7 @@
 
                     <!-- Vehicle No Filter -->
                     <div class="col-md-2">
-                        <label class="form-label fw-bold">Vehicle No</label>
+                        <label class="form-label fw-semibold small text-secondary">Vehicle No</label>
                         <select class="form-select select2" id="vehicleNoSelect" name="vehicleNo">
                             <option value="">-- All Vehicles --</option>
                             @if (!string.IsNullOrEmpty(vehicleNoValue))
@@ -94,44 +100,44 @@
 
                     <!-- Commission No -->
                     <div class="col-md-2">
-                        <label class="form-label fw-bold">Commission No</label>
-                        <input type="text" class="form-control" name="biltyNo" value="@biltyNoValue" placeholder="e.g. 5432" />
+                        <label class="form-label fw-semibold small text-secondary">Commission No</label>
+                        <input type="text" class="form-control form-control-sm" name="biltyNo" value="@biltyNoValue" placeholder="e.g. 5432" />
                     </div>
 
                     <!-- From Date -->
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold">From Date</label>
-                        <input type="date" class="form-control" name="fromDate" value="@fromDateValue" />
+                    <div class="col-md-1">
+                        <label class="form-label fw-semibold small text-secondary">From Date</label>
+                        <input type="date" class="form-control form-control-sm" name="fromDate" value="@fromDateValue" />
                     </div>
 
                     <!-- To Date -->
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold">To Date</label>
-                        <input type="date" class="form-control" name="toDate" value="@toDateValue" />
+                    <div class="col-md-1">
+                        <label class="form-label fw-semibold small text-secondary">To Date</label>
+                        <input type="date" class="form-control form-control-sm" name="toDate" value="@toDateValue" />
                     </div>
 
                     <!-- Actions -->
                     <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                         <!-- VIEW ON SCREEN -->
                         <button type="button"
-                                class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold"
+                                class="btn btn-primary btn-sm custom-btn px-3 shadow-sm fw-semibold"
                                 onclick="loadOnScreenReport()">
                             <i class="fa fa-desktop me-1"></i> View Report
                         </button>
 
                         <!-- EXCEL EXPORT -->
                         <button type="submit"
-                                class="btn btn-success btn-sm px-3 shadow-sm fw-semibold"
+                                class="btn btn-success btn-sm custom-btn px-3 shadow-sm fw-semibold"
                                 asp-action="ExportExcel">
-                            <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
+                            <i class="fa fa-file-excel-o me-1"></i> Excel
                         </button>
 
                         <!-- PDF DOWNLOAD -->
                         <button type="submit"
-                                class="btn btn-danger btn-sm px-3 shadow-sm fw-semibold"
+                                class="btn btn-danger btn-sm custom-btn px-3 shadow-sm fw-semibold"
                                 asp-action="GeneratePDF"
                                 formtarget="_blank">
-                            <i class="fa fa-file-pdf-o me-1"></i> Open / Print PDF
+                            <i class="fa fa-file-pdf-o me-1"></i> Print / PDF
                         </button>
                     </div>
                 </div>
@@ -140,12 +146,17 @@
     </div>
 
     <!-- ON SCREEN REPORT PREVIEW -->
-    <div id="reportCard" class="card shadow border-0" style="display:none;">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
-            <h5 class="mb-0 fs-6"><i class="fa fa-file-text-o me-2"></i> Report Preview</h5>
-            <button type="button" class="btn btn-sm btn-outline-light" onclick="$('#reportCard').hide()">
-                <i class="fa fa-times"></i> Close
-            </button>
+    <div id="reportCard" class="card shadow-sm border-0 mb-4" style="display:none;">
+        <div class="card-header card-header-brand text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="mb-0 fs-6 fw-semibold"><i class="fa fa-file-text-o me-2"></i> Report Preview</h5>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-light btn-sm fw-semibold" onclick="printReportFrame()">
+                    <i class="fa fa-print me-1"></i> Print
+                </button>
+                <button type="button" class="btn btn-outline-light btn-sm" onclick="$('#reportCard').slideUp(200)">
+                    <i class="fa fa-times me-1"></i> Close
+                </button>
+            </div>
         </div>
 
         <!-- LOADER -->

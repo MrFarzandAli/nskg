@@ -103,8 +103,8 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
 
         <div>
-            <h3 class="mb-0">
-                <i class="fa fa-edit text-primary me-1"></i>
+            <h3 class="mb-0 fw-bold text-navy">
+                <i class="fa fa-pencil-square-o text-primary me-2"></i>
                 Edit @(ViewBag.Votype ?? Model?.Head?.Votype ?? "Voucher")
             </h3>
             <small class="text-muted">
@@ -114,79 +114,99 @@
         </div>
 
         <div>
-            <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addRow()">
+            <button type="button" class="btn btn-outline-primary btn-sm custom-btn me-2" onclick="addRow()">
                 <i class="fa fa-plus me-1"></i> Add Row
             </button>
 
-            <button type="submit" class="btn btn-success btn-sm">
-                <i class="fa fa-save me-1"></i> Update
+            <button type="submit" class="btn btn-primary btn-sm custom-btn shadow-sm">
+                <i class="fa fa-save me-1"></i> Update Voucher
             </button>
         </div>
 
     </div>
 
     <!-- MASTER -->
-    <div class="card border-0 shadow-sm">
+    <div class="card custom-card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-sliders text-primary me-2"></i> General Details
+            </h6>
+        </div>
         <div class="card-body">
 
             <div class="row g-3">
 
                 <div class="col-md-2">
-                    <label class="form-label small text-muted">
-                        <i class="fa fa-hashtag me-1"></i> Voucher No
+                    <label class="form-label small text-muted fw-semibold mb-1">
+                        <i class="fa fa-hashtag text-primary me-1"></i> Voucher No
                     </label>
                     <input asp-for="Head.Vono" class="form-control form-control-sm" readonly />
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small text-muted">
-                        <i class="fa fa-calendar me-1"></i> Transaction Date
+                    <label class="form-label small text-muted fw-semibold mb-1">
+                        <i class="fa fa-calendar text-primary me-1"></i> Transaction Date
                     </label>
                     <input asp-for="Head.Vodate" type="date" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small text-muted">
-                        <i class="fa fa-clock-o me-1"></i> Entry Date
+                    <label class="form-label small text-muted fw-semibold mb-1">
+                        <i class="fa fa-clock-o text-primary me-1"></i> Entry Date
                     </label>
                     <input asp-for="Head.EntryDate" type="date" class="form-control form-control-sm" readonly />
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-muted">
-                        <i class="fa fa-university me-1"></i> Account
+                    <label class="form-label small text-muted fw-semibold mb-1">
+                        <i class="fa fa-university text-primary me-1"></i> Account
                     </label>
-                    <select asp-for="Head.gl3Id" class="form-select form-select-sm"
-                            asp-items="@(new SelectList(ViewBag.HeaderAccounts, "Value", "Text"))">
+                    <select asp-for="Head.gl3Id" class="form-select form-select-sm select2">
+                        <option value="">-- Select Account --</option>
+                        @if (ViewBag.HeaderAccounts != null)
+                        {
+                            foreach (var acc in (IEnumerable<SelectListItem>)ViewBag.HeaderAccounts)
+                            {
+                                bool isSelected = acc.Value == Model?.Head?.gl3Id?.ToString();
+                                if (isSelected)
+                                {
+                                    <option value="@acc.Value" selected="selected">@acc.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@acc.Value">@acc.Text</option>
+                                }
+                            }
+                        }
                     </select>
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-muted">
-                        <i class="fa fa-exchange me-1"></i> Pay / Receive
+                    <label class="form-label small text-muted fw-semibold mb-1">
+                        <i class="fa fa-exchange text-primary me-1"></i> Pay / Receive
                     </label>
-                    <select asp-for="Head.Partycode" class="form-select form-select-sm"
+                    <select asp-for="Head.Partycode" class="form-select form-select-sm select2"
                             asp-items="@(new SelectList(ViewBag.PartyAccounts, "Value", "Text"))">
                     </select>
                 </div>
 
                 <div class="col-md-5">
-                    <label class="form-label small text-muted">
-                        <i class="fa fa-user me-1"></i> Payee / Receiver
+                    <label class="form-label small text-muted fw-semibold mb-1">
+                        <i class="fa fa-user text-primary me-1"></i> Payee / Receiver
                     </label>
                     <input asp-for="Head.PersonName" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-muted">
-                        <i class="fa fa-list-ol me-1"></i> Reference No
+                    <label class="form-label small text-muted fw-semibold mb-1">
+                        <i class="fa fa-list-ol text-primary me-1"></i> Reference No
                     </label>
                     <input asp-for="Head.Invno" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label small text-muted">
-                        <i class="fa fa-comment me-1"></i> Narration
+                    <label class="form-label small text-muted fw-semibold mb-1">
+                        <i class="fa fa-comment text-primary me-1"></i> Narration
                     </label>
                     <input asp-for="Head.Narration" class="form-control form-control-sm" />
                 </div>
@@ -197,16 +217,16 @@
     </div>
 
     <!-- DETAILS -->
-    <div class="card mt-3 border-0 shadow-sm">
+    <div class="card custom-card mt-3 border-0 shadow-sm">
 
-        <div class="card-header d-flex justify-content-between align-items-center bg-white">
-            <h5 class="mb-0">
-                <i class="fa fa-table me-1 text-primary"></i>
+        <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom py-2">
+            <h6 class="mb-0 fw-semibold text-navy">
+                <i class="fa fa-list text-primary me-2"></i>
                 Voucher Details
-            </h5>
+            </h6>
 
-            <span class="badge bg-light text-dark">
-                <i class="fa fa-bolt me-1 text-warning"></i>
+            <span class="badge bg-primary fs-6 px-3 py-1 shadow-sm">
+                <i class="fa fa-pencil me-1"></i>
                 Edit Mode
             </span>
         </div>
@@ -220,32 +240,32 @@
                     <thead class="table-light text-center">
                         <tr>
                             <th>
-                                <i class="fa fa-university me-1"></i>
+                                <i class="fa fa-university text-primary me-1"></i>
                                 Account
                             </th>
 
                             @if (ViewBag.IsReceipt || ViewBag.IsFull)
                             {
                                 <th>
-                                    <i class="fa fa-truck me-1"></i>
+                                    <i class="fa fa-truck text-primary me-1"></i>
                                     Transport
                                 </th>
                             }
 
                             <th>
-                                <i class="fa fa-tag me-1"></i>
+                                <i class="fa fa-tag text-primary me-1"></i>
                                 Bilti No
                             </th>
 
                             <th>
-                                <i class="fa fa-file-text me-1"></i>
+                                <i class="fa fa-file-text text-primary me-1"></i>
                                 Bill No
                             </th>
 
                             @if (ViewBag.IsReceipt || ViewBag.IsFull)
                             {
                                 <th>
-                                    <i class="fa fa-car me-1"></i>
+                                    <i class="fa fa-car text-primary me-1"></i>
                                     Vehicle
                                 </th>
                             }
@@ -263,12 +283,12 @@
                             @if (ViewBag.IsBankReceipt || ViewBag.IsFull)
                             {
                                 <th>
-                                    <i class="fa fa-credit-card me-1"></i>
+                                    <i class="fa fa-credit-card text-primary me-1"></i>
                                     Cheque No
                                 </th>
 
                                 <th>
-                                    <i class="fa fa-calendar me-1"></i>
+                                    <i class="fa fa-calendar text-primary me-1"></i>
                                     Cheque Date
                                 </th>
                             }
@@ -276,18 +296,18 @@
                             @if (ViewBag.IsCashReceipt || ViewBag.IsFull)
                             {
                                 <th>
-                                    <i class="fa fa-percent me-1"></i>
+                                    <i class="fa fa-percent text-primary me-1"></i>
                                     Tax
                                 </th>
                             }
 
                             <th>
-                                <i class="fa fa-comment me-1"></i>
+                                <i class="fa fa-comment text-primary me-1"></i>
                                 Narration
                             </th>
 
                             <th>
-                                <i class="fa fa-cog me-1"></i>
+                                <i class="fa fa-cog text-primary me-1"></i>
                                 Action
                             </th>
                         </tr>
@@ -1165,7 +1185,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small text-muted">Account</label>
-                    <select asp-for="Head.gl3Id" class="form-select form-select-sm">
+                    <select asp-for="Head.gl3Id" class="form-select form-select-sm select2">
                         <option value="">Select Account</option>
                         @if (ViewBag.HeaderAccounts != null)
                         {
@@ -1179,7 +1199,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small text-muted">Pay / Receive</label>
-                    <select asp-for="Head.Partycode" class="form-select form-select-sm">
+                    <select asp-for="Head.Partycode" class="form-select form-select-sm select2">
                         <option value="">-- Select Party Account --</option>
                         @if (ViewBag.PartyAccounts != null)
                         {
@@ -1451,6 +1471,9 @@
         $(document).ready(function () {
             $('.select2').select2();
             calc();
+            setTimeout(function() {
+                AppNav.focusElement($('#Head_Vodate'));
+            }, 100);
         });
     </script>
 }

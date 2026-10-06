@@ -190,11 +190,10 @@ namespace Nskg.Controllers
         {
             try
             {
+                type = type?.ToUpper() ?? "JV";
                 LoadDropdowns(type);
 
                 var Vono = GenerateVoucherNo(type);
-
-                type = type?.ToUpper();
 
                 ViewBag.VoucherType = type;
 
@@ -212,14 +211,40 @@ namespace Nskg.Controllers
 
                 ViewBag.Votype = GetVoucherTitle(type);
 
+                // Fetch previous record for this voucher type to pre-fill default values
+                int currentCompId = User.GetCompanyId();
+                string currentCoCode = User.GetCompanyCode();
+
+                var prevQuery = _context.VoHead
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted && x.Votype == type);
+
+                if (currentCompId > 0)
+                {
+                    prevQuery = prevQuery.Where(x => x.CompanyId == currentCompId || (!string.IsNullOrEmpty(currentCoCode) && currentCoCode != "0" && x.Cocode == currentCoCode));
+                }
+
+                var prevVoucher = prevQuery.OrderByDescending(x => x.Vodate).ThenByDescending(x => x.Id).FirstOrDefault();
+                if (prevVoucher == null)
+                {
+                    prevVoucher = _context.VoHead.AsNoTracking()
+                        .Where(x => !x.IsDeleted && x.Votype == type)
+                        .OrderByDescending(x => x.Vodate).ThenByDescending(x => x.Id)
+                        .FirstOrDefault();
+                }
+
                 return View(new VoucherVM
                 {
                     Head = new VoHead
                     {
-                        Vodate = DateTime.Now,
+                        Vodate = prevVoucher?.Vodate ?? DateTime.Now,
                         EntryDate = DateTime.Now,
                         Vono = Vono,
-                        Votype = type
+                        Votype = type,
+                        gl3Id = prevVoucher?.gl3Id,
+                        Partycode = prevVoucher?.Partycode,
+                        PersonName = prevVoucher?.PersonName,
+                        Narration = prevVoucher?.Narration
                     },
                     Details = new List<VoDet>()
                 });
@@ -428,7 +453,8 @@ namespace Nskg.Controllers
                     {
                         var g3 = _context.GLChart3.FirstOrDefault(g =>
                             (g.CompanyId == data.CompanyId || g.CoCode == data.Cocode || g.CompanyId == 0 || g.CompanyId == null) &&
-                            ((g.AC1 + g.AC3) == hcode || g.ACC == hcode));
+                            ((g.AC1 + g.AC3) == hcode || g.ACC == hcode))
+                            ?? _context.GLChart3.FirstOrDefault(g => ((g.AC1 + g.AC3) == hcode || g.ACC == hcode));
                         if (g3 != null)
                         {
                             data.gl3Id = g3.Id;
@@ -441,7 +467,8 @@ namespace Nskg.Controllers
                 {
                     var partyG3 = _context.GLChart3.FirstOrDefault(g =>
                         (g.CompanyId == data.CompanyId || g.CoCode == data.Cocode || g.CompanyId == 0 || g.CompanyId == null) &&
-                        ((g.AC1 + g.AC3) == data.Partycode || g.ACC == data.Partycode));
+                        ((g.AC1 + g.AC3) == data.Partycode || g.ACC == data.Partycode))
+                        ?? _context.GLChart3.FirstOrDefault(g => ((g.AC1 + g.AC3) == data.Partycode || g.ACC == data.Partycode));
                     if (partyG3 != null)
                     {
                         data.Partycode = partyG3.Id.ToString();
@@ -460,7 +487,8 @@ namespace Nskg.Controllers
                             {
                                 var g3 = _context.GLChart3.FirstOrDefault(g =>
                                     (g.CompanyId == data.CompanyId || g.CoCode == data.Cocode || g.CompanyId == 0 || g.CompanyId == null) &&
-                                    ((g.AC1 + g.AC3) == dcode || g.ACC == dcode));
+                                    ((g.AC1 + g.AC3) == dcode || g.ACC == dcode))
+                                    ?? _context.GLChart3.FirstOrDefault(g => ((g.AC1 + g.AC3) == dcode || g.ACC == dcode));
                                 if (g3 != null)
                                 {
                                     d.gl3Id = g3.Id;
@@ -472,7 +500,8 @@ namespace Nskg.Controllers
                         {
                             var transG3 = _context.GLChart3.FirstOrDefault(g =>
                                 (g.CompanyId == data.CompanyId || g.CoCode == data.Cocode || g.CompanyId == 0 || g.CompanyId == null) &&
-                                ((g.AC1 + g.AC3) == d.Transcode || g.ACC == d.Transcode));
+                                ((g.AC1 + g.AC3) == d.Transcode || g.ACC == d.Transcode))
+                                ?? _context.GLChart3.FirstOrDefault(g => ((g.AC1 + g.AC3) == d.Transcode || g.ACC == d.Transcode));
                             if (transG3 != null)
                             {
                                 d.Transcode = transG3.Id.ToString();
@@ -481,8 +510,20 @@ namespace Nskg.Controllers
                     }
                 }
 
-                // Load all dropdowns same as Create
-                LoadDropdowns(data.Votype);
+                var usedAccountIds = new HashSet<int>();
+                if (data.gl3Id.HasValue && data.gl3Id > 0) usedAccountIds.Add(data.gl3Id.Value);
+                if (int.TryParse(data.Partycode, out int pid) && pid > 0) usedAccountIds.Add(pid);
+                if (data.Details != null)
+                {
+                    foreach (var d in data.Details)
+                    {
+                        if (d.gl3Id.HasValue && d.gl3Id > 0) usedAccountIds.Add(d.gl3Id.Value);
+                        if (int.TryParse(d.Transcode, out int tid) && tid > 0) usedAccountIds.Add(tid);
+                    }
+                }
+
+                // Load all dropdowns ensuring all used accounts in this voucher are included
+                LoadDropdowns(data.Votype, data.CompanyId, usedAccountIds);
 
                 var type = data.Votype?.ToUpper();
                 SetupViewBagFlags(type);
@@ -834,24 +875,28 @@ namespace Nskg.Controllers
             };
         }
 
-        private void LoadDropdowns(string votype)
+        private void LoadDropdowns(string votype, int? companyId = null, IEnumerable<int>? includeAccountIds = null)
         {
             try
             {
+                int compId = companyId.HasValue && companyId.Value > 0 ? companyId.Value : User.GetCompanyId();
+                int userCompId = User.GetCompanyId();
+                var extraIds = includeAccountIds?.ToList() ?? new List<int>();
+
                 ViewBag.Types = _context.VoucherTypeSettings.ToList();
 
                 var partylist = _context.AcPara
-    .Where(a => AccountCategories.Party.Contains(a.ActypeCode)
-                && a.CompanyId == User.GetCompanyId()
-                && a.Parent == "P")
-    .Select(a => a.Accode)
-    .Distinct();
+                    .Where(a => AccountCategories.Party.Contains(a.ActypeCode)
+                                && (a.CompanyId == compId || a.CompanyId == userCompId)
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
 
                 var partyAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == User.GetCompanyId() || g.CompanyId == 0 || g.CompanyId == null) &&
                         g.AcType != "S" &&
-                        partylist.Contains(g.AC1)
+                        (((g.CompanyId == compId || g.CompanyId == userCompId || g.CompanyId == 0 || g.CompanyId == null) && partylist.Contains(g.AC1)) ||
+                         extraIds.Contains(g.Id))
                     )
                     .Select(g => new SelectListItem
                     {
@@ -872,16 +917,16 @@ namespace Nskg.Controllers
 
                 var transporterList = _context.AcPara
                     .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
-                                && a.CompanyId == User.GetCompanyId()
+                                && (a.CompanyId == compId || a.CompanyId == userCompId)
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 ViewBag.transporterList = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == User.GetCompanyId() || g.CompanyId == 0 || g.CompanyId == null) &&
                         g.AcType != "S" &&
-                        transporterList.Contains(g.AC1)
+                        (((g.CompanyId == compId || g.CompanyId == userCompId || g.CompanyId == 0 || g.CompanyId == null) && transporterList.Contains(g.AC1)) ||
+                         extraIds.Contains(g.Id))
                     )
                     .Select(g => new SelectListItem
                     {
@@ -891,45 +936,61 @@ namespace Nskg.Controllers
                     .OrderBy(x => x.Text)
                     .ToList();
 
-          
-
-                IEnumerable<string> allowedTypes = votype switch
+                if (votype == "JV")
                 {
-                    "BP" or "BR" => AccountCategories.Bank,
-                    "CP" or "CR" => AccountCategories.Cash,
-                    _ => Array.Empty<string>()
-                };
-
-                var ac1List = _context.AcPara
-                    .Where(a =>
-                        allowedTypes.Contains(a.ActypeCode)
-                        && a.CompanyId == User.GetCompanyId()
-                        && a.Parent == "P"
-                    )
-                    .Select(a => a.Accode)
-                    .Distinct()
-                    .ToList();
-
-
-
-                ViewBag.HeaderAccounts = _context.GLChart3
-                    .Where(g =>
-                        (g.CompanyId == User.GetCompanyId() || g.CompanyId == 0 || g.CompanyId == null) &&
-                        g.AcType != "S" &&
-                        ac1List.Contains(g.AC1)
-                    )
-                    .Select(g => new SelectListItem
+                    ViewBag.HeaderAccounts = _context.GLChart3
+                        .Where(g =>
+                            g.AcType != "S" &&
+                            ((g.CompanyId == compId || g.CompanyId == userCompId || g.CompanyId == 0 || g.CompanyId == null) ||
+                             extraIds.Contains(g.Id))
+                        )
+                        .Select(g => new SelectListItem
+                        {
+                            Value = g.Id.ToString(),
+                            Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                        })
+                        .OrderBy(x => x.Text)
+                        .ToList();
+                }
+                else
+                {
+                    IEnumerable<string> allowedTypes = votype switch
                     {
-                        Value = g.Id.ToString(),
-                        Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
-                    })
-                    .OrderBy(x => x.Text)
-                    .ToList();
+                        "BP" or "BR" => AccountCategories.Bank,
+                        "CP" or "CR" => AccountCategories.Cash,
+                        _ => Array.Empty<string>()
+                    };
+
+                    var ac1List = _context.AcPara
+                        .Where(a =>
+                            allowedTypes.Contains(a.ActypeCode)
+                            && (a.CompanyId == compId || a.CompanyId == userCompId)
+                            && a.Parent == "P"
+                        )
+                        .Select(a => a.Accode)
+                        .Distinct()
+                        .ToList();
+
+                    ViewBag.HeaderAccounts = _context.GLChart3
+                        .Where(g =>
+                            g.AcType != "S" &&
+                            (((g.CompanyId == compId || g.CompanyId == userCompId || g.CompanyId == 0 || g.CompanyId == null) && ac1List.Contains(g.AC1)) ||
+                             extraIds.Contains(g.Id))
+                        )
+                        .Select(g => new SelectListItem
+                        {
+                            Value = g.Id.ToString(),
+                            Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
+                        })
+                        .OrderBy(x => x.Text)
+                        .ToList();
+                }
 
                 ViewBag.Accounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == User.GetCompanyId() || g.CompanyId == 0 || g.CompanyId == null) &&
-                        g.AcType != "S"
+                        g.AcType != "S" &&
+                        ((g.CompanyId == compId || g.CompanyId == userCompId || g.CompanyId == 0 || g.CompanyId == null) ||
+                         extraIds.Contains(g.Id))
                     )
                     .Select(g => new SelectListItem
                     {
