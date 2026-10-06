@@ -140,6 +140,54 @@
 				}
 			}
 
+			/* Sidebar Compact Typography for Small / Laptop Screens */
+			.sidebar .sidebar-menu ul li a {
+				font-size: 13.5px !important;
+				padding: 7px 12px !important;
+			}
+			.sidebar .sidebar-menu ul ul a {
+				font-size: 12.5px !important;
+				padding: 6px 10px 6px 36px !important;
+			}
+			.sidebar .sidebar-menu ul li a span {
+				margin-left: 10px !important;
+			}
+			.sidebar .sidebar-menu ul li a i {
+				font-size: 16px !important;
+			}
+
+			/* Global Form and Button Compactness for Laptops (<= 1366px) */
+			@@media (max-width: 1366px) {
+				body {
+					font-size: 13px;
+				}
+				.sidebar .sidebar-menu ul li a {
+					font-size: 13px !important;
+					padding: 6px 10px !important;
+				}
+				.sidebar .sidebar-menu ul ul a {
+					font-size: 12px !important;
+					padding: 5px 8px 5px 32px !important;
+				}
+				.form-label, label {
+					font-size: 12px !important;
+					margin-bottom: 3px !important;
+				}
+				.form-control, .form-select, .select2-container {
+					font-size: 12.5px !important;
+				}
+				.btn {
+					font-size: 12.5px !important;
+				}
+				.card-header h5, .card-header h6 {
+					font-size: 14px !important;
+				}
+				.table th, .table td {
+					font-size: 12px !important;
+					padding: 0.35rem 0.5rem !important;
+				}
+			}
+
 			/* Global Table & Report Responsive Wrapper */
 			.table-responsive {
 				overflow-x: auto !important;
