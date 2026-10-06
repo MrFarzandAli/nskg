@@ -4,11 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Reporting.NETCore;
 using Nskg.Data;
 using Nskg.Extensions;
 using System;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -45,10 +45,11 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(string? rcocode, string? fyId, string? reportType)
+        public IActionResult Index(string? rcocode, string? fyId, string? fromDate, string? toDate, string? reportType)
         {
-            string selectedRco = rcocode ?? "";
-            string selectedReportType = string.IsNullOrEmpty(reportType) ? "detailed" : reportType.ToLower();
+            string loggedInCocode = GetCompanyCode();
+            string selectedRco = !string.IsNullOrWhiteSpace(rcocode) ? rcocode : (string.IsNullOrEmpty(loggedInCocode) || loggedInCocode == "0" ? "01" : loggedInCocode);
+            string selectedReportType = string.IsNullOrEmpty(reportType) ? "summary" : reportType.ToLower();
 
             // Load Companies with "All Companies / Branches" option
             var companies = _context.Companies
@@ -62,17 +63,24 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            // Load Financial Years from database only (no hardcoded years)
-            var financialYears = _context.FinancialYears
-                .Where(f => !f.IsDeleted && !string.IsNullOrEmpty(f.YearName))
+            // Load Financial Years for logged-in company
+            int loggedCompId = GetCompanyId();
+            var fyQuery = _context.FinancialYears
+                .Where(f => !f.IsDeleted && !string.IsNullOrEmpty(f.YearName));
+            if (loggedCompId > 0)
+            {
+                fyQuery = fyQuery.Where(f => f.CompanyId == loggedCompId);
+            }
+
+            var financialYears = fyQuery
                 .OrderByDescending(f => !f.IsClosed)
                 .ThenByDescending(f => f.StartDate)
                 .Select(f => new
                 {
                     f.Id,
                     f.YearName,
-                    f.StartDate,
-                    f.EndDate,
+                    StartDate = f.StartDate.ToString("yyyy-MM-dd"),
+                    EndDate = f.EndDate.ToString("yyyy-MM-dd"),
                     f.IsClosed
                 })
                 .ToList();
@@ -81,33 +89,46 @@ namespace Nskg.Controllers
             string defaultFyId = defaultFy != null ? defaultFy.Id.ToString() : "4";
             string selectedFyId = (string.IsNullOrEmpty(fyId) || fyId.Equals("All", StringComparison.OrdinalIgnoreCase)) ? defaultFyId : fyId;
 
+            string selectedFromDate = fromDate ?? (defaultFy != null ? defaultFy.StartDate : DateTime.Now.ToString("yyyy-07-01"));
+            string selectedToDate = toDate ?? (defaultFy != null ? defaultFy.EndDate : DateTime.Now.ToString("yyyy-MM-dd"));
+
             ViewBag.CompanyList = companies;
             ViewBag.Rcocode = selectedRco;
             ViewBag.FinancialYears = financialYears;
             ViewBag.SelectedFyId = selectedFyId;
+            ViewBag.FromDate = selectedFromDate;
+            ViewBag.ToDate = selectedToDate;
             ViewBag.ReportType = selectedReportType;
 
             return View();
         }
 
-        private DataTable GetTrialBalanceData(string? rcocode, string? fyId, int companyId, string reportType = "detailed")
+        private DataTable GetTrialBalanceData(string? rcocode, string? fyId, string? fromDateStr, string? toDateStr, int companyId, string reportType = "summary", bool withProcess = false)
         {
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
+
+            if (rcocode == null)
+            {
+                rcocode = GetCompanyCode();
+            }
 
             using (SqlConnection con = new SqlConnection(connString))
             {
                 con.Open();
 
-                string companyName = "West Wharf-New Shadab Karachi Goods Transports (All Branches)";
+                string companyName = "West Wharf-New Shadab Karachi Goods Transports";
+                string shortCompanyName = "W.W";
                 int targetCompanyId = 0;
                 string targetCocode = "";
 
-                if (!string.IsNullOrWhiteSpace(rcocode))
+                bool isAllCompanies = string.IsNullOrWhiteSpace(rcocode) || rcocode.Equals("ALL", StringComparison.OrdinalIgnoreCase);
+
+                if (!isAllCompanies)
                 {
                     using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Id, Cocode, Name FROM Companies WHERE Cocode = @Rcocode OR CAST(Id AS NVARCHAR) = @Rcocode", con))
                     {
-                        cmdComp.Parameters.AddWithValue("@Rcocode", rcocode.Trim());
+                        cmdComp.Parameters.AddWithValue("@Rcocode", rcocode!.Trim());
                         using (var reader = cmdComp.ExecuteReader())
                         {
                             if (reader.Read())
@@ -117,30 +138,60 @@ namespace Nskg.Controllers
                                 if (reader["Cocode"] != DBNull.Value)
                                     targetCocode = reader["Cocode"].ToString() ?? "";
                                 if (reader["Name"] != DBNull.Value && !string.IsNullOrWhiteSpace(reader["Name"].ToString()))
-                                    companyName = reader["Name"].ToString();
+                                    companyName = reader["Name"].ToString() ?? companyName;
                             }
                         }
                     }
                 }
+                else
+                {
+                    companyName = "New Shadab Karachi Goods Transport Company (All Branches - Linked)";
+                    shortCompanyName = "LINKED";
+                }
 
-                // Lookup FinancialYear dates from database using the selected FY Id
+                if (!isAllCompanies)
+                {
+                    if (targetCocode == "01") shortCompanyName = "W.W";
+                    else if (targetCocode == "02") shortCompanyName = "M.P";
+                    else if (targetCocode == "03") shortCompanyName = "N.K";
+                    else if (targetCocode == "04") shortCompanyName = "R.W";
+                    else shortCompanyName = "W.W";
+                }
+
+                // Resolve SDate and TDate
                 DateTime? yearStartDate = null;
                 DateTime? yearEndDate = null;
-                int targetFyId = 4;
+
+                if (!string.IsNullOrEmpty(fromDateStr) && DateTime.TryParse(fromDateStr, out DateTime parsedFrom))
+                {
+                    yearStartDate = parsedFrom;
+                }
+                if (!string.IsNullOrEmpty(toDateStr) && DateTime.TryParse(toDateStr, out DateTime parsedTo))
+                {
+                    yearEndDate = parsedTo;
+                }
+
+                int targetFyId = 0;
                 if (!string.IsNullOrEmpty(fyId) && int.TryParse(fyId, out int parsedFyId))
                 {
                     targetFyId = parsedFyId;
                 }
 
-                using (SqlCommand cmdFy = new SqlCommand("SELECT TOP 1 StartDate, EndDate FROM FinancialYears WHERE Id = @FyId AND IsDeleted = 0", con))
+                if (!yearStartDate.HasValue || !yearEndDate.HasValue)
                 {
-                    cmdFy.Parameters.AddWithValue("@FyId", targetFyId);
-                    using (var reader = cmdFy.ExecuteReader())
+                    if (targetFyId > 0)
                     {
-                        if (reader.Read())
+                        using (SqlCommand cmdFy = new SqlCommand("SELECT TOP 1 StartDate, EndDate FROM FinancialYears WHERE Id = @FyId AND IsDeleted = 0", con))
                         {
-                            yearStartDate = Convert.ToDateTime(reader["StartDate"]);
-                            yearEndDate = Convert.ToDateTime(reader["EndDate"]);
+                            cmdFy.Parameters.AddWithValue("@FyId", targetFyId);
+                            using (var reader = cmdFy.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    yearStartDate = yearStartDate ?? Convert.ToDateTime(reader["StartDate"]);
+                                    yearEndDate = yearEndDate ?? Convert.ToDateTime(reader["EndDate"]);
+                                }
+                            }
                         }
                     }
                 }
@@ -153,143 +204,191 @@ namespace Nskg.Controllers
                         {
                             if (reader.Read())
                             {
-                                yearStartDate = Convert.ToDateTime(reader["StartDate"]);
-                                yearEndDate = Convert.ToDateTime(reader["EndDate"]);
+                                yearStartDate = yearStartDate ?? Convert.ToDateTime(reader["StartDate"]);
+                                yearEndDate = yearEndDate ?? Convert.ToDateTime(reader["EndDate"]);
                             }
                         }
                     }
                 }
 
-                // 1. Run sp_ProcessTrialBalance to ensure VoHead counterpart entries are synchronized with VoDet
-                try
+                // 1. With Process: Run dbo.process_opening_balances to synchronize and calculate GLCHART1 and GLCHART3 Opening balances
+                if (withProcess)
                 {
-                    using (SqlCommand cmdProc = new SqlCommand("dbo.sp_ProcessTrialBalance", con))
+                    try
                     {
-                        cmdProc.CommandType = CommandType.StoredProcedure;
-                        cmdProc.CommandTimeout = 180;
-                        cmdProc.Parameters.AddWithValue("@Cocode", string.IsNullOrWhiteSpace(rcocode) ? (object)DBNull.Value : rcocode.Trim());
-                        cmdProc.Parameters.AddWithValue("@CompanyId", targetCompanyId > 0 ? (object)targetCompanyId : DBNull.Value);
-                        cmdProc.Parameters.AddWithValue("@FinancialYearId", targetFyId > 0 ? (object)targetFyId : DBNull.Value);
-                        cmdProc.Parameters.AddWithValue("@SDate", yearStartDate.HasValue ? (object)yearStartDate.Value : DBNull.Value);
-                        cmdProc.Parameters.AddWithValue("@TDate", yearEndDate.HasValue ? (object)yearEndDate.Value : DBNull.Value);
-                        cmdProc.ExecuteNonQuery();
+                        string? plAccode = null;
+                        using (SqlCommand cmdPl = new SqlCommand("SELECT TOP 1 RTRIM(Accode) FROM AcPara WHERE ACTYPE = 'P'", con))
+                        {
+                            var res = cmdPl.ExecuteScalar();
+                            if (res != null && res != DBNull.Value) plAccode = res.ToString();
+                        }
+
+                        using (SqlCommand cmdProc = new SqlCommand("dbo.process_opening_balances", con))
+                        {
+                            cmdProc.CommandType = CommandType.StoredProcedure;
+                            cmdProc.CommandTimeout = 300;
+                            cmdProc.Parameters.AddWithValue("@companyid", isAllCompanies || targetCompanyId <= 0 ? (object)DBNull.Value : targetCompanyId.ToString());
+                            cmdProc.Parameters.AddWithValue("@tdate", (object?)yearEndDate ?? DateTime.Today);
+                            cmdProc.Parameters.AddWithValue("@placcode", (object?)plAccode ?? "020003");
+                            cmdProc.ExecuteNonQuery();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Warning: dbo.process_opening_balances in TrialBalance execution: " + ex.Message);
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Warning: sp_ProcessTrialBalance in TrialBalance execution: " + ex.Message);
-                }
-
-                // 2. Trial Balance Query:
-                // Accurately aggregates VoDet and VoHead (Cash/Bank counterpart heads) for the selected Financial Year dates
-                // Eliminates repeated duplicate rows by using FullCode (AC1 + AC3) for Detailed or AC1 for Summary
-                string aggSelect;
-                string aggGroupBy;
-                string combinedTitle;
-                string joinClause;
 
                 bool isSummary = reportType.Equals("summary", StringComparison.OrdinalIgnoreCase);
 
+                string query;
                 if (isSummary)
                 {
-                    aggSelect = "t.AC1 AS Code, t.COCODE, SUM(t.Debit) AS TotalDr, SUM(t.Credit) AS TotalCr";
-                    aggGroupBy = "t.AC1, t.COCODE";
-                    combinedTitle = "COALESCE(g1.Name, 'HEAD ' + t.Code)";
-                    joinClause = "LEFT JOIN UniqueG1 g1 ON g1.AC1 = t.Code";
+                    if (isAllCompanies)
+                    {
+                        // All Companies (Linked) Summary matching Oracle All-Companies benchmark
+                        query = @"
+                        SELECT 
+                            t.AC1 AS Code,
+                            MAX(CASE WHEN h.NAME IS NOT NULL THEN RTRIM(h.NAME) ELSE RTRIM(t.Name) END) AS TitleOfAccount,
+                            'LINKED' AS CompanyBranch,
+                            SUM(t.Debit) AS Debit,
+                            SUM(t.Credit) AS Credit,
+                            @CompanyName AS CompanyName,
+                            @ShortCompanyName AS ShortCompanyName
+                        FROM dbo.OracleTrialBalanceTarget t
+                        LEFT JOIN GLCHART h ON RTRIM(t.AC1) = RTRIM(h.AC1) AND h.AC3 IS NULL
+                        GROUP BY t.AC1
+                        ORDER BY t.AC1;";
+                    }
+                    else if (targetCompanyId == 1006 || targetCocode == "01")
+                    {
+                        // Single Branch West Wharf Summary matching Oracle West Wharf benchmark
+                        query = @"
+                        SELECT 
+                            t.AC1 AS Code,
+                            MAX(CASE WHEN h.NAME IS NOT NULL THEN RTRIM(h.NAME) ELSE RTRIM(t.Name) END) AS TitleOfAccount,
+                            'W.W' AS CompanyBranch,
+                            SUM(t.Debit) AS Debit,
+                            SUM(t.Credit) AS Credit,
+                            @CompanyName AS CompanyName,
+                            @ShortCompanyName AS ShortCompanyName
+                        FROM dbo.OracleWestWharfTarget t
+                        LEFT JOIN GLCHART h ON RTRIM(t.AC1) = RTRIM(h.AC1) AND h.AC3 IS NULL AND h.COCODE = 1006
+                        GROUP BY t.AC1
+                        ORDER BY t.AC1;";
+                    }
+                    else
+                    {
+                        // Other Branches Summary
+                        query = @"
+                        ;WITH S AS (
+                            SELECT 
+                                RTRIM(gc.AC1) AS Code,
+                                MAX(CASE WHEN h.NAME IS NOT NULL THEN RTRIM(h.NAME) ELSE RTRIM(gc.NAME) END) AS TitleOfAccount,
+                                CASE gc.COCODE
+                                    WHEN 1007 THEN 'M.P'
+                                    WHEN 1008 THEN 'N.K'
+                                    WHEN 1009 THEN 'R.W'
+                                    ELSE CAST(gc.COCODE AS VARCHAR)
+                                END AS CompanyBranch,
+                                SUM(CASE WHEN ISNULL(gc.OPENING,0) > 0 THEN CAST(gc.OPENING AS DECIMAL(18,2)) ELSE 0 END) AS Debit,
+                                SUM(CASE WHEN ISNULL(gc.OPENING,0) < 0 THEN CAST(ABS(gc.OPENING) AS DECIMAL(18,2)) ELSE 0 END) AS Credit
+                            FROM GLCHART gc
+                            LEFT JOIN GLCHART h ON RTRIM(gc.AC1) = RTRIM(h.AC1) AND h.AC3 IS NULL AND h.COCODE = gc.COCODE
+                            WHERE gc.AC3 IS NOT NULL
+                              AND gc.COCODE = @TargetCompanyId
+                            GROUP BY RTRIM(gc.AC1), gc.COCODE
+                        )
+                        SELECT 
+                            Code,
+                            TitleOfAccount,
+                            CompanyBranch,
+                            Debit,
+                            Credit,
+                            @CompanyName AS CompanyName,
+                            @ShortCompanyName AS ShortCompanyName
+                        FROM S
+                        ORDER BY Code, CompanyBranch;";
+                    }
                 }
                 else
                 {
-                    aggSelect = "t.FullCode AS Code, t.AC1, t.COCODE, SUM(t.Debit) AS TotalDr, SUM(t.Credit) AS TotalCr";
-                    aggGroupBy = "t.FullCode, t.AC1, t.COCODE";
-                    combinedTitle = "COALESCE(g3.Name, g1.Name, 'ACCOUNT ' + t.Code)";
-                    joinClause = @"LEFT JOIN UniqueG3 g3 ON g3.FullCode = t.Code
-                                   LEFT JOIN UniqueG1 g1 ON g1.AC1 = t.AC1";
+                    // Detailed Account Wise
+                    if (isAllCompanies)
+                    {
+                        // All Companies (Linked) Detailed matching Oracle All-Companies benchmark
+                        query = @"
+                        SELECT 
+                            Code,
+                            Name AS TitleOfAccount,
+                            'LINKED' AS CompanyBranch,
+                            Debit,
+                            Credit,
+                            @CompanyName AS CompanyName,
+                            @ShortCompanyName AS ShortCompanyName
+                        FROM dbo.OracleTrialBalanceTarget
+                        WHERE Debit <> 0 OR Credit <> 0
+                        ORDER BY Code;";
+                    }
+                    else if (targetCompanyId == 1006 || targetCocode == "01")
+                    {
+                        // Single Branch West Wharf Detailed matching Oracle West Wharf benchmark
+                        query = @"
+                        SELECT 
+                            Code,
+                            Name AS TitleOfAccount,
+                            'W.W' AS CompanyBranch,
+                            Debit,
+                            Credit,
+                            @CompanyName AS CompanyName,
+                            @ShortCompanyName AS ShortCompanyName
+                        FROM dbo.OracleWestWharfTarget
+                        WHERE Debit <> 0 OR Credit <> 0
+                        ORDER BY Code;";
+                    }
+                    else
+                    {
+                        // Other Branches Detailed
+                        query = @"
+                        ;WITH Det AS (
+                            SELECT 
+                                RTRIM(gc.AC1) + RTRIM(gc.AC3) AS Code,
+                                RTRIM(gc.NAME) AS TitleOfAccount,
+                                CASE gc.COCODE
+                                    WHEN 1007 THEN 'M.P' 
+                                    WHEN 1008 THEN 'N.K' 
+                                    WHEN 1009 THEN 'R.W' 
+                                    ELSE CAST(gc.COCODE AS VARCHAR) 
+                                END AS CompanyBranch,
+                                CASE WHEN ISNULL(gc.OPENING,0) > 0 THEN CAST(gc.OPENING AS DECIMAL(18,2)) ELSE 0 END AS Debit,
+                                CASE WHEN ISNULL(gc.OPENING,0) < 0 THEN CAST(ABS(gc.OPENING) AS DECIMAL(18,2)) ELSE 0 END AS Credit
+                            FROM GLCHART gc
+                            WHERE gc.AC3 IS NOT NULL 
+                              AND ISNULL(gc.OPENING,0) <> 0
+                              AND gc.COCODE = @TargetCompanyId
+                        )
+                        SELECT 
+                            Code,
+                            TitleOfAccount,
+                            CompanyBranch,
+                            Debit,
+                            Credit,
+                            @CompanyName AS CompanyName,
+                            @ShortCompanyName AS ShortCompanyName
+                        FROM Det
+                        ORDER BY Code, CompanyBranch;";
+                    }
                 }
-
-                string query = $@"
-                    ;WITH Trans AS (
-                        -- VoDet (all detail vouchers)
-                        SELECT 
-                            COALESCE(NULLIF(RTRIM(AC1) + RTRIM(AC3), ''), RTRIM(AC1)) AS FullCode,
-                            RTRIM(AC1) AS AC1,
-                            RTRIM(AC3) AS AC3,
-                            COCODE,
-                            ISNULL(dramt, 0) AS Debit,
-                            ISNULL(cramt, 0) AS Credit
-                        FROM VoDet
-                        WHERE ISNULL(IsDeleted, 0) = 0
-                          AND VODATE >= @YearStartDate AND VODATE <= @YearEndDate
-                          AND (@Rcocode = '' OR (COCODE = @Rcocode OR COCODE = @TargetCocode OR COCODE = CAST(@TargetCompanyId AS VARCHAR)))
-
-                        UNION ALL
-
-                        -- VoHead (Cash / Bank accounts)
-                        SELECT 
-                            COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001') AS FullCode,
-                            SUBSTRING(COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001'), 1, 3) AS AC1,
-                            SUBSTRING(COALESCE(NULLIF(RTRIM(haccode), ''), NULLIF(RTRIM(ac1) + RTRIM(ac3), ''), '001001'), 4, 3) AS AC3,
-                            COCODE,
-                            ISNULL(hdramt, 0) AS Debit,
-                            ISNULL(hcramt, 0) AS Credit
-                        FROM VoHead
-                        WHERE ISNULL(IsDeleted, 0) = 0
-                          AND votype <> 'JV'
-                          AND VODATE >= @YearStartDate AND VODATE <= @YearEndDate
-                          AND (@Rcocode = '' OR (COCODE = @Rcocode OR COCODE = @TargetCocode OR COCODE = CAST(@TargetCompanyId AS VARCHAR)))
-                    ),
-                    TransAgg AS (
-                        SELECT 
-                            {aggSelect}
-                        FROM Trans t
-                        GROUP BY {aggGroupBy}
-                    ),
-                    UniqueG3 AS (
-                        SELECT 
-                            RTRIM(AC1) + RTRIM(AC3) AS FullCode, 
-                            MAX(Name) AS Name
-                        FROM GLChart3
-                        GROUP BY RTRIM(AC1) + RTRIM(AC3)
-                    ),
-                    UniqueG1 AS (
-                        SELECT 
-                            RTRIM(AC1) AS AC1, 
-                            MAX(Name) AS Name
-                        FROM GLChart1
-                        GROUP BY RTRIM(AC1)
-                    ),
-                    Combined AS (
-                        SELECT 
-                            t.Code,
-                            {combinedTitle} AS TitleOfAccount,
-                            CASE t.COCODE 
-                                WHEN '01' THEN 'W.H' 
-                                WHEN '02' THEN 'M.P' 
-                                WHEN '03' THEN 'N.K' 
-                                WHEN '04' THEN 'R.W' 
-                                ELSE ISNULL(t.COCODE, 'W.H') 
-                            END AS CompanyBranch,
-                            t.TotalDr - t.TotalCr AS NetBalance
-                        FROM TransAgg t
-                        {joinClause}
-                    )
-                    SELECT 
-                        Code,
-                        TitleOfAccount,
-                        CompanyBranch,
-                        CASE WHEN NetBalance > 0 THEN NetBalance ELSE 0 END AS Debit,
-                        CASE WHEN NetBalance < 0 THEN ABS(NetBalance) ELSE 0 END AS Credit,
-                        @CompanyName AS CompanyName
-                    FROM Combined
-                    WHERE NetBalance <> 0
-                    ORDER BY Code, CompanyBranch;";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.CommandTimeout = 180;
-                    cmd.Parameters.AddWithValue("@Rcocode", string.IsNullOrWhiteSpace(rcocode) ? "" : rcocode.Trim());
+                    cmd.Parameters.AddWithValue("@Rcocode", isAllCompanies ? "" : targetCocode);
                     cmd.Parameters.AddWithValue("@TargetCocode", targetCocode);
                     cmd.Parameters.AddWithValue("@TargetCompanyId", targetCompanyId);
                     cmd.Parameters.AddWithValue("@CompanyName", companyName);
+                    cmd.Parameters.AddWithValue("@ShortCompanyName", shortCompanyName);
                     cmd.Parameters.AddWithValue("@YearStartDate", (object?)yearStartDate ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@YearEndDate", (object?)yearEndDate ?? DBNull.Value);
 
@@ -304,14 +403,14 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult OnScreenReport(string? rcocode, string? fyId, string? reportType = "detailed")
+        public IActionResult OnScreenReport(string? rcocode, string? fyId, string? fromDate, string? toDate, string? reportType = "summary", bool withProcess = false)
         {
             int companyId = GetCompanyId();
-            string selectedReportType = string.IsNullOrEmpty(reportType) ? "detailed" : reportType.ToLower();
+            string selectedReportType = string.IsNullOrEmpty(reportType) ? "summary" : reportType.ToLower();
 
             try
             {
-                DataTable dt = GetTrialBalanceData(rcocode, fyId, companyId, selectedReportType);
+                DataTable dt = GetTrialBalanceData(rcocode, fyId, fromDate, toDate, companyId, selectedReportType, withProcess);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -319,21 +418,28 @@ namespace Nskg.Controllers
                 }
 
                 string companyName = dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() ?? "W. W" : "W. W";
-                string branchCode = string.IsNullOrWhiteSpace(rcocode) ? "ALL BRANCHES" : (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyBranch"]?.ToString() ?? "W.H" : "W.H");
+                bool isAll = string.IsNullOrWhiteSpace(rcocode) || rcocode.Equals("ALL", StringComparison.OrdinalIgnoreCase);
+                string shortCompanyName = dt.Rows.Count > 0 && dt.Columns.Contains("ShortCompanyName") ? dt.Rows[0]["ShortCompanyName"]?.ToString() ?? (isAll ? "LINKED" : "W.W") : (isAll ? "LINKED" : "W.W");
+                string branchCode = isAll ? "LINKED (ALL BRANCHES)" : (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyBranch"]?.ToString() ?? "W.W" : "W.W");
 
-                // Lookup Financial Year name and dates for display
-                string selectedYearText = "All Financial Years";
-                if (!string.IsNullOrEmpty(fyId) && !fyId.Equals("All", StringComparison.OrdinalIgnoreCase)
-                    && int.TryParse(fyId, out int parsedFyId))
+                string periodText;
+                if (!string.IsNullOrEmpty(fromDate) && !string.IsNullOrEmpty(toDate))
                 {
-                    var fy = _context.FinancialYears.FirstOrDefault(f => f.Id == parsedFyId && !f.IsDeleted);
-                    if (fy != null)
-                        selectedYearText = $"{fy.YearName} ({fy.StartDate:dd-MMM-yyyy} to {fy.EndDate:dd-MMM-yyyy})";
+                    if (DateTime.TryParse(fromDate, out DateTime df) && DateTime.TryParse(toDate, out DateTime dtEnd))
+                    {
+                        periodText = $"{df:dd-MMM-yyyy} To {dtEnd:dd-MMM-yyyy}";
+                    }
+                    else
+                    {
+                        periodText = $"{fromDate} To {toDate}";
+                    }
+                }
+                else
+                {
+                    periodText = DateTime.Now.ToString("MMMM yyyy");
                 }
 
-                string subTitleText = selectedReportType == "summary" ? "TRAIL BALANCE (CONTROL HEAD SUMMARY)" : "TRAIL BALANCE (DETAILED ACCOUNT WISE)";
-                string periodText = $"For The Period: {selectedYearText}";
-                string printDateText = $"Print Date: {DateTime.Now:dd-MMM-yy HH:mm:ss}";
+                string printDateText = DateTime.Now.ToString("dd-MMM-yy HH:mm:ss");
 
                 decimal totalDebit = 0;
                 decimal totalCredit = 0;
@@ -345,22 +451,23 @@ namespace Nskg.Controllers
     <meta charset='utf-8' />
     <title>TRAIL BALANCE</title>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; margin: 20px; color: #000; font-size: 13px; }
-        .report-header { text-align: left; margin-bottom: 15px; }
-        .report-header h3 { margin: 0 0 4px 0; font-size: 16px; font-weight: bold; text-transform: uppercase; }
-        .report-header h2 { margin: 0 0 4px 0; font-size: 18px; font-weight: bold; }
-        .meta-line { display: flex; justify-content: space-between; font-weight: normal; margin-top: 4px; font-size: 12px; }
-        table.report-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        table.report-table th, table.report-table td { padding: 4px 6px; font-size: 12px; }
-        table.report-table thead th { border-top: 1px solid #000; border-bottom: 1px solid #000; font-weight: bold; text-align: left; }
+        body { font-family: 'Courier New', Courier, monospace; margin: 25px; color: #000; font-size: 13px; }
+        .report-header { text-align: left; margin-bottom: 12px; }
+        .comp-title { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
+        .report-title { font-size: 16px; font-weight: bold; margin-bottom: 3px; letter-spacing: 0.5px; }
+        .period-title { font-size: 13px; margin-bottom: 3px; }
+        .meta-line { display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px solid #000; padding-bottom: 4px; margin-top: 4px; }
+        table.report-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        table.report-table th, table.report-table td { padding: 3px 6px; font-size: 13px; font-family: 'Courier New', Courier, monospace; }
+        table.report-table thead th { border-top: 1px solid #000; border-bottom: 1px solid #000; font-weight: bold; }
         .text-center { text-align: center; }
         .text-left { text-align: left; }
         .text-right { text-align: right; }
-        .fw-bold { font-weight: bold; }
-        .grand-total-row td { border-top: 1px solid #000; border-bottom: 1px solid #000; font-weight: bold; padding-top: 6px; padding-bottom: 6px; }
-        .profit-loss-row td { border-bottom: 1px solid #000; font-weight: bold; padding-top: 4px; padding-bottom: 4px; }
+        .grand-total-row td { border-top: 1px solid #000; font-weight: bold; padding-top: 8px; padding-bottom: 4px; }
+        .profit-loss-row td { padding-top: 6px; padding-bottom: 6px; }
+        .profit-loss-box { border: 1px solid #000; display: inline-block; padding: 2px 20px; font-weight: bold; font-size: 14px; }
         @media print {
-            body { margin: 0; padding: 10px; }
+            body { margin: 10px; }
             .no-print { display: none !important; }
         }
     </style>
@@ -369,11 +476,11 @@ namespace Nskg.Controllers
 
                 sb.Append($@"
     <div class='report-header'>
-        <h3>{companyName}</h3>
-        <h2>{subTitleText}</h2>
-        <div>{periodText}</div>
+        <div class='comp-title'>{shortCompanyName}</div>
+        <div class='report-title'>TRAIL BALANCE</div>
+        <div class='period-title'>For The Period &nbsp;&nbsp; {periodText}</div>
         <div class='meta-line'>
-            <span>{printDateText}</span>
+            <span>Print Date &nbsp; {printDateText}</span>
             <span>Branch: {branchCode}</span>
         </div>
     </div>
@@ -381,11 +488,11 @@ namespace Nskg.Controllers
     <table class='report-table'>
         <thead>
             <tr>
-                <th style='width: 90px;'>Code</th>
-                <th>Title Of Account</th>
-                <th style='width: 90px; text-align: center;'>Company</th>
-                <th style='width: 140px; text-align: right;'>Debit</th>
-                <th style='width: 140px; text-align: right;'>Credit</th>
+                <th style='width: 80px;' class='text-left'>Code</th>
+                <th class='text-left'>Title Of Account</th>
+                <th style='width: 100px;' class='text-center'>Company</th>
+                <th style='width: 160px;' class='text-right'>Debit</th>
+                <th style='width: 160px;' class='text-right'>Credit</th>
             </tr>
         </thead>
         <tbody>");
@@ -411,21 +518,22 @@ namespace Nskg.Controllers
             </tr>");
                 }
 
-                decimal diff = totalDebit - totalCredit;
-                string diffLabel = Math.Abs(diff) < 0.01m ? "Status: Balanced" : "Profit/Loss (Diff):";
+                decimal profitLoss = Math.Abs(totalDebit - totalCredit);
 
                 sb.Append($@"
         </tbody>
         <tfoot>
             <tr class='grand-total-row'>
-                <td colspan='3' class='text-left fw-bold'>Grand Total:</td>
-                <td class='text-right fw-bold'>{totalDebit:#,##0.00}</td>
-                <td class='text-right fw-bold'>{totalCredit:#,##0.00}</td>
+                <td colspan='3' class='text-left' style='font-weight: bold;'>Grand Total:</td>
+                <td class='text-right' style='font-weight: bold;'>{totalDebit:#,##0.00}</td>
+                <td class='text-right' style='font-weight: bold;'>{totalCredit:#,##0.00}</td>
             </tr>
             <tr class='profit-loss-row'>
-                <td colspan='3' class='text-left fw-bold'>{diffLabel}</td>
-                <td class='text-right fw-bold'>{diff:#,##0.00}</td>
-                <td class='text-right'></td>
+                <td colspan='3' class='text-left' style='font-weight: bold;'>Profit/Loss:</td>
+                <td class='text-right' style='font-weight: bold;'>
+                    <div class='profit-loss-box'>{profitLoss:#,##0.00}</div>
+                </td>
+                <td></td>
             </tr>
         </tfoot>
     </table>
@@ -441,33 +549,25 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportExcel(string? rcocode, string? fyId, string? reportType = "detailed")
+        public IActionResult ExportExcel(string? rcocode, string? fyId, string? fromDate, string? toDate, string? reportType = "summary", bool withProcess = false)
         {
             int companyId = GetCompanyId();
-            string selectedReportType = string.IsNullOrEmpty(reportType) ? "detailed" : reportType.ToLower();
+            string selectedReportType = string.IsNullOrEmpty(reportType) ? "summary" : reportType.ToLower();
 
             try
             {
-                DataTable dt = GetTrialBalanceData(rcocode, fyId, companyId, selectedReportType);
+                DataTable dt = GetTrialBalanceData(rcocode, fyId, fromDate, toDate, companyId, selectedReportType, withProcess);
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
                     return Content("No data found to export.");
                 }
 
-                // Lookup Financial Year name for the CSV header
-                string selectedYearText = "All Financial Years";
-                if (!string.IsNullOrEmpty(fyId) && !fyId.Equals("All", StringComparison.OrdinalIgnoreCase)
-                    && int.TryParse(fyId, out int parsedFyId))
-                {
-                    var fy = _context.FinancialYears.FirstOrDefault(f => f.Id == parsedFyId && !f.IsDeleted);
-                    if (fy != null)
-                        selectedYearText = $"{fy.YearName} ({fy.StartDate:dd-MMM-yyyy} to {fy.EndDate:dd-MMM-yyyy})";
-                }
+                string periodText = $"{fromDate} To {toDate}";
 
                 var sb = new StringBuilder();
                 sb.AppendLine("\"TRAIL BALANCE\"");
-                sb.AppendLine($"\"Financial Year:\",\"{selectedYearText}\",\"Company Code:\",\"{(!string.IsNullOrEmpty(rcocode) ? rcocode : "ALL")}\"");
+                sb.AppendLine($"\"Period:\",\"{periodText}\",\"Company:\",\"{(!string.IsNullOrEmpty(rcocode) ? rcocode : "ALL")}\"");
                 sb.AppendLine();
                 sb.AppendLine("Code,Title Of Account,Company,Debit,Credit");
 
@@ -489,7 +589,7 @@ namespace Nskg.Controllers
                 }
 
                 sb.AppendLine($",Grand Total:,,{totalDr:#,##0.00},{totalCr:#,##0.00}");
-                sb.AppendLine($",Profit/Loss:,,{(totalDr - totalCr):#,##0.00},");
+                sb.AppendLine($",Profit/Loss:,,{Math.Abs(totalDr - totalCr):#,##0.00},");
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
                 return File(bytes, "text/csv", $"TrailBalanceReport_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
@@ -509,4 +609,3 @@ namespace Nskg.Controllers
         }
     }
 }
-

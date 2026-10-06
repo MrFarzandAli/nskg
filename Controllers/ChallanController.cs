@@ -197,17 +197,74 @@ namespace Nskg.Controllers
 
         public IActionResult Create()
         {
-            LoadDropdowns();
+            int companyId = User.GetCompanyId();
+            string companyCode = User.GetCompanyCode();
 
-           
+            LoadDropdowns(companyId > 0 ? companyId : 1006);
+
+            var query = _context.ChallanHead.Where(x => !x.IsDeleted);
+            if (companyId > 0)
+            {
+                query = query.Where(x => x.CompanyId == companyId || (!string.IsNullOrEmpty(companyCode) && companyCode != "0" && x.CoCode == companyCode));
+            }
+
+            var lastEntry = query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
+            if (lastEntry == null)
+            {
+                lastEntry = _context.ChallanHead.Where(x => !x.IsDeleted).OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
+            }
+
+            if (lastEntry != null)
+            {
+                var stationsList = ViewBag.Stations as List<SelectListItem> ?? new List<SelectListItem>();
+                if (lastEntry.StationId > 0 && !stationsList.Any(s => s.Value == lastEntry.StationId.ToString()))
+                {
+                    var directStation = _context.GLChart3.FirstOrDefault(g => g.Id == lastEntry.StationId);
+                    if (directStation != null)
+                    {
+                        stationsList.Add(new SelectListItem
+                        {
+                            Value = directStation.Id.ToString(),
+                            Text = directStation.Name + " (" + (directStation.AC1 + directStation.AC3) + ")"
+                        });
+                        ViewBag.Stations = stationsList.OrderBy(s => string.IsNullOrEmpty(s.Value) ? "" : s.Text).ToList();
+                    }
+                }
+
+                var transList = ViewBag.Transporters as List<SelectListItem> ?? new List<SelectListItem>();
+                if (lastEntry.TransId > 0 && !transList.Any(t => t.Value == lastEntry.TransId.ToString()))
+                {
+                    var directTrans = _context.GLChart3.FirstOrDefault(g => g.Id == lastEntry.TransId);
+                    if (directTrans != null)
+                    {
+                        transList.Add(new SelectListItem
+                        {
+                            Value = directTrans.Id.ToString(),
+                            Text = directTrans.Name + " (" + (directTrans.AC1 + directTrans.AC3) + ")"
+                        });
+                        ViewBag.Transporters = transList.OrderBy(t => string.IsNullOrEmpty(t.Value) ? "" : t.Text).ToList();
+                    }
+                }
+            }
 
             return View(new ChallanViewModel
             {
                 Head = new ChallanHead
                 {
-                    DocDate = DateTime.Now,
-                    DocNo = GenerateDocNo()
-
+                    DocDate = lastEntry?.DocDate ?? DateTime.Now,
+                    DocNo = GenerateDocNo(),
+                    StationId = lastEntry?.StationId ?? 0,
+                    Station = lastEntry?.Station,
+                    StationCode = lastEntry?.StationCode,
+                    TransId = lastEntry?.TransId ?? 0,
+                    Transporter = lastEntry?.Transporter,
+                    TransCode = lastEntry?.TransCode,
+                    VehicleNo = lastEntry?.VehicleNo,
+                    Driver = lastEntry?.Driver,
+                    PartyStationCode = lastEntry?.PartyStationCode,
+                    PExpCode = lastEntry?.PExpCode,
+                    PExpCode2 = lastEntry?.PExpCode2,
+                    PExpCode3 = lastEntry?.PExpCode3
                 },
                 Details = new List<ChallanDetailVM>()
             });
@@ -506,14 +563,23 @@ namespace Nskg.Controllers
 
             if (!stationFound)
             {
-                var matched = _context.GLChart3
-                    .Where(g => g.AcType != "S" && (
-                        (!string.IsNullOrEmpty(head.Station) && g.Name == head.Station) ||
-                        (!string.IsNullOrEmpty(head.StationCode) && (g.AC1 + g.AC3) == head.StationCode) ||
-                        (!string.IsNullOrEmpty(head.Station) && (g.Name.Contains(head.Station) || head.Station.Contains(g.Name)))
-                    ))
-                    .OrderBy(g => g.CompanyId == compId ? 0 : 1)
-                    .FirstOrDefault();
+                GLChart3? matched = null;
+                if (head.StationId > 0)
+                {
+                    matched = _context.GLChart3.FirstOrDefault(g => g.Id == head.StationId);
+                }
+
+                if (matched == null)
+                {
+                    matched = _context.GLChart3
+                        .Where(g => g.AcType != "S" && (
+                            (!string.IsNullOrEmpty(head.Station) && g.Name == head.Station) ||
+                            (!string.IsNullOrEmpty(head.StationCode) && (g.AC1 + g.AC3) == head.StationCode) ||
+                            (!string.IsNullOrEmpty(head.Station) && (g.Name.Contains(head.Station) || head.Station.Contains(g.Name)))
+                        ))
+                        .OrderBy(g => g.CompanyId == compId ? 0 : 1)
+                        .FirstOrDefault();
+                }
 
                 if (matched != null)
                 {
@@ -530,18 +596,6 @@ namespace Nskg.Controllers
                         });
                     }
                 }
-                else if (head.StationId > 0)
-                {
-                    var directStation = _context.GLChart3.FirstOrDefault(g => g.Id == head.StationId);
-                    if (directStation != null)
-                    {
-                        stationsList.Add(new SelectListItem
-                        {
-                            Value = directStation.Id.ToString(),
-                            Text = directStation.Name + " (" + (directStation.AC1 + directStation.AC3) + ")"
-                        });
-                    }
-                }
                 ViewBag.Stations = stationsList.OrderBy(s => string.IsNullOrEmpty(s.Value) ? "" : s.Text).ToList();
             }
 
@@ -551,14 +605,23 @@ namespace Nskg.Controllers
 
             if (!transFound)
             {
-                var matchedTrans = _context.GLChart3
-                    .Where(g => g.AcType != "S" && (
-                        (!string.IsNullOrEmpty(head.Transporter) && g.Name == head.Transporter) ||
-                        (!string.IsNullOrEmpty(head.TransCode) && (g.AC1 + g.AC3) == head.TransCode) ||
-                        (!string.IsNullOrEmpty(head.Transporter) && (g.Name.Contains(head.Transporter) || head.Transporter.Contains(g.Name)))
-                    ))
-                    .OrderBy(g => g.CompanyId == compId ? 0 : 1)
-                    .FirstOrDefault();
+                GLChart3? matchedTrans = null;
+                if (head.TransId > 0)
+                {
+                    matchedTrans = _context.GLChart3.FirstOrDefault(g => g.Id == head.TransId);
+                }
+
+                if (matchedTrans == null)
+                {
+                    matchedTrans = _context.GLChart3
+                        .Where(g => g.AcType != "S" && (
+                            (!string.IsNullOrEmpty(head.Transporter) && g.Name == head.Transporter) ||
+                            (!string.IsNullOrEmpty(head.TransCode) && (g.AC1 + g.AC3) == head.TransCode) ||
+                            (!string.IsNullOrEmpty(head.Transporter) && (g.Name.Contains(head.Transporter) || head.Transporter.Contains(g.Name)))
+                        ))
+                        .OrderBy(g => g.CompanyId == compId ? 0 : 1)
+                        .FirstOrDefault();
+                }
 
                 if (matchedTrans != null)
                 {
@@ -572,18 +635,6 @@ namespace Nskg.Controllers
                         {
                             Value = matchedTrans.Id.ToString(),
                             Text = matchedTrans.Name + " (" + (matchedTrans.AC1 + matchedTrans.AC3) + ")"
-                        });
-                    }
-                }
-                else if (head.TransId > 0)
-                {
-                    var directTrans = _context.GLChart3.FirstOrDefault(g => g.Id == head.TransId);
-                    if (directTrans != null)
-                    {
-                        transList.Add(new SelectListItem
-                        {
-                            Value = directTrans.Id.ToString(),
-                            Text = directTrans.Name + " (" + (directTrans.AC1 + directTrans.AC3) + ")"
                         });
                     }
                 }
@@ -620,6 +671,29 @@ namespace Nskg.Controllers
                     det.BiltyId = match.Id;
                 }
             }
+
+            DateTime docDate = head.DocDate ?? DateTime.Today;
+
+            // Next entry (next row down in list: older date, or same date with lower Id)
+            var nextId = _context.ChallanHead
+                .Where(x => !x.IsDeleted && (x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
+                    (x.DocDate < docDate || (x.DocDate == docDate && x.Id < id)))
+                .OrderByDescending(x => x.DocDate)
+                .ThenByDescending(x => x.Id)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+
+            // Prev entry (previous row up in list: newer date, or same date with higher Id)
+            var prevId = _context.ChallanHead
+                .Where(x => !x.IsDeleted && (x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
+                    (x.DocDate > docDate || (x.DocDate == docDate && x.Id > id)))
+                .OrderBy(x => x.DocDate)
+                .ThenBy(x => x.Id)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+
+            ViewBag.PrevId = prevId > 0 ? prevId : (int?)null;
+            ViewBag.NextId = nextId > 0 ? nextId : (int?)null;
 
             var model = new ChallanViewModel
             {

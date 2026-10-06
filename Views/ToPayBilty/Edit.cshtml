@@ -5,18 +5,52 @@
 
     <input type="hidden" asp-for="Head.Id" />
 
+    <input type="hidden" asp-for="Head.DocNo" />
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h3 class="mb-0">
-                <i class="fa fa-edit text-warning me-2"></i>
-                Edit To Pay Bilty
-            </h3>
-            <small class="text-muted">Update To Pay Bilty</small>
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <h3 class="mb-0">
+                    <i class="fa fa-edit text-warning me-2"></i>
+                    Edit To Pay Bilty
+                </h3>
+                <small class="text-muted">Update To Pay Bilty</small>
+            </div>
+            <span class="badge bg-dark fs-6 px-3 py-2"><i class="fa fa-file-text me-1"></i>DC No: @Model.Head.DocNo</span>
         </div>
 
-        <div>
-            <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addRow()">
+        <div class="d-flex flex-wrap align-items-center gap-1">
+            @if (ViewBag.PrevId != null)
+            {
+                <a href="@Url.Action("Edit", new { id = ViewBag.PrevId })" class="btn btn-outline-secondary btn-sm" title="Previous Entry">
+                    <i class="fa fa-arrow-left me-1"></i> Prev
+                </a>
+            }
+            else
+            {
+                <button type="button" class="btn btn-outline-secondary btn-sm disabled" disabled>
+                    <i class="fa fa-arrow-left me-1"></i> Prev
+                </button>
+            }
+
+            @if (ViewBag.NextId != null)
+            {
+                <a href="@Url.Action("Edit", new { id = ViewBag.NextId })" class="btn btn-outline-secondary btn-sm" title="Next Entry">
+                    Next <i class="fa fa-arrow-right ms-1"></i>
+                </a>
+            }
+            else
+            {
+                <button type="button" class="btn btn-outline-secondary btn-sm disabled" disabled>
+                    Next <i class="fa fa-arrow-right ms-1"></i>
+                </button>
+            }
+
+            <a asp-action="Create" class="btn btn-outline-primary btn-sm me-2" title="New Entry">
+                <i class="fa fa-plus-circle me-1"></i> New
+            </a>
+
+            <button type="button" class="btn btn-outline-primary btn-sm me-1" onclick="addRow()">
                 <i class="fa fa-plus"></i> Add Item
             </button>
 
@@ -41,25 +75,20 @@
                     <input asp-for="Head.DocDate" id="BiltyDate" type="date" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
-                <div class="col-md-2">
-                    <label>DC No</label>
-                    <input asp-for="Head.DocNo" readonly class="form-control form-control-sm bg-light" />
-                </div>
-
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label>Station</label>
-                    <select asp-for="Head.StationId" id="Station" class="form-select form-select-sm" tabindex="3"
+                    <select asp-for="Head.StationId" id="Station" class="form-select form-select-sm select2" tabindex="3"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text"))">
                     </select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label>Party Name</label>
 
                     <div class="input-group input-group-sm">
                         <select asp-for="Head.CustomerId"
                                 id="CustomerId"
-                                class="form-select" tabindex="4"
+                                class="form-select select2" tabindex="4"
                                 asp-items="@(new SelectList(ViewBag.Customers, "Value", "Text"))">
                         </select>
 
@@ -259,6 +288,13 @@
             }
 
             calculateNetAmount();
+
+            // Initialize select2 on all dropdowns
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
+            });
+
             $('#BiltyNo').focus();
             highlightField('#BiltyNo');
         });

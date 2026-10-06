@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using Nskg.Helper;
 
 namespace Nskg.Areas.Identity.Pages.Account
 {
@@ -25,6 +26,7 @@ namespace Nskg.Areas.Identity.Pages.Account
 
         public async Task<IActionResult> OnGet(string returnUrl = null)
         {
+            CompanyCookieHelper.ClearCompanyCookie(Response);
             await _signInManager.SignOutAsync();
             _logger.LogInformation("User logged out.");
             return RedirectToPage("/Account/Login");
@@ -32,6 +34,7 @@ namespace Nskg.Areas.Identity.Pages.Account
 
         public async Task<IActionResult> OnPost(string returnUrl = null)
         {
+            CompanyCookieHelper.ClearCompanyCookie(Response);
             await _signInManager.SignOutAsync();
             _logger.LogInformation("User logged out.");
             return RedirectToPage("/Account/Login");

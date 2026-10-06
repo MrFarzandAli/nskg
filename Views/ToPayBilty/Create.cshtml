@@ -3,14 +3,18 @@
 
 <form id="myForm" asp-action="Create" method="post">
 
+    <input type="hidden" asp-for="Head.DocNo" />
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h3 class="mb-0">
-                <i class="fa fa-truck text-warning me-2"></i>
-                To Pay Bilty Entry
-            </h3>
-            <small class="text-muted">Create To Pay Bilty / Goods Dispatch</small>
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <h3 class="mb-0">
+                    <i class="fa fa-truck text-warning me-2"></i>
+                    To Pay Bilty Entry
+                </h3>
+                <small class="text-muted">Create To Pay Bilty / Goods Dispatch</small>
+            </div>
+            <span class="badge bg-primary fs-6 px-3 py-2"><i class="fa fa-file-text me-1"></i>DC No: @Model.Head.DocNo</span>
         </div>
 
         <div>
@@ -37,30 +41,25 @@
 
                 <div class="col-md-2">
                     <label>Bilty Date</label>
-                    <input asp-for="Head.DocDate" id="BiltyDate" type="date" class="form-control form-control-sm" tabindex="2" />
+                    <input asp-for="Head.DocDate" id="BiltyDate" type="date" value="@(Model != null && Model.Head != null && Model.Head.DocDate.HasValue ? Model.Head.DocDate.Value.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
-                <div class="col-md-2">
-                    <label>DC No</label>
-                    <input asp-for="Head.DocNo" readonly class="form-control form-control-sm bg-light" />
-                </div>
-
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label>Station</label>
-                    <select asp-for="Head.StationId" id="Station" class="form-select form-select-sm" tabindex="3"
-                            asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text"))">
+                    <select asp-for="Head.StationId" id="Station" class="form-select form-select-sm select2" tabindex="3"
+                            asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text", Model != null && Model.Head != null && Model.Head.StationId > 0 ? Model.Head.StationId.ToString() : ""))">
                     </select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label>Party Name</label>
 
                     <div class="input-group input-group-sm">
                         <select asp-for="Head.CustomerId"
                                 id="CustomerId"
-                                class="form-select" tabindex="4"
+                                class="form-select select2" tabindex="4"
                                 required
-                                asp-items="@(new SelectList(ViewBag.Customers, "Value", "Text"))">
+                                asp-items="@(new SelectList(ViewBag.Customers, "Value", "Text", Model != null && Model.Head != null && Model.Head.CustomerId > 0 ? Model.Head.CustomerId.ToString() : ""))">
                         </select>
 
                         <button type="button"
@@ -218,6 +217,19 @@
         }
 
         $(document).ready(function() {
+            // Initialize select2 on all dropdowns
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
+            });
+
+            @if (Model?.Head?.StationId > 0) {
+                <text>$('#Station').val('@Model.Head.StationId').trigger('change.select2');</text>
+            }
+            @if (Model?.Head?.CustomerId > 0) {
+                <text>$('#CustomerId').val('@Model.Head.CustomerId').trigger('change.select2');</text>
+            }
+
             $('#BiltyNo').focus();
             highlightField('#BiltyNo');
             addRow();

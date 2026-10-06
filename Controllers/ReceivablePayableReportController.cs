@@ -56,8 +56,14 @@ namespace Nskg.Controllers
             string selectedRco = rcocode != null ? rcocode : defaultCoCode;
 
             // Financial Years
-            var financialYears = _context.FinancialYears
-                .Where(f => !f.IsDeleted && !string.IsNullOrEmpty(f.YearName))
+            var fyQuery = _context.FinancialYears
+                .Where(f => !f.IsDeleted && !string.IsNullOrEmpty(f.YearName));
+            if (companyId > 0)
+            {
+                fyQuery = fyQuery.Where(f => f.CompanyId == companyId);
+            }
+
+            var financialYears = fyQuery
                 .OrderByDescending(f => !f.IsClosed)
                 .ThenByDescending(f => f.StartDate)
                 .ToList();
@@ -76,21 +82,22 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            // 2. Account dropdown populated directly from GLChart1
-            var queryAccounts = _context.GLChart1.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(selectedRco))
-            {
-                queryAccounts = queryAccounts.Where(g => g.CoCode == selectedRco || g.CompanyId == companyId);
-            }
+            // 2. Account dropdown populated directly from GLChart1 filtered by AcPara
+            var validAc1s = _context.AcPara
+                .Where(p => !string.IsNullOrEmpty(p.Accode) && p.Accode.Length >= 3 && !new[] { "R", "E", "S", "F" }.Contains(p.ActypeCode))
+                .Select(p => p.Accode.Substring(0, 3))
+                .Distinct()
+                .ToList();
 
-            var accounts = queryAccounts
+            var accounts = _context.GLChart1
+                .Where(g => validAc1s.Contains(g.AC1))
                 .Select(g => new
                 {
                     Code = g.AC1,
                     Name = g.Name
                 })
                 .Distinct()
-                .OrderBy(g => g.Name)
+                .OrderBy(g => g.Code)
                 .ToList();
 
             ViewBag.FinancialYears = financialYears;
@@ -105,10 +112,16 @@ namespace Nskg.Controllers
         }
 
         [HttpGet]
-                public IActionResult GetAccountsByCompany(string rcocode)
+        public IActionResult GetAccountsByCompany(string rcocode)
         {
-            var query = _context.GLChart1.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(rcocode) && rcocode != "0")
+            var validAc1s = _context.AcPara
+                .Where(p => !string.IsNullOrEmpty(p.Accode) && p.Accode.Length >= 3 && !new[] { "R", "E", "S", "F" }.Contains(p.ActypeCode))
+                .Select(p => p.Accode.Substring(0, 3))
+                .Distinct()
+                .ToList();
+
+            var query = _context.GLChart1.Where(g => validAc1s.Contains(g.AC1)).AsQueryable();
+            if (!string.IsNullOrWhiteSpace(rcocode) && rcocode != "0" && !rcocode.Equals("ALL", StringComparison.OrdinalIgnoreCase))
             {
                 var company = _context.Companies.FirstOrDefault(c => c.Cocode == rcocode || c.Id.ToString() == rcocode);
                 int companyId = company?.Id ?? 0;
@@ -122,7 +135,7 @@ namespace Nskg.Controllers
                     name = g.Name
                 })
                 .Distinct()
-                .OrderBy(g => g.name)
+                .OrderBy(g => g.code)
                 .ToList();
 
             return Json(accounts);
@@ -136,7 +149,7 @@ namespace Nskg.Controllers
             int selectedFyId = fyId ?? GetFinancialYearId();
             var fy = _context.FinancialYears.FirstOrDefault(f => f.Id == selectedFyId);
             DateTime? sDate = fy?.StartDate;
-            DateTime? tDate = fy?.EndDate;
+            DateTime? tDate = fy?.EndDate ?? DateTime.Today;
 
             using (SqlConnection con = new SqlConnection(connString))
             {
@@ -144,10 +157,13 @@ namespace Nskg.Controllers
 
                 string companyName = "All Companies / Branches - West Wharf-New Shadab Karachi Goods Transports";
                 int targetCompanyId = companyId;
+                string targetCocode = "";
 
-                if (!string.IsNullOrWhiteSpace(rcocode))
+                bool isAllCompanies = string.IsNullOrWhiteSpace(rcocode) || rcocode.Equals("ALL", StringComparison.OrdinalIgnoreCase);
+
+                if (!isAllCompanies)
                 {
-                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Id, Name FROM Companies WHERE Cocode = @Rcocode OR CAST(Id AS NVARCHAR) = @Rcocode", con))
+                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Id, Cocode, Name FROM Companies WHERE Cocode = @Rcocode OR CAST(Id AS NVARCHAR) = @Rcocode", con))
                     {
                         cmdComp.Parameters.AddWithValue("@Rcocode", rcocode.Trim());
                         using (var reader = cmdComp.ExecuteReader())
@@ -156,6 +172,8 @@ namespace Nskg.Controllers
                             {
                                 if (reader["Id"] != DBNull.Value)
                                     targetCompanyId = Convert.ToInt32(reader["Id"]);
+                                if (reader["Cocode"] != DBNull.Value)
+                                    targetCocode = reader["Cocode"].ToString() ?? "";
                                 if (reader["Name"] != DBNull.Value && !string.IsNullOrWhiteSpace(reader["Name"].ToString()))
                                     companyName = reader["Name"].ToString();
                             }
@@ -167,35 +185,49 @@ namespace Nskg.Controllers
                     targetCompanyId = 0;
                 }
 
-                // 1. Run sp_ProcessTrialBalance before generating the report
+                // 1. Run dbo.process_opening_balances to calculate and synchronize GLCHART3 Opening balances
                 try
                 {
-                    using (SqlCommand cmdProc = new SqlCommand("dbo.sp_ProcessTrialBalance", con))
+                    string? plAccode = null;
+                    using (SqlCommand cmdPl = new SqlCommand("SELECT TOP 1 RTRIM(Accode) FROM AcPara WHERE ACTYPE = 'P'", con))
+                    {
+                        var res = cmdPl.ExecuteScalar();
+                        if (res != null && res != DBNull.Value) plAccode = res.ToString();
+                    }
+
+                    using (SqlCommand cmdProc = new SqlCommand("dbo.process_opening_balances", con))
                     {
                         cmdProc.CommandType = CommandType.StoredProcedure;
-                        cmdProc.CommandTimeout = 180;
-                        cmdProc.Parameters.AddWithValue("@Cocode", string.IsNullOrWhiteSpace(rcocode) ? (object)DBNull.Value : rcocode.Trim());
-                        cmdProc.Parameters.AddWithValue("@CompanyId", targetCompanyId > 0 ? (object)targetCompanyId : DBNull.Value);
-                        cmdProc.Parameters.AddWithValue("@FinancialYearId", selectedFyId > 0 ? (object)selectedFyId : DBNull.Value);
-                        cmdProc.Parameters.AddWithValue("@SDate", sDate.HasValue ? (object)sDate.Value : DBNull.Value);
-                        cmdProc.Parameters.AddWithValue("@TDate", tDate.HasValue ? (object)tDate.Value : DBNull.Value);
+                        cmdProc.CommandTimeout = 300;
+                        cmdProc.Parameters.AddWithValue("@companyid", isAllCompanies || targetCompanyId <= 0 ? (object)DBNull.Value : targetCompanyId.ToString());
+                        cmdProc.Parameters.AddWithValue("@tdate", (object?)tDate ?? DateTime.Today);
+                        cmdProc.Parameters.AddWithValue("@placcode", (object?)plAccode ?? "020003");
                         cmdProc.ExecuteNonQuery();
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log or handle procedure warning if needed
-                    Console.WriteLine("Warning: sp_ProcessTrialBalance execution: " + ex.Message);
+                    Console.WriteLine("Warning: dbo.process_opening_balances execution: " + ex.Message);
                 }
 
-                // 2. Fetch balances from GLChart3
+                // 2. Fetch balances from GLChart3 using exact Oracle query structure:
+                // SELECT ALL GLCHART.AC1, GLCHART.NAME, GLCHART.ACTYPE, GLCHART.OPENING opening, AC1||AC3 HACC,
+                // decode(actype,'A','1','L','2','C','3','I','4','E','5','') mactype
+                // FROM GLCHART3 GLCHART
+                // WHERE GLCHART.COCODE = :RCOCODE
+                //  AND NVL(OPENING,0)<>0
+                // and AC1 in ( select substr(accode,1,3) from acpara where actype not in ('R','E','S','F'))
+                // and actype not in ('S','E','I','C')
+                // and ac1 between nvl(:PAC1,'000') and nvl(:PAC1,'999')
+                // ORDER BY ACTYPE,NAME
                 string query = @"
                     SELECT 
                         GLCHART.AC1,
+                        ISNULL(g1.GroupName, GLCHART.AC1) AS GroupName,
                         GLCHART.Name,
                         GLCHART.AcType,
                         ISNULL(GLCHART.Opening, 0) AS Opening,
-                        ISNULL(GLCHART.ACC, RTRIM(LTRIM(ISNULL(GLCHART.AC1, ''))) + RTRIM(LTRIM(ISNULL(GLCHART.AC3, '')))) AS HACC,
+                        RTRIM(ISNULL(GLCHART.AC1, '')) + RTRIM(ISNULL(GLCHART.AC3, '')) AS HACC,
                         CASE GLCHART.AcType 
                             WHEN 'A' THEN '1' 
                             WHEN 'L' THEN '2' 
@@ -208,31 +240,27 @@ namespace Nskg.Controllers
                         CASE WHEN ISNULL(GLCHART.Opening, 0) < 0 THEN ABS(ISNULL(GLCHART.Opening, 0)) ELSE 0 END AS Payables,
                         @CompanyName AS CompanyName
                     FROM GLChart3 GLCHART
-                    WHERE (
-                            (@Rcocode <> '' AND (GLCHART.CoCode = @Rcocode OR GLCHART.CompanyId = @TargetCompanyId))
-                            OR (@Rcocode = '' AND (GLCHART.CompanyId = @TargetCompanyId OR @TargetCompanyId = 0 OR GLCHART.CompanyId IS NULL))
-                          )
+                    OUTER APPLY (
+                        SELECT TOP 1 RTRIM(Name) AS GroupName
+                        FROM GLChart1
+                        WHERE RTRIM(AC1) = RTRIM(GLCHART.AC1)
+                          AND (CoCode = GLCHART.CoCode OR CompanyId = GLCHART.CompanyId OR @IsAll = 1)
+                    ) g1
+                    WHERE (@IsAll = 1 OR GLCHART.CoCode = @Rcocode OR GLCHART.CompanyId = @TargetCompanyId)
                       AND ISNULL(GLCHART.Opening, 0) <> 0
-                      AND (
-                          -- If specific PAC1 (GLChart1 Account AC1) is selected
-                          (@PAC1 <> '' AND GLCHART.AC1 = @PAC1)
-                          OR
-                          -- If PAC1 is not selected (ALL): AC1 in AcPara (actype not in R, E, S, F) and GLCHART.AcType not in S, E, I, C
-                          (@PAC1 = '' AND (
-                              GLCHART.AC1 IN (
-                                  SELECT DISTINCT SUBSTRING(Accode, 1, 3) 
-                                  FROM AcPara 
-                                  WHERE (CompanyId = @TargetCompanyId OR @TargetCompanyId = 0 OR CompanyId IS NULL OR Cocode = @Rcocode)
-                                    AND ACTYPE NOT IN ('R', 'E', 'S', 'F')
-                              )
-                              AND (GLCHART.AcType IS NULL OR GLCHART.AcType NOT IN ('S', 'E', 'I', 'C'))
-                          ))
+                      AND GLCHART.AC1 IN (
+                          SELECT SUBSTRING(accode, 1, 3) 
+                          FROM AcPara 
+                          WHERE actype NOT IN ('R', 'E', 'S', 'F')
                       )
-                    ORDER BY GLCHART.AcType, GLCHART.Name;";
+                      AND (GLCHART.AcType IS NULL OR GLCHART.AcType NOT IN ('S', 'E', 'I', 'C'))
+                      AND GLCHART.AC1 BETWEEN ISNULL(NULLIF(@PAC1, ''), '000') AND ISNULL(NULLIF(@PAC1, ''), '999')
+                    ORDER BY GLCHART.AC1, GLCHART.Name;";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.CommandTimeout = 180;
+                    cmd.Parameters.AddWithValue("@IsAll", isAllCompanies ? 1 : 0);
                     cmd.Parameters.AddWithValue("@Rcocode", string.IsNullOrWhiteSpace(rcocode) ? "" : rcocode.Trim());
                     cmd.Parameters.AddWithValue("@TargetCompanyId", targetCompanyId);
                     cmd.Parameters.AddWithValue("@CompanyName", companyName);
@@ -316,38 +344,79 @@ namespace Nskg.Controllers
                 <th style='width: 140px; text-align: right;'>Payables</th>
             </tr>
         </thead>
-        <tbody>
-            <tr class='group-header-row'>
-                <td colspan='5'>RECEIVABLE & PAYABLE BALANCES</td>
-            </tr>");
+        <tbody>");
 
-                foreach (DataRow row in dt.Rows)
+            string currentAc1 = "";
+            string currentGroupName = "";
+            decimal groupReceivables = 0;
+            decimal groupPayables = 0;
+
+            foreach (DataRow row in dt.Rows)
+            {
+                string ac1 = row["AC1"]?.ToString()?.Trim() ?? "";
+                string grpName = row["GroupName"]?.ToString()?.Trim() ?? ac1;
+
+                if (ac1 != currentAc1)
                 {
-                    string hacc = row["HACC"]?.ToString() ?? "";
-                    string name = row["Name"]?.ToString() ?? "";
-                    decimal rec = row["Receivables"] != DBNull.Value ? Convert.ToDecimal(row["Receivables"]) : 0;
-                    decimal pay = row["Payables"] != DBNull.Value ? Convert.ToDecimal(row["Payables"]) : 0;
+                    if (!string.IsNullOrEmpty(currentAc1))
+                    {
+                        sb.Append($@"
+            <tr style='background-color:#f1f3f5; font-weight:bold; border-top:1px solid #dee2e6; border-bottom:1px solid #dee2e6;'>
+                <td colspan='3' class='text-right'>Sub Total ({currentAc1} - {currentGroupName}):</td>
+                <td class='text-right'>{(groupReceivables > 0 ? groupReceivables.ToString("#,##0.00") : "-")}</td>
+                <td class='text-right'>{(groupPayables > 0 ? groupPayables.ToString("#,##0.00") : "-")}</td>
+            </tr>");
+                        groupReceivables = 0;
+                        groupPayables = 0;
+                    }
 
-                    totalReceivables += rec;
-                    totalPayables += pay;
-
+                    currentAc1 = ac1;
+                    currentGroupName = grpName;
                     sb.Append($@"
+            <tr class='group-header-row'>
+                <td colspan='5' style='background-color:#0d6efd; color:#ffffff; font-weight:700; padding:8px 12px; font-size:13px; text-transform:uppercase;'>
+                    <i class='fa fa-folder-open me-2'></i> ACCOUNT: {ac1} - {grpName}
+                </td>
+            </tr>");
+                }
+
+                string hacc = row["HACC"]?.ToString() ?? "";
+                string name = row["Name"]?.ToString() ?? "";
+                decimal rec = row["Receivables"] != DBNull.Value ? Convert.ToDecimal(row["Receivables"]) : 0;
+                decimal pay = row["Payables"] != DBNull.Value ? Convert.ToDecimal(row["Payables"]) : 0;
+
+                groupReceivables += rec;
+                groupPayables += pay;
+                totalReceivables += rec;
+                totalPayables += pay;
+
+                sb.Append($@"
             <tr>
                 <td class='text-center'>{sr++}</td>
                 <td class='text-center fw-bold'>{hacc}</td>
                 <td class='text-left'>{name}</td>
-                <td class='text-right'>{(rec > 0 ? rec.ToString("#,##0") : "-")}</td>
-                <td class='text-right'>{(pay > 0 ? pay.ToString("#,##0") : "-")}</td>
+                <td class='text-right'>{(rec > 0 ? rec.ToString("#,##0.00") : "-")}</td>
+                <td class='text-right'>{(pay > 0 ? pay.ToString("#,##0.00") : "-")}</td>
             </tr>");
-                }
+            }
 
+            if (!string.IsNullOrEmpty(currentAc1))
+            {
                 sb.Append($@"
+            <tr style='background-color:#f1f3f5; font-weight:bold; border-top:1px solid #dee2e6; border-bottom:1px solid #dee2e6;'>
+                <td colspan='3' class='text-right'>Sub Total ({currentAc1} - {currentGroupName}):</td>
+                <td class='text-right'>{(groupReceivables > 0 ? groupReceivables.ToString("#,##0.00") : "-")}</td>
+                <td class='text-right'>{(groupPayables > 0 ? groupPayables.ToString("#,##0.00") : "-")}</td>
+            </tr>");
+            }
+
+            sb.Append($@"
         </tbody>
         <tfoot>
             <tr class='total-row'>
-                <td colspan='3' class='text-right fw-bold'>TOTAL:</td>
-                <td class='text-right fw-bold'>{totalReceivables:#,##0}</td>
-                <td class='text-right fw-bold'>{totalPayables:#,##0}</td>
+                <td colspan='3' class='text-right fw-bold'>GRAND TOTAL:</td>
+                <td class='text-right fw-bold'>{totalReceivables:#,##0.00}</td>
+                <td class='text-right fw-bold'>{totalPayables:#,##0.00}</td>
             </tr>
         </tfoot>
     </table>
@@ -385,14 +454,38 @@ namespace Nskg.Controllers
                 int sr = 1;
                 decimal totalRec = 0;
                 decimal totalPay = 0;
+                string currentAc1 = "";
+                string currentGroupName = "";
+                decimal groupRec = 0;
+                decimal groupPay = 0;
 
                 foreach (DataRow row in dt.Rows)
                 {
+                    string ac1 = row["AC1"]?.ToString()?.Trim() ?? "";
+                    string grpName = row["GroupName"]?.ToString()?.Trim() ?? ac1;
+
+                    if (ac1 != currentAc1)
+                    {
+                        if (!string.IsNullOrEmpty(currentAc1))
+                        {
+                            sb.AppendLine($",,Sub Total ({currentAc1} - {EscapeCsv(currentGroupName)}):,{groupRec:#,##0.00},{groupPay:#,##0.00}");
+                            sb.AppendLine();
+                            groupRec = 0;
+                            groupPay = 0;
+                        }
+
+                        currentAc1 = ac1;
+                        currentGroupName = grpName;
+                        sb.AppendLine($"\"--- ACCOUNT: {currentAc1} - {EscapeCsv(grpName)} ---\",,,,");
+                    }
+
                     string hacc = EscapeCsv(row["HACC"]?.ToString() ?? "");
                     string name = EscapeCsv(row["Name"]?.ToString() ?? "");
                     decimal rec = row["Receivables"] != DBNull.Value ? Convert.ToDecimal(row["Receivables"]) : 0;
                     decimal pay = row["Payables"] != DBNull.Value ? Convert.ToDecimal(row["Payables"]) : 0;
 
+                    groupRec += rec;
+                    groupPay += pay;
                     totalRec += rec;
                     totalPay += pay;
 
@@ -402,7 +495,13 @@ namespace Nskg.Controllers
                     sb.AppendLine($"{sr++},{hacc},{name},{recStr},{payStr}");
                 }
 
-                sb.AppendLine($",,TOTAL:,{totalRec:#,##0.00},{totalPay:#,##0.00}");
+                if (!string.IsNullOrEmpty(currentAc1))
+                {
+                    sb.AppendLine($",,Sub Total ({currentAc1} - {EscapeCsv(currentGroupName)}):,{groupRec:#,##0.00},{groupPay:#,##0.00}");
+                }
+
+                sb.AppendLine();
+                sb.AppendLine($",,GRAND TOTAL:,{totalRec:#,##0.00},{totalPay:#,##0.00}");
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
                 return File(bytes, "text/csv", $"ReceivablePayableReport_{DateTime.Now:yyyyMMdd_HHmmss}.csv");

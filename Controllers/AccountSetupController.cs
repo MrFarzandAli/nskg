@@ -1,12 +1,15 @@
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nskg.Data;
+using Nskg.Helper;
+using Nskg.Models;
 using Nskg.Models.ViewModels;
 using Nskg.Repositories.Interfaces; // ✅ for IAuditService
-using System.Security.Claims;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Nskg.Controllers
 {
@@ -16,23 +19,24 @@ namespace Nskg.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly IAuditService _audit; // ✅ ADD
+        private readonly IAuditService _audit;
 
         public AccountSetupController(
             ApplicationDbContext context,
             UserManager<IdentityUser> userManager,
             SignInManager<IdentityUser> signInManager,
-            IAuditService audit) // ✅ ADD
+            IAuditService audit)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
-            _audit = audit; // ✅ ADD
+            _audit = audit;
         }
 
         public IActionResult SelectCompany()
         {
             var companies = _context.Companies
+                .Where(c => !c.IsDeleted)
                 .Select(c => new SelectListItem
                 {
                     Value = c.Id.ToString(),
@@ -44,14 +48,24 @@ namespace Nskg.Controllers
                 Companies = companies
             };
 
-            // 🔥 DEFAULT COMPANY SELECT
-            if (companies.Any())
-            {
-                model.SelectedCompanyId = int.Parse(companies.First().Value);
+            var existingCookie = CompanyCookieHelper.GetCompanyCookie(Request);
+            int defaultCompanyId = 0;
 
-                // 🔥 US COMPANY KE YEARS LOAD KARO
+            if (existingCookie != null && existingCookie.CompanyId > 0 && companies.Any(c => c.Value == existingCookie.CompanyId.ToString()))
+            {
+                defaultCompanyId = existingCookie.CompanyId;
+            }
+            else if (companies.Any())
+            {
+                defaultCompanyId = int.Parse(companies.First().Value);
+            }
+
+            if (defaultCompanyId > 0)
+            {
+                model.SelectedCompanyId = defaultCompanyId;
+
                 var years = _context.FinancialYears
-                    .Where(x => x.CompanyId == model.SelectedCompanyId)
+                    .Where(x => x.CompanyId == defaultCompanyId && !x.IsClosed)
                     .Select(y => new SelectListItem
                     {
                         Value = y.Id.ToString(),
@@ -60,8 +74,11 @@ namespace Nskg.Controllers
 
                 model.FinancialYears = years;
 
-                // 🔥 DEFAULT YEAR SELECT
-                if (years.Any())
+                if (existingCookie != null && existingCookie.FinancialYearId > 0 && years.Any(y => y.Value == existingCookie.FinancialYearId.ToString()))
+                {
+                    model.SelectedFinancialYearId = existingCookie.FinancialYearId;
+                }
+                else if (years.Any())
                 {
                     model.SelectedFinancialYearId = int.Parse(years.First().Value);
                 }
@@ -70,7 +87,7 @@ namespace Nskg.Controllers
             return View(model);
         }
 
-        // 🔹 LOAD FINANCIAL YEARS (AJAX optional)
+        // 🔹 LOAD FINANCIAL YEARS (AJAX)
         public IActionResult GetFinancialYears(int companyId)
         {
             var years = _context.FinancialYears
@@ -84,6 +101,14 @@ namespace Nskg.Controllers
             return Json(years);
         }
 
+        // 🔹 SWITCH COMPANY ACTION (Clears current cookie and opens company selection)
+        [HttpGet]
+        public IActionResult SwitchCompany()
+        {
+            CompanyCookieHelper.ClearCompanyCookie(Response);
+            return RedirectToAction("SelectCompany");
+        }
+
         // 🔹 SAVE SELECTION
         [HttpPost]
         public async Task<IActionResult> SelectCompany(CompanySelectionViewModel model)
@@ -92,54 +117,50 @@ namespace Nskg.Controllers
             {
                 var user = await _userManager.GetUserAsync(User);
 
-                // OLD claims remove
-                var existingClaims = await _userManager.GetClaimsAsync(user);
+                // Clean up any old database claims so they never cause cross-machine conflicts
+                if (user != null)
+                {
+                    var existingClaims = await _userManager.GetClaimsAsync(user);
+                    var oldCompanyClaims = existingClaims
+                        .Where(c => c.Type is "CompanyId" or "CompanyCode" or "CompanyName" or "FinancialYearId")
+                        .ToList();
 
-                var companyClaim = existingClaims.FirstOrDefault(c => c.Type == "CompanyId");
-                var companycodeClaim = existingClaims.FirstOrDefault(c => c.Type == "CompanyCode");
-                var companyNameClaim = existingClaims.FirstOrDefault(c => c.Type == "CompanyName");
-                var yearClaim = existingClaims.FirstOrDefault(c => c.Type == "FinancialYearId");
-
-                if (companyClaim != null)
-                    await _userManager.RemoveClaimAsync(user, companyClaim);
-
-                if (companycodeClaim != null)
-                    await _userManager.RemoveClaimAsync(user, companycodeClaim);
-
-                if (companyNameClaim != null)
-                    await _userManager.RemoveClaimAsync(user, companyNameClaim);
-
-                if (yearClaim != null)
-                    await _userManager.RemoveClaimAsync(user, yearClaim);
+                    foreach (var c in oldCompanyClaims)
+                    {
+                        await _userManager.RemoveClaimAsync(user, c);
+                    }
+                }
 
                 var company = _context.Companies.FirstOrDefault(x => x.Id == model.SelectedCompanyId);
 
-                // ADD NEW CLAIMS
-                await _userManager.AddClaimAsync(user, new Claim("CompanyId", model.SelectedCompanyId.ToString()));
-                if (company != null)
-                {
-                    if (!string.IsNullOrEmpty(company.Cocode))
-                        await _userManager.AddClaimAsync(user, new Claim("CompanyCode", company.Cocode));
-                    if (!string.IsNullOrEmpty(company.Name))
-                        await _userManager.AddClaimAsync(user, new Claim("CompanyName", company.Name));
-                }
-                await _userManager.AddClaimAsync(user, new Claim("FinancialYearId", model.SelectedFinancialYearId.ToString()));
+                var selectedCompId = model.SelectedCompanyId ?? 0;
+                var selectedYearId = model.SelectedFinancialYearId ?? 0;
 
-                // 🔹 Refresh SignIn (VERY IMPORTANT)
-                await _signInManager.RefreshSignInAsync(user);
+                // 🔹 SAVE STRICTLY IN BROWSER COOKIE (Isolated per machine / browser session)
+                var cookieContext = new CompanyCookieContext
+                {
+                    CompanyId = selectedCompId,
+                    CompanyCode = company?.Cocode ?? "",
+                    CompanyName = company?.Name ?? "",
+                    FinancialYearId = selectedYearId
+                };
+
+                CompanyCookieHelper.SetCompanyCookie(Response, cookieContext, Request.IsHttps);
 
                 // 🔥 AUDIT LOG
-                await _audit.LogAsync(
-                    "Select",
-                    "AccountSetup",
-                    user.Id,
-                    $"Selected Company: {model.SelectedCompanyId}, Financial Year: {model.SelectedFinancialYearId}",
-                    companyId: model.SelectedCompanyId,
-    financialYearId: model.SelectedFinancialYearId
+                if (user != null)
+                {
+                    await _audit.LogAsync(
+                        "Select",
+                        "AccountSetup",
+                        user.Id,
+                        $"Selected Company: {selectedCompId} ({company?.Name}), Financial Year: {selectedYearId}",
+                        companyId: selectedCompId,
+                        financialYearId: selectedYearId
+                    );
+                }
 
-                );
-
-                TempData["SuccessMessage"] = "✅ Company and Financial Year selected successfully!";
+                TempData["SuccessMessage"] = $"✅ Company [{company?.Name}] selected successfully!";
                 return RedirectToAction("Index", "Home");
             }
             catch (Exception ex)

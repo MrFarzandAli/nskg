@@ -415,6 +415,11 @@ namespace Nskg.Controllers
                     return RedirectToAction("Index", new { type = "" });
                 }
 
+                if (data.Details != null)
+                {
+                    data.Details = data.Details.Where(x => !x.IsDeleted).ToList();
+                }
+
                 // Resolve Head.gl3Id if missing from Haccode or Ac1+Ac3
                 if (data.gl3Id == null || data.gl3Id == 0)
                 {
@@ -480,24 +485,7 @@ namespace Nskg.Controllers
                 LoadDropdowns(data.Votype);
 
                 var type = data.Votype?.ToUpper();
-
-                ViewBag.VoucherType = type;
-                ViewBag.Type = type;
-
-                // ✅ SET ALL FLAGS (same as Create action)
-                // Receipt types (CR, BR)
-                ViewBag.IsReceipt = type == "CR" || type == "BR";
-
-                // Full columns for JV, CP, BP (show everything)
-                ViewBag.IsFull = type == "JV" || type == "CP" || type == "BP";
-
-                // specific flags
-                ViewBag.IsCashReceipt = type == "CR";
-                ViewBag.IsBankReceipt = type == "BR";
-                ViewBag.IsCashPayment = type == "CP";
-                ViewBag.IsBankPayment = type == "BP";
-
-                ViewBag.Votype = GetVoucherTitle(type);
+                SetupViewBagFlags(type);
 
                 return View(new VoucherVM
                 {
@@ -512,11 +500,32 @@ namespace Nskg.Controllers
                 return RedirectToAction("Index", new { type = "" });
             }
         }
+
+        private void SetupViewBagFlags(string? votype)
+        {
+            var type = votype?.ToUpper();
+            ViewBag.VoucherType = type;
+            ViewBag.Type = type;
+            ViewBag.IsReceipt = type == "CR" || type == "BR";
+            ViewBag.IsFull = type == "JV" || type == "CP" || type == "BP";
+            ViewBag.IsCashReceipt = type == "CR";
+            ViewBag.IsBankReceipt = type == "BR";
+            ViewBag.IsCashPayment = type == "CP";
+            ViewBag.IsBankPayment = type == "BP";
+            ViewBag.Votype = GetVoucherTitle(type);
+        }
+
         // EDIT POST
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Edit(VoucherVM vm)
         {
+            if (vm?.Head == null)
+            {
+                TempData["ErrorMessage"] = "❌ Invalid voucher data submitted!";
+                return RedirectToAction("Index", new { type = "" });
+            }
+
             var existing = _context.VoHead
                   .Include(x => x.Details)
                   .FirstOrDefault(x => x.Id == vm.Head.Id);
@@ -535,30 +544,23 @@ namespace Nskg.Controllers
                 var setting = _context.VoucherTypeSettings
                    .FirstOrDefault(x => x.Code == oldType);
 
+                // Filter details that have an account selected and either debit or credit amount
+                var submittedDetails = (vm.Details ?? new List<VoDet>())
+                    .Where(x => x.gl3Id != null && x.gl3Id > 0 && ((x.Dramt ?? 0) != 0 || (x.Cramt ?? 0) != 0))
+                    .ToList();
+
                 if (setting != null && setting.AutoBalance)
                 {
-                    var dr = vm.Details.Sum(x => x.Dramt ?? 0);
-                    var cr = vm.Details.Sum(x => x.Cramt ?? 0);
+                    var dr = submittedDetails.Sum(x => x.Dramt ?? 0);
+                    var cr = submittedDetails.Sum(x => x.Cramt ?? 0);
 
                     if (dr != cr && oldType == "JV")
                     {
                         TempData["ErrorMessage"] = "❌ Debit and Credit amounts must be equal!";
+                        SetupViewBagFlags(oldType);
                         LoadDropdowns(oldType);
                         return View(vm);
                     }
-                }
-
-
-                // =========================================
-                // 🔥 STEP 1: REMOVE OLD GL TRANSACTIONS
-                // =========================================
-                var oldGl = _context.GLTrans
-                    .Where(x => x.RefId == existing.Id && x.Votype == oldType)
-                    .ToList();
-
-                if (oldGl.Any())
-                {
-                    _context.GLTrans.RemoveRange(oldGl);
                 }
 
                 var account = _context.GLChart3.FirstOrDefault(x => x.Id == vm.Head.gl3Id);
@@ -566,11 +568,13 @@ namespace Nskg.Controllers
                 if (account == null && oldType != "JV")
                 {
                     TempData["ErrorMessage"] = "❌ Invalid account selected!";
+                    SetupViewBagFlags(oldType);
                     LoadDropdowns(oldType);
                     return View(vm);
                 }
+
                 // =========================================
-                // 🔥 STEP 2: UPDATE VOUCHER HEAD
+                // 🔥 STEP 1: UPDATE VOUCHER HEAD
                 // =========================================
                 existing.Narration = vm.Head.Narration;
                 existing.Vodate = vm.Head.Vodate;
@@ -578,69 +582,114 @@ namespace Nskg.Controllers
                 existing.Invno = vm.Head.Invno;
                 existing.gl3Id = vm.Head.gl3Id;
                 existing.Partycode = vm.Head.Partycode;
-                existing.Totdramt = vm.Details.Sum(x => x.Dramt ?? 0);
-                existing.Totcramt = vm.Details.Sum(x => x.Cramt ?? 0);
-                existing.Diff = vm.Head.Totdramt - vm.Head.Totcramt;
+                existing.Totdramt = submittedDetails.Sum(x => x.Dramt ?? 0);
+                existing.Totcramt = submittedDetails.Sum(x => x.Cramt ?? 0);
 
-                existing.Hdramt = vm.Head.Diff < 0 ? vm.Head.Diff : 0;
-                existing.Hcramt = vm.Head.Diff > 0 ? -vm.Head.Diff : 0;
-                existing.Entries = vm.Details.Count;
-                existing.CompanyId = User.GetCompanyId();
-                existing.FinancialYearId = User.GetFinancialYearId();
-                existing.Cocode = User.GetCompanyCode();
+                decimal netDiff = (existing.Totdramt ?? 0) - (existing.Totcramt ?? 0);
+                existing.Diff = netDiff;
+                existing.Hdramt = netDiff < 0 ? Math.Abs(netDiff) : 0;
+                existing.Hcramt = netDiff > 0 ? netDiff : 0;
+                existing.Entries = submittedDetails.Count;
+
+                int currentCompId = User.GetCompanyId();
+                if (currentCompId > 0) existing.CompanyId = currentCompId;
+                int currentFyId = User.GetFinancialYearId();
+                if (currentFyId > 0) existing.FinancialYearId = currentFyId;
+                string currentCoCode = User.GetCompanyCode();
+                if (!string.IsNullOrEmpty(currentCoCode) && currentCoCode != "0") existing.Cocode = currentCoCode;
+
                 existing.Userid = User.GetUserId();
                 existing.Ac1 = account?.AC1;
                 existing.Ac3 = account?.AC3;
                 existing.Haccode = account?.ACC;
-
-                // =========================================
-                // 🔥 STEP 3: REPLACE DETAILS
-                // =========================================
-                //  _context.VoDet.RemoveRange(existing.Details);
-                foreach (var d in existing.Details)
-                {
-                    d.IsDeleted = true;
-                    d.ModifiedOn = DateTime.Now;
-                    d.ModifiedBy = GetUser();
-
-                    _context.VoDet.Update(d);
-                }
-
-                foreach (var d in vm.Details)
-                {
-                    var DetailAccount = _context.GLChart3.FirstOrDefault(x => x.Id == d.gl3Id);
-                    if (DetailAccount != null)
-                    {
-                        d.VoHeadId = existing.Id;
-                        d.Vono = vm.Head.Vono;
-                        d.Votype = vm.Head.Votype;
-                        d.Vodate = vm.Head.Vodate;
-                        d.Ac1 = DetailAccount.AC1;
-                        d.Ac3 = DetailAccount.AC3;
-                        d.Hacc = account?.ACC;
-                        d.Acc = DetailAccount.ACC;
-                        d.Actype = DetailAccount.AcType;
-                        d.Cocode = User.GetCompanyCode();
-                        d.Name = DetailAccount.Name;
-                        d.Ctype = DetailAccount.CType;
-                        d.EntryDate = vm.Head.EntryDate;
-                        d.Userid = User.GetUserId();
-                        // 🔥 ADD THIS
-                        d.CreatedOn = DateTime.Now;   // new record hai
-                        d.CreatedBy = GetUser();
-                        d.IsDeleted = false;
-                        _context.VoDet.Add(d);
-                    }
-                }
-                // 🔥 AUDIT UPDATE
                 existing.ModifiedOn = DateTime.Now;
                 existing.ModifiedBy = GetUser();
+
+                // =========================================
+                // 🔥 STEP 2: SYNC DETAILS (NO EF TRACKING CONFLICT)
+                // =========================================
+                var submittedIds = submittedDetails.Where(x => x.Id > 0).Select(x => x.Id).ToHashSet();
+
+                // Soft-delete rows that were deleted by user in the UI
+                if (existing.Details != null)
+                {
+                    foreach (var d in existing.Details.Where(x => !x.IsDeleted))
+                    {
+                        if (!submittedIds.Contains(d.Id))
+                        {
+                            d.IsDeleted = true;
+                            d.ModifiedOn = DateTime.Now;
+                            d.ModifiedBy = GetUser();
+                        }
+                    }
+                }
+
+                var activeDetails = new List<VoDet>();
+
+                foreach (var d in submittedDetails)
+                {
+                    var detailAccount = _context.GLChart3.FirstOrDefault(x => x.Id == d.gl3Id);
+                    if (detailAccount == null)
+                        continue;
+
+                    VoDet target;
+
+                    // If existing tracked detail entity, update in-place!
+                    if (d.Id > 0 && existing.Details != null && existing.Details.Any(x => x.Id == d.Id))
+                    {
+                        target = existing.Details.First(x => x.Id == d.Id);
+                        target.IsDeleted = false;
+                        target.ModifiedOn = DateTime.Now;
+                        target.ModifiedBy = GetUser();
+                    }
+                    else
+                    {
+                        // New detail row added in UI
+                        target = new VoDet
+                        {
+                            VoHeadId = existing.Id,
+                            CreatedOn = DateTime.Now,
+                            CreatedBy = GetUser(),
+                            IsDeleted = false
+                        };
+                        _context.VoDet.Add(target);
+                    }
+
+                    target.gl3Id = d.gl3Id;
+                    target.Transcode = d.Transcode;
+                    target.Billtino = d.Billtino;
+                    target.Bilno = d.Bilno;
+                    target.Vehicleno = d.Vehicleno;
+                    target.Dramt = d.Dramt ?? 0;
+                    target.Cramt = d.Cramt ?? 0;
+                    target.Chqno = d.Chqno;
+                    target.ChqDate = d.ChqDate;
+                    target.Ptax = d.Ptax;
+                    target.Narration = d.Narration;
+
+                    target.Vono = existing.Vono;
+                    target.Votype = existing.Votype;
+                    target.Vodate = existing.Vodate;
+                    target.Ac1 = detailAccount.AC1;
+                    target.Ac3 = detailAccount.AC3;
+                    target.Hacc = account?.ACC;
+                    target.Acc = detailAccount.ACC;
+                    target.Actype = detailAccount.AcType;
+                    target.Cocode = existing.Cocode ?? User.GetCompanyCode();
+                    target.Name = detailAccount.Name;
+                    target.Ctype = detailAccount.CType;
+                    target.EntryDate = vm.Head.EntryDate ?? existing.EntryDate;
+                    target.Userid = User.GetUserId();
+
+                    activeDetails.Add(target);
+                }
+
                 _context.SaveChanges();
 
                 // =========================================
-                // 🔥 STEP 4: REPOST GL TRANSACTIONS
+                // 🔥 STEP 3: REPOST GL TRANSACTIONS
                 // =========================================
-                _service.PostVoucher(existing, vm.Details);
+                _service.PostVoucher(existing, activeDetails);
 
                 // =========================================
                 // 🔥 AUDIT LOG
@@ -661,10 +710,11 @@ namespace Nskg.Controllers
                     "Error",
                     "Voucher",
                     vm.Head.Id.ToString(),
-                    ex.Message
+                    ex.Message + (ex.InnerException != null ? " | Inner: " + ex.InnerException.Message : "")
                 ).Wait();
 
-                TempData["ErrorMessage"] = "❌ Failed to update voucher!";
+                TempData["ErrorMessage"] = $"❌ Failed to update voucher: {ex.Message}";
+                SetupViewBagFlags(oldType);
                 LoadDropdowns(oldType);
                 return View(vm);
             }

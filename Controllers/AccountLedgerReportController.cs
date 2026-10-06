@@ -256,21 +256,9 @@ namespace Nskg.Controllers
                             CASE 
                                 WHEN NULLIF(RTRIM(LTRIM(a.VEHICLENO)), '') IS NOT NULL THEN RTRIM(LTRIM(a.VEHICLENO))
                                 WHEN a.VOTYPE = 'CL' AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND a.NARRATION NOT LIKE '%-%-%' THEN RTRIM(LTRIM(a.NARRATION))
-                                ELSE COALESCE(
-                                    (SELECT TOP 1 iss.VehicleNo FROM ISSHEAD iss WHERE (iss.BillTiNo = a.BILLTINO OR iss.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(iss.VehicleNo)), '') IS NOT NULL AND ISNULL(iss.IsDeleted, 0) = 0),
-                                    (SELECT TOP 1 ch.VehicleNo FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL AND ISNULL(ch.IsDeleted, 0) = 0),
-                                    (SELECT TOP 1 cmh.VehicleNo FROM CommDetail cmd INNER JOIN CommHead cmh ON cmd.CommHeadId = cmh.Id WHERE cmd.BillTiNo = a.BILLTINO AND NULLIF(RTRIM(LTRIM(cmh.VehicleNo)), '') IS NOT NULL AND ISNULL(cmh.IsDeleted, 0) = 0),
-                                    ''
-                                )
+                                ELSE ISNULL(RTRIM(LTRIM(a.VEHICLENO)), '')
                             END AS VehicleNo,
-                            CASE 
-                                WHEN NULLIF(RTRIM(LTRIM(a.STATION)), '') IS NOT NULL THEN RTRIM(LTRIM(a.STATION))
-                                ELSE COALESCE(
-                                    (SELECT TOP 1 g.Name FROM ISSHEAD iss LEFT JOIN GLCHART3 g ON g.Id = iss.StationId WHERE (iss.BillTiNo = a.BILLTINO OR iss.BilNo = a.BILNO) AND ISNULL(iss.IsDeleted, 0) = 0),
-                                    (SELECT TOP 1 ch.Station FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND ISNULL(ch.IsDeleted, 0) = 0),
-                                    ''
-                                )
-                            END AS Station,
+                            ISNULL(RTRIM(LTRIM(a.STATION)), '') AS Station,
                             ISNULL(a.INAME, ISNULL(a.NARRATION, '')) AS IName,
                             a.QTY AS Qty,
                             ISNULL(a.DRAMT, 0) AS Debit,

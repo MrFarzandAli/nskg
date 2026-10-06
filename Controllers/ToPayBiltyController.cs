@@ -181,13 +181,35 @@ namespace Nskg.Controllers
 
         public IActionResult Create()
         {
+            int companyId = User.GetCompanyId();
+            string companyCode = User.GetCompanyCode();
+
             LoadDropdowns();
+
+            var last = _context.IssHead
+                .Where(x => !x.IsDeleted && x.PType == "ToPay" && (companyId <= 0 || x.CompanyId == companyId || (!string.IsNullOrEmpty(companyCode) && companyCode != "0" && x.CoCode == companyCode)))
+                .OrderByDescending(x => x.DocDate)
+                .ThenByDescending(x => x.Id)
+                .FirstOrDefault();
+
+            if (last == null)
+            {
+                last = _context.IssHead.Where(x => !x.IsDeleted && x.PType == "ToPay")
+                    .OrderByDescending(x => x.DocDate)
+                    .ThenByDescending(x => x.Id)
+                    .FirstOrDefault();
+            }
+
             return View(new BiltyViewModel
             {
                 Head = new IssHead
                 {
-                    DocDate = DateTime.Now,
-                    DocNo = GenerateDocNo()
+                    DocDate = last?.DocDate ?? DateTime.Now,
+                    DocNo = GenerateDocNo(),
+                    StationId = last?.StationId ?? 0,
+                    CustomerId = last?.CustomerId ?? 0,
+                    SendTo = last?.SendTo,
+                    PType = "ToPay"
                 },
                 Details = new List<BiltyDetailVM>()
             });
@@ -299,6 +321,30 @@ namespace Nskg.Controllers
                     QtyPerPack = x.QtyPerPack ?? 0
                 })
                 .ToList();
+
+            int compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
+            DateTime docDate = head.DocDate ?? DateTime.Today;
+
+            // Next entry (next row down in list: older date, or same date with lower Id)
+            var nextId = _context.IssHead
+                .Where(x => !x.IsDeleted && x.PType == "ToPay" && (compId <= 0 || x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
+                    (x.DocDate < docDate || (x.DocDate == docDate && x.Id < id)))
+                .OrderByDescending(x => x.DocDate)
+                .ThenByDescending(x => x.Id)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+
+            // Prev entry (previous row up in list: newer date, or same date with higher Id)
+            var prevId = _context.IssHead
+                .Where(x => !x.IsDeleted && x.PType == "ToPay" && (compId <= 0 || x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
+                    (x.DocDate > docDate || (x.DocDate == docDate && x.Id > id)))
+                .OrderBy(x => x.DocDate)
+                .ThenBy(x => x.Id)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+
+            ViewBag.PrevId = prevId > 0 ? prevId : (int?)null;
+            ViewBag.NextId = nextId > 0 ? nextId : (int?)null;
 
             return View(new BiltyViewModel
             {

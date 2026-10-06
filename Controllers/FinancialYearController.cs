@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nskg.Data;
@@ -36,19 +36,41 @@ namespace Nskg.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var years = (await _unitOfWork.FinancialYearRepository.GetAllWithCompanyAsync())
-                        .Where(x => !x.IsDeleted);
+            int companyId = User.GetCompanyId();
+            IEnumerable<FinancialYear> years;
+
+            if (companyId > 0)
+            {
+                years = (await _unitOfWork.FinancialYearRepository.GetByCompanyAsync(companyId))
+                            .Where(x => !x.IsDeleted);
+            }
+            else
+            {
+                years = (await _unitOfWork.FinancialYearRepository.GetAllWithCompanyAsync())
+                            .Where(x => !x.IsDeleted);
+            }
 
             return View(years);
         }
 
         public async Task<IActionResult> Create()
         {
-            ViewBag.Companies = new SelectList(
-                (await _unitOfWork.Companies.GetAllAsync()).Where(x => !x.IsDeleted),
-                "Id", "Name");
+            int companyId = User.GetCompanyId();
+            var companies = (await _unitOfWork.Companies.GetAllAsync()).Where(x => !x.IsDeleted);
+            if (companyId > 0)
+            {
+                companies = companies.Where(x => x.Id == companyId);
+            }
 
-            return View();
+            ViewBag.Companies = new SelectList(companies, "Id", "Name", companyId > 0 ? companyId : null);
+
+            var model = new FinancialYear();
+            if (companyId > 0)
+            {
+                model.CompanyId = companyId;
+            }
+
+            return View(model);
         }
 
         // ✅ CREATE
@@ -58,6 +80,12 @@ namespace Nskg.Controllers
         {
             try
             {
+                int currentCompId = User.GetCompanyId();
+                if (model.CompanyId == 0 && currentCompId > 0)
+                {
+                    model.CompanyId = currentCompId;
+                }
+
                 model.YearName = $"{model.StartDate:yyyy}-{model.EndDate:yyyy}";
 
                 // 🔥 AUDIT
@@ -82,6 +110,14 @@ namespace Nskg.Controllers
             {
                 await _audit.LogAsync("Error", "FinancialYears", "0", ex.Message);
 
+                int companyId = User.GetCompanyId();
+                var companies = (await _unitOfWork.Companies.GetAllAsync()).Where(x => !x.IsDeleted);
+                if (companyId > 0)
+                {
+                    companies = companies.Where(x => x.Id == companyId);
+                }
+                ViewBag.Companies = new SelectList(companies, "Id", "Name", model.CompanyId);
+
                 TempData["ErrorMessage"] = "❌ Failed to create Financial Year!";
                 return View(model);
             }
@@ -97,9 +133,14 @@ namespace Nskg.Controllers
                 return RedirectToAction("Index");
             }
 
-            ViewBag.Companies = new SelectList(
-                (await _unitOfWork.Companies.GetAllAsync()).Where(x => !x.IsDeleted),
-                "Id", "Name", data.CompanyId);
+            int companyId = User.GetCompanyId();
+            var companies = (await _unitOfWork.Companies.GetAllAsync()).Where(x => !x.IsDeleted);
+            if (companyId > 0)
+            {
+                companies = companies.Where(x => x.Id == companyId);
+            }
+
+            ViewBag.Companies = new SelectList(companies, "Id", "Name", data.CompanyId);
 
             return View(data);
         }
@@ -143,6 +184,14 @@ namespace Nskg.Controllers
             catch (Exception ex)
             {
                 await _audit.LogAsync("Error", "FinancialYears", model.Id.ToString(), ex.Message);
+
+                int companyId = User.GetCompanyId();
+                var companies = (await _unitOfWork.Companies.GetAllAsync()).Where(x => !x.IsDeleted);
+                if (companyId > 0)
+                {
+                    companies = companies.Where(x => x.Id == companyId);
+                }
+                ViewBag.Companies = new SelectList(companies, "Id", "Name", model.CompanyId);
 
                 TempData["ErrorMessage"] = "❌ Failed to update Financial Year!";
                 return View(model);

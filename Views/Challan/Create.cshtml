@@ -62,14 +62,18 @@
 <form method="post" id="challanForm">
     @Html.AntiForgeryToken()
 
+    <input type="hidden" asp-for="Head.DocNo" />
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h3 class="mb-0">
-                <i class="fa fa-truck text-primary me-2"></i>
-                Challan Entry
-            </h3>
-            <small class="text-muted">Goods Dispatch / Transport Challan</small>
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <h3 class="mb-0">
+                    <i class="fa fa-truck text-primary me-2"></i>
+                    Challan Entry
+                </h3>
+                <small class="text-muted">Goods Dispatch / Transport Challan</small>
+            </div>
+            <span class="badge bg-primary fs-6 px-3 py-2"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
         </div>
 
         <div>
@@ -108,24 +112,19 @@
 
                 <div class="col-md-2">
                     <label><i class="fa fa-calendar"></i>Date</label>
-                    <input asp-for="Head.DocDate" type="date" class="form-control form-control-sm" tabindex="2" />
+                    <input asp-for="Head.DocDate" type="date" value="@(Model?.Head?.DocDate.HasValue == true ? Model.Head.DocDate.Value.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
-                <div class="col-md-2">
-                    <label><i class="fa fa-file"></i>Doc No</label>
-                    <input asp-for="Head.DocNo" readonly class="form-control form-control-sm bg-light" />
-                </div>
-
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label><i class="fa fa-map-marker"></i>Station</label>
-                    <select asp-for="Head.StationId" class="form-select form-select-sm" tabindex="3"
-                            asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text"))"></select>
+                    <select asp-for="Head.StationId" id="StationId" class="form-select form-select-sm select2" tabindex="3"
+                            asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text", Model != null && Model.Head != null && Model.Head.StationId > 0 ? Model.Head.StationId.ToString() : ""))"></select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label><i class="fa fa-truck"></i>Transporter</label>
-                    <select asp-for="Head.TransId" class="form-select form-select-sm" tabindex="4"
-                            asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text"))"></select>
+                    <select asp-for="Head.TransId" id="TransId" class="form-select form-select-sm select2" tabindex="4"
+                            asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text", Model != null && Model.Head != null && Model.Head.TransId > 0 ? Model.Head.TransId.ToString() : ""))"></select>
                 </div>
 
                 <div class="col-md-3">
@@ -180,111 +179,134 @@
         </div>
     </div>
 
-    <!-- EXPENSE SECTION -->
-    <div class="card shadow-sm border-0 mb-3">
-        <div class="card-body">
-            <div class="row g-3">
-                <label>B#/ Party</label>
-                <select asp-for="Head.PartyStationCode" id="PartyStationCode" class="form-select form-select-sm" tabindex="100"
-                        asp-items="@(new SelectList(ViewBag.PartyStations, "Value", "Text"))"></select>
-                <div class="col-md-4">
-                    <label>B#/ Party</label>
-                    <select asp-for="Head.PExpCode" id="PExpCode" class="form-select form-select-sm expense-select" tabindex="101"
-                            asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
-                    <input asp-for="Head.PExpAmt" class="form-control form-control-sm mt-2 calc" placeholder="Amount" tabindex="102" />
-                    <input asp-for="Head.PExpBilti" class="form-control form-control-sm mt-2" placeholder="Bilti" tabindex="103" />
+    <!-- LOWER SECTION: EXPENSES (LEFT ~70%) & PARTIES (RIGHT ~30%) -->
+    <div class="row g-3 mb-3">
+        <!-- LEFT COLUMN: EXPENSES & CALCULATION (~70%) -->
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-1 px-3">
+                    <h6 class="mb-0 fw-bold text-secondary small">
+                        <i class="fa fa-calculator me-1 text-primary"></i> Expenses & Calculations
+                    </h6>
                 </div>
+                <div class="card-body p-3">
+                    <!-- Hidden inputs for legacy fields -->
+                    <input type="hidden" asp-for="Head.PartyEx2" />
+                    <input type="hidden" asp-for="Head.LocalAmt2" />
+                    <input type="hidden" asp-for="Head.OtherEx2" />
 
-                <div class="col-md-4">
-                    <label>B#/ Party 2</label>
-                    <select asp-for="Head.PExpCode2" class="form-select form-select-sm expense-select" tabindex="104"
-                            asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
-                    <input asp-for="Head.PExpAmt2" class="form-control form-control-sm mt-2 calc" placeholder="Amount" tabindex="105" />
-                    <input asp-for="Head.PExpBilti2" class="form-control form-control-sm mt-2" placeholder="Bilti" tabindex="106" />
-                </div>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Local Amount</label>
+                            <input asp-for="Head.LocalAmt" id="Head_LocalAmt" class="form-control form-control-sm text-end" tabindex="113" />
+                        </div>
 
-                <div class="col-md-4">
-                    <label>B#/ Party 3</label>
-                    <select asp-for="Head.PExpCode3" class="form-select form-select-sm expense-select" tabindex="107"
-                            asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
-                    <input asp-for="Head.PExpAmt3" class="form-control form-control-sm mt-2 calc" placeholder="Amount" tabindex="108" />
-                    <input asp-for="Head.PExpBilti3" class="form-control form-control-sm mt-2" placeholder="Bilti" tabindex="109" />
-                </div>
-            </div>
-        </div>
-    </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Other Expense</label>
+                            <input asp-for="Head.TotOtherEx" id="Head_TotOtherEx" class="form-control form-control-sm text-end" tabindex="114" />
+                        </div>
 
-    <!-- LOCAL + OTHER -->
-    <div class="card shadow-sm border-0 mb-3">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label>B#/ Party Expence</label>
-                    <input asp-for="Head.PartyEx2" class="form-control form-control-sm" tabindex="110" />
-                </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Total Bilty</label>
+                            <input asp-for="Head.TotBillTi" id="Head_TotBillTi" readonly class="form-control form-control-sm bg-light text-end" />
+                        </div>
 
-                <div class="col-md-4">
-                    <label>B#/ Local Amount</label>
-                    <input asp-for="Head.LocalAmt2" class="form-control form-control-sm" tabindex="111" />
-                </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-semibold mb-1">To Pay</label>
+                            <input asp-for="Head.TotToPaid" id="Head_TotToPaid" class="form-control form-control-sm text-end" tabindex="115" />
+                        </div>
 
-                <div class="col-md-4">
-                    <label>B#/ Other Expense</label>
-                    <input asp-for="Head.OtherEx2" class="form-control form-control-sm" tabindex="112" />
-                </div>
-            </div>
-        </div>
-    </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Delivery Amt</label>
+                            <input asp-for="Head.DeliveryAmt" id="Head_DeliveryAmt" class="form-control form-control-sm text-end" tabindex="116" />
+                        </div>
 
-    <!-- TOTALS -->
-    <div class="card shadow-sm border-0 mb-3">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label><i class="fa fa-building"></i> Local Amount</label>
-                    <input asp-for="Head.LocalAmt" class="form-control form-control-sm" tabindex="113" />
-                </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Bilty Amt</label>
+                            <input asp-for="Head.BillTiAmt" id="Head_BillTiAmt" class="form-control form-control-sm text-end" tabindex="117" />
+                        </div>
 
-                <div class="col-md-4">
-                    <label><i class="fa fa-ellipsis-h"></i> Other Expense</label>
-                    <input asp-for="Head.TotOtherEx" class="form-control form-control-sm" tabindex="114" />
-                </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Lifter</label>
+                            <input asp-for="Head.TotLifter2" id="Head_TotLifter2" class="form-control form-control-sm text-end" tabindex="118" />
+                        </div>
 
-                <div class="col-md-4">
-                    <label><i class="fa fa-calculator"></i> Total Bilty</label>
-                    <input asp-for="Head.TotBillTi" readonly class="form-control form-control-sm bg-light" />
+                        <!-- NET / TOTAL AMOUNT -->
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-bold text-primary mb-1">Net Amount</label>
+                            <input asp-for="Head.NetAmt" id="Head_NetAmt" readonly class="form-control form-control-sm fw-bold text-primary bg-light border-primary text-end" />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- FINAL -->
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-2">
-                    <label><i class="fa fa-hand-holding-usd"></i> To Pay</label>
-                    <input asp-for="Head.TotToPaid" class="form-control form-control-sm" tabindex="115" />
+        <!-- RIGHT COLUMN: PARTIES (VERTICAL STACK ~30%) -->
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-1 px-3">
+                    <h6 class="mb-0 fw-bold text-secondary small">
+                        <i class="fa fa-users me-1 text-primary"></i> Party Details
+                    </h6>
                 </div>
+                <div class="card-body p-2">
+                    <div class="mb-2">
+                        <label class="form-label mb-1 text-muted" style="font-size:0.75rem; font-weight:600;">B#/ Party Station</label>
+                        <select asp-for="Head.PartyStationCode" id="PartyStationCode" class="form-select form-select-sm select2" tabindex="100"
+                                asp-items="@(new SelectList(ViewBag.PartyStations, "Value", "Text", Model?.Head?.PartyStationCode))"></select>
+                    </div>
 
-                <div class="col-md-2">
-                    <label><i class="fa fa-truck-loading"></i> Delivery</label>
-                    <input asp-for="Head.DeliveryAmt" class="form-control form-control-sm" tabindex="116" />
-                </div>
+                    <!-- PARTY 1 -->
+                    <div class="p-2 mb-2 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-primary fw-bold" style="font-size:0.75rem;">B#/ Party 1</span>
+                        </div>
+                        <select asp-for="Head.PExpCode" id="PExpCode" class="form-select form-select-sm select2 mb-1" tabindex="101"
+                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text", Model?.Head?.PExpCode))"></select>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <input asp-for="Head.PExpAmt" id="Head_PExpAmt" class="form-control form-control-sm calc text-end" placeholder="Amount" style="font-size:0.8rem;" tabindex="102" />
+                            </div>
+                            <div class="col-6">
+                                <input asp-for="Head.PExpBilti" id="Head_PExpBilti" class="form-control form-control-sm text-end" placeholder="Bilti" style="font-size:0.8rem;" tabindex="103" />
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="col-md-2">
-                    <label><i class="fa fa-money-bill"></i> Bilty Amt</label>
-                    <input asp-for="Head.BillTiAmt" class="form-control form-control-sm" tabindex="117" />
-                </div>
+                    <!-- PARTY 2 -->
+                    <div class="p-2 mb-2 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-primary fw-bold" style="font-size:0.75rem;">B#/ Party 2</span>
+                        </div>
+                        <select asp-for="Head.PExpCode2" id="Head_PExpCode2" class="form-select form-select-sm select2 mb-1" tabindex="104"
+                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text", Model?.Head?.PExpCode2))"></select>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <input asp-for="Head.PExpAmt2" id="Head_PExpAmt2" class="form-control form-control-sm calc text-end" placeholder="Amount" style="font-size:0.8rem;" tabindex="105" />
+                            </div>
+                            <div class="col-6">
+                                <input asp-for="Head.PExpBilti2" id="Head_PExpBilti2" class="form-control form-control-sm text-end" placeholder="Bilti" style="font-size:0.8rem;" tabindex="106" />
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="col-md-3">
-                    <label><i class="fa fa-user-cog"></i> Lifter</label>
-                    <input asp-for="Head.TotLifter2" class="form-control form-control-sm" tabindex="118" />
-                </div>
+                    <!-- PARTY 3 -->
+                    <div class="p-2 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-primary fw-bold" style="font-size:0.75rem;">B#/ Party 3</span>
+                        </div>
+                        <select asp-for="Head.PExpCode3" id="Head_PExpCode3" class="form-select form-select-sm select2 mb-1" tabindex="107"
+                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text", Model?.Head?.PExpCode3))"></select>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <input asp-for="Head.PExpAmt3" id="Head_PExpAmt3" class="form-control form-control-sm calc text-end" placeholder="Amount" style="font-size:0.8rem;" tabindex="108" />
+                            </div>
+                            <div class="col-6">
+                                <input asp-for="Head.PExpBilti3" id="Head_PExpBilti3" class="form-control form-control-sm text-end" placeholder="Bilti" style="font-size:0.8rem;" tabindex="109" />
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="col-md-3">
-                    <label><i class="fa fa-balance-scale"></i> Net Amt</label>
-                    <input asp-for="Head.NetAmt" readonly class="form-control form-control-sm bg-light" />
                 </div>
             </div>
         </div>
@@ -395,6 +417,31 @@
 
         // Focus on first field when page loads
         $(document).ready(function() {
+            // Initialize select2 on all select elements
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
+            });
+
+            @if (Model?.Head?.StationId > 0) {
+                <text>$('#StationId, #Head_StationId').val('@Model.Head.StationId').trigger('change.select2');</text>
+            }
+            @if (Model?.Head?.TransId > 0) {
+                <text>$('#TransId, #Head_TransId').val('@Model.Head.TransId').trigger('change.select2');</text>
+            }
+            @if (!string.IsNullOrEmpty(Model?.Head?.PartyStationCode)) {
+                <text>$('#PartyStationCode').val('@Model.Head.PartyStationCode').trigger('change.select2');</text>
+            }
+            @if (!string.IsNullOrEmpty(Model?.Head?.PExpCode)) {
+                <text>$('#PExpCode').val('@Model.Head.PExpCode').trigger('change.select2');</text>
+            }
+            @if (!string.IsNullOrEmpty(Model?.Head?.PExpCode2)) {
+                <text>$('#Head_PExpCode2').val('@Model.Head.PExpCode2').trigger('change.select2');</text>
+            }
+            @if (!string.IsNullOrEmpty(Model?.Head?.PExpCode3)) {
+                <text>$('#Head_PExpCode3').val('@Model.Head.PExpCode3').trigger('change.select2');</text>
+            }
+
             // Focus on Challan No
             $('#ChalNo').focus();
             highlightField('#ChalNo');

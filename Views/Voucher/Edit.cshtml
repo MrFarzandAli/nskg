@@ -1220,16 +1220,8 @@
                     <thead class="table-light text-center">
                         <tr>
                             <th>Account</th>
-                            @if (ViewBag.IsReceipt == true || ViewBag.IsFull == true)
-                            {
-                                <th>Transport</th>
-                            }
                             <th>Bilti No</th>
                             <th>Bill No</th>
-                            @if (ViewBag.IsReceipt == true || ViewBag.IsFull == true)
-                            {
-                                <th>Vehicle</th>
-                            }
                             <th class="text-success">Debit</th>
                             <th class="text-danger">Credit</th>
                             @if (ViewBag.IsBankReceipt == true || ViewBag.IsBankPayment == true || ViewBag.IsFull == true)
@@ -1272,32 +1264,8 @@
                                         </select>
                                         <input type="hidden" name="Details[@idx].Id" value="@d.Id" />
                                     </td>
-                                    @if (ViewBag.IsReceipt == true || ViewBag.IsFull == true)
-                                    {
-                                        <td>
-                                            <select name="Details[@idx].Transcode" class="form-control select2">
-                                                <option value="">Select Transport</option>
-                                                @foreach (var acc in ViewBag.transporterList)
-                                                {
-                                                    bool isSelected = acc.Value == d.Transcode?.ToString() || (!string.IsNullOrEmpty(d.Transcode) && acc.Text.Contains("(" + d.Transcode + ")"));
-                                                    if (isSelected)
-                                                    {
-                                                        <option value="@acc.Value" selected>@acc.Text</option>
-                                                    }
-                                                    else
-                                                    {
-                                                        <option value="@acc.Value">@acc.Text</option>
-                                                    }
-                                                }
-                                            </select>
-                                        </td>
-                                    }
                                     <td><input name="Details[@idx].Billtino" value="@d.Billtino" class="form-control" /></td>
                                     <td><input name="Details[@idx].Bilno" value="@d.Bilno" class="form-control" /></td>
-                                    @if (ViewBag.IsReceipt == true || ViewBag.IsFull == true)
-                                    {
-                                        <td><input name="Details[@idx].Vehicleno" value="@d.Vehicleno" class="form-control" /></td>
-                                    }
                                     <td>
                                         <input name="Details[@idx].Dramt" value="@d.Dramt" onkeyup="calc()" class="form-control" @(isReceiptVoucher ? "disabled" : "") />
                                         @if (isReceiptVoucher)
@@ -1382,22 +1350,6 @@
         let disableCredit = (isCashPayment || isBankPayment);
 
         function addRow() {
-            let transportCol = (isReceipt || isFull) ? `
-                <td>
-                    <select name="Details[${i}].Transcode" class="form-control select2">
-                        <option value="">Select Transport</option>
-                        @foreach (var acc in ViewBag.transporterList)
-                        {
-                                <option value="@acc.Value">@acc.Text</option>
-                        }
-                    </select>
-                </td>
-            ` : "";
-
-            let vehicleCol = (isReceipt || isFull) ? `
-                <td><input name="Details[${i}].Vehicleno" class="form-control"/></td>
-            ` : "";
-
             let debitCol = `
                 <td>
                     <input name="Details[${i}].Dramt" onkeyup="calc()" class="form-control" ${disableDebit ? 'disabled' : ''}/>
@@ -1433,10 +1385,8 @@
                         </select>
                         <input type="hidden" name="Details[${i}].Id" value="0" />
                     </td>
-                    ${transportCol}
                     <td><input name="Details[${i}].Billtino" class="form-control"/></td>
                     <td><input name="Details[${i}].Bilno" class="form-control"/></td>
-                    ${vehicleCol}
                     ${debitCol}
                     ${creditCol}
                     ${chequeCols}

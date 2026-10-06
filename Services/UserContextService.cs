@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Nskg.Service.Interfaces;
 using System.Security.Claims;
 
@@ -15,12 +15,14 @@ namespace Nskg.Service
 
         public int GetCompanyId()
         {
-            return int.Parse(_httpContext.HttpContext.User.FindFirst("CompanyId").Value);
+            var claim = _httpContext.HttpContext?.User?.FindFirst("CompanyId")?.Value;
+            return int.TryParse(claim, out var id) ? id : 0;
         }
 
         public int GetFinancialYearId()
         {
-            return int.Parse(_httpContext.HttpContext.User.FindFirst("FinancialYearId").Value);
+            var claim = _httpContext.HttpContext?.User?.FindFirst("FinancialYearId")?.Value;
+            return int.TryParse(claim, out var id) ? id : 0;
         }
     }
 }

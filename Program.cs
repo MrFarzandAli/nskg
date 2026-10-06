@@ -60,6 +60,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthentication();
+app.UseMiddleware<Nskg.Middleware.CompanyContextMiddleware>();
 app.UseAuthorization();
 
 app.MapStaticAssets();

@@ -4,6 +4,8 @@
     var selectedRcocode = ViewBag.Rcocode as string ?? "";
     var financialYears = ViewBag.FinancialYears as IEnumerable<dynamic>;
     var selectedFyId = ViewBag.SelectedFyId as string ?? "All";
+    var fromDate = ViewBag.FromDate as string ?? "";
+    var toDate = ViewBag.ToDate as string ?? "";
 }
 
 <style>
@@ -24,9 +26,9 @@
     <div class="card custom-card mb-4 shadow-sm border-0">
         <div class="card-header bg-primary text-white py-3">
             <h5 class="mb-0 fw-semibold">
-                <i class="fa fa-sliders me-2"></i> Report Parameters
+                <i class="fa fa-sliders me-2"></i> Report Parameters / Account Process
             </h5>
-            <small class="text-white-50">Filter by Company / Branch and Financial Year</small>
+            <small class="text-white-50">Filter by Company / Branch, Financial Year, and Date Range</small>
         </div>
         <div class="card-body bg-light p-4">
             <form id="reportForm" method="get">
@@ -36,7 +38,7 @@
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Company / Branch</label>
                         <select class="form-select select2" id="rcocodeSelect" name="rcocode">
-                            <option value="" selected="@(string.IsNullOrEmpty(selectedRcocode) ? "selected" : null)">-- All Companies / Branches --</option>
+                            <option value="ALL" selected="@(selectedRcocode == "ALL" ? "selected" : null)">-- All Companies (Linked) --</option>
                             @if (companyList != null && companyList.Any())
                             {
                                 foreach (var comp in companyList)
@@ -55,63 +57,89 @@
                     </div>
 
                     <!-- Financial Year Filter -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-bold">Financial Year</label>
-                        <select class="form-select select2" id="fyIdSelect" name="fyId" required>
+                        <select class="form-select select2" id="fyIdSelect" name="fyId">
                             @if (financialYears != null)
                             {
                                 foreach (var fy in financialYears)
                                 {
                                     string fyVal = fy.Id.ToString();
-                                    string fyDisplay = $"{fy.YearName} ({((DateTime)fy.StartDate).ToString("dd-MMM-yyyy")} to {((DateTime)fy.EndDate).ToString("dd-MMM-yyyy")})";
+                                    string fyDisplay = $"{fy.YearName}";
                                     if (fy.IsClosed) { fyDisplay += " [Closed]"; }
                                     if (selectedFyId == fyVal)
                                     {
-                                        <option value="@fyVal" selected="selected">@fyDisplay</option>
+                                        <option value="@fyVal" data-start="@fy.StartDate" data-end="@fy.EndDate" selected="selected">@fyDisplay</option>
                                     }
                                     else
                                     {
-                                        <option value="@fyVal">@fyDisplay</option>
+                                        <option value="@fyVal" data-start="@fy.StartDate" data-end="@fy.EndDate">@fyDisplay</option>
                                     }
                                 }
                             }
                         </select>
                     </div>
 
+                    <!-- From Date -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">From Date</label>
+                        <input type="date" class="form-control" id="fromDateInput" name="fromDate" value="@fromDate" required />
+                    </div>
+
+                    <!-- To Date -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">To Date</label>
+                        <input type="date" class="form-control" id="toDateInput" name="toDate" value="@toDate" required />
+                    </div>
+
                     <!-- Report View Mode -->
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Report View</label>
                         <select class="form-select select2" id="reportTypeSelect" name="reportType">
+                            <option value="summary" selected="@((ViewBag.ReportType as string) == "summary" ? "selected" : null)">Summary (Control Head & Expense Level 2)</option>
                             <option value="detailed" selected="@((ViewBag.ReportType as string) == "detailed" ? "selected" : null)">Detailed (Account Wise)</option>
-                            <option value="summary" selected="@((ViewBag.ReportType as string) == "summary" ? "selected" : null)">Summary (Control Head Wise)</option>
                         </select>
                     </div>
 
-                    <!-- BUTTON ROW -->
-                    <div class="col-md-3 d-flex justify-content-end gap-2">
+                </div>
+
+                <!-- ACTION BUTTONS ROW -->
+                <div class="row mt-3">
+                    <div class="col-12 d-flex justify-content-end gap-2 flex-wrap">
+
+                        <!-- WITH PROCESS -->
+                        <button type="button"
+                                class="btn btn-warning btn-sm custom-btn px-3 shadow-sm fw-semibold text-dark"
+                                onclick="loadOnScreenReport(true)"
+                                title="Run sp_ProcessTrialBalance to synchronize accounts and load report">
+                            <i class="fa fa-cogs me-1"></i> With Process
+                        </button>
+
+                        <!-- WITHOUT PROCESS -->
+                        <button type="button"
+                                class="btn btn-primary btn-sm custom-btn px-3 shadow-sm fw-semibold"
+                                onclick="loadOnScreenReport(false)"
+                                title="Directly load report from current balances">
+                            <i class="fa fa-desktop me-1"></i> Without Process
+                        </button>
+
                         <!-- EXCEL -->
-                        <button type="submit"
-                                class="btn btn-success btn-sm custom-btn px-2 shadow-sm fw-semibold"
-                                asp-action="ExportExcel">
+                        <button type="button"
+                                class="btn btn-success btn-sm custom-btn px-3 shadow-sm fw-semibold"
+                                onclick="exportToExcel()">
                             <i class="fa fa-file-excel-o me-1"></i> Excel
                         </button>
 
                         <!-- PRINT -->
                         <button type="button"
-                                class="btn btn-secondary btn-sm custom-btn px-2 shadow-sm fw-semibold"
+                                class="btn btn-secondary btn-sm custom-btn px-3 shadow-sm fw-semibold"
                                 onclick="printReportFrame()">
                             <i class="fa fa-print me-1"></i> Print
                         </button>
 
-                        <!-- ON SCREEN -->
-                        <button type="button"
-                                class="btn btn-primary btn-sm custom-btn px-2 shadow-sm fw-semibold"
-                                onclick="loadOnScreenReport()">
-                            <i class="fa fa-desktop me-1"></i> View
-                        </button>
                     </div>
-
                 </div>
+
             </form>
         </div>
     </div>
@@ -133,7 +161,7 @@
         <!-- LOADER -->
         <div id="reportLoader" style="display:none; padding:40px; text-align:center;">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-            <div class="mt-3 fw-bold text-secondary">Loading Trial Balance Data...</div>
+            <div id="loaderText" class="mt-3 fw-bold text-secondary">Loading Trial Balance Data...</div>
         </div>
 
         <!-- REPORT FRAME -->
@@ -156,40 +184,74 @@
                 });
             }
 
-            // Auto load report on first view without needing manual search
-            loadOnScreenReport();
-
-            // Auto reload when company, financial year, or report view changes
-            $('#rcocodeSelect, #fyIdSelect, #reportTypeSelect').on('change', function () {
-                loadOnScreenReport();
+            // Sync date inputs when Financial Year changes
+            $('#fyIdSelect').on('change', function () {
+                var selectedOption = $(this).find(':selected');
+                var start = selectedOption.data('start');
+                var end = selectedOption.data('end');
+                if (start) $('#fromDateInput').val(start);
+                if (end) $('#toDateInput').val(end);
             });
+
+            // Initial load without process
+            loadOnScreenReport(false);
         });
 
-        function loadOnScreenReport() {
+        function loadOnScreenReport(withProcess) {
             var rcocode = $('#rcocodeSelect').val() || '';
             var fyId = $('#fyIdSelect').val() || 'All';
-            var reportType = $('#reportTypeSelect').val() || 'detailed';
+            var fromDate = $('#fromDateInput').val() || '';
+            var toDate = $('#toDateInput').val() || '';
+            var reportType = $('#reportTypeSelect').val() || 'summary';
 
             $('#reportCard').show();
             $('#reportLoader').show();
-            $('#reportFrame').show();
+            $('#reportFrame').hide();
+
+            if (withProcess) {
+                $('#loaderText').html('<i class="fa fa-cogs me-1 text-warning"></i> Running Account Process & Calculating Balances... Please wait.');
+            } else {
+                $('#loaderText').html('Loading Trial Balance Report...');
+            }
 
             var url = '@Url.Action("OnScreenReport", "TrailBalanceReport")'
                 + '?rcocode=' + encodeURIComponent(rcocode)
                 + '&fyId=' + encodeURIComponent(fyId)
-                + '&reportType=' + encodeURIComponent(reportType);
+                + '&fromDate=' + encodeURIComponent(fromDate)
+                + '&toDate=' + encodeURIComponent(toDate)
+                + '&reportType=' + encodeURIComponent(reportType)
+                + '&withProcess=' + (withProcess ? 'true' : 'false');
 
             var frame = document.getElementById('reportFrame');
             if (frame) {
                 frame.onload = function () {
                     $('#reportLoader').hide();
+                    $('#reportFrame').show();
                 };
                 frame.src = url;
             }
 
             setTimeout(function () {
                 $('#reportLoader').hide();
-            }, 3000);
+                $('#reportFrame').show();
+            }, 5000);
+        }
+
+        function exportToExcel() {
+            var rcocode = $('#rcocodeSelect').val() || '';
+            var fyId = $('#fyIdSelect').val() || 'All';
+            var fromDate = $('#fromDateInput').val() || '';
+            var toDate = $('#toDateInput').val() || '';
+            var reportType = $('#reportTypeSelect').val() || 'summary';
+
+            var url = '@Url.Action("ExportExcel", "TrailBalanceReport")'
+                + '?rcocode=' + encodeURIComponent(rcocode)
+                + '&fyId=' + encodeURIComponent(fyId)
+                + '&fromDate=' + encodeURIComponent(fromDate)
+                + '&toDate=' + encodeURIComponent(toDate)
+                + '&reportType=' + encodeURIComponent(reportType);
+
+            window.location.href = url;
         }
 
         function printReportFrame() {

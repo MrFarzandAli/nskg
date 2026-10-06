@@ -46,8 +46,19 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            var financialYears = _context.FinancialYears
-                .Where(f => !f.IsDeleted && !string.IsNullOrEmpty(f.YearName))
+            // Resolve selected company & financial year
+            int defaultCompanyId = User.GetCompanyId();
+            int selectedCompanyId = companyId ?? (defaultCompanyId > 0 ? defaultCompanyId : 0);
+            vm.SelectedCompanyId = selectedCompanyId;
+
+            var fyQuery = _context.FinancialYears
+                .Where(f => !f.IsDeleted && !string.IsNullOrEmpty(f.YearName));
+            if (selectedCompanyId > 0)
+            {
+                fyQuery = fyQuery.Where(f => f.CompanyId == selectedCompanyId);
+            }
+
+            var financialYears = fyQuery
                 .OrderByDescending(f => !f.IsClosed)
                 .ThenByDescending(f => f.StartDate)
                 .Select(f => new DashboardFyItem
@@ -62,11 +73,6 @@ namespace Nskg.Controllers
 
             vm.Companies = companies;
             vm.FinancialYears = financialYears;
-
-            // Resolve selected company & financial year
-            int defaultCompanyId = User.GetCompanyId();
-            int selectedCompanyId = companyId ?? (defaultCompanyId > 0 ? defaultCompanyId : 0);
-            vm.SelectedCompanyId = selectedCompanyId;
 
             var selectedComp = companies.FirstOrDefault(c => c.Id == selectedCompanyId);
             vm.SelectedCompanyName = selectedComp != null ? selectedComp.Name : "All Companies / Branches";

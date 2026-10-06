@@ -195,14 +195,86 @@ namespace Nskg.Controllers
 
         public IActionResult Create()
         {
-            LoadDropdowns();
+            int companyId = User.GetCompanyId();
+            LoadDropdowns(companyId > 0 ? companyId : 1006);
+
+            var query = _context.CommHead.Where(x => !x.IsDeleted);
+            if (companyId > 0)
+            {
+                query = query.Where(x => x.CompanyId == companyId);
+            }
+
+            var last = query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
+            if (last == null)
+            {
+                last = _context.CommHead.Where(x => !x.IsDeleted).OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
+            }
+
+            if (last != null)
+            {
+                var stationsList = ViewBag.Stations as List<SelectListItem> ?? new List<SelectListItem>();
+                if (last.StationId.HasValue && last.StationId.Value > 0 && !stationsList.Any(s => s.Value == last.StationId.Value.ToString()))
+                {
+                    var directStation = _context.GLChart3.FirstOrDefault(g => g.Id == last.StationId.Value);
+                    if (directStation != null)
+                    {
+                        stationsList.Add(new SelectListItem
+                        {
+                            Value = directStation.Id.ToString(),
+                            Text = directStation.Name + " (" + (directStation.AC1 + directStation.AC3) + ")"
+                        });
+                        ViewBag.Stations = stationsList.OrderBy(s => string.IsNullOrEmpty(s.Value) ? "" : s.Text).ToList();
+                    }
+                }
+
+                var transList = ViewBag.Transporters as List<SelectListItem> ?? new List<SelectListItem>();
+                if (last.TransId.HasValue && last.TransId.Value > 0 && !transList.Any(t => t.Value == last.TransId.Value.ToString()))
+                {
+                    var directTrans = _context.GLChart3.FirstOrDefault(g => g.Id == last.TransId.Value);
+                    if (directTrans != null)
+                    {
+                        transList.Add(new SelectListItem
+                        {
+                            Value = directTrans.Id.ToString(),
+                            Text = directTrans.Name + " (" + (directTrans.AC1 + directTrans.AC3) + ")"
+                        });
+                        ViewBag.Transporters = transList.OrderBy(t => string.IsNullOrEmpty(t.Value) ? "" : t.Text).ToList();
+                    }
+                }
+
+                var advList = ViewBag.Advances as List<SelectListItem> ?? new List<SelectListItem>();
+                if (last.AdvanceId.HasValue && last.AdvanceId.Value > 0 && !advList.Any(a => a.Value == last.AdvanceId.Value.ToString()))
+                {
+                    var directAdv = _context.GLChart3.FirstOrDefault(g => g.Id == last.AdvanceId.Value);
+                    if (directAdv != null)
+                    {
+                        advList.Add(new SelectListItem
+                        {
+                            Value = directAdv.Id.ToString(),
+                            Text = directAdv.Name + " (" + (directAdv.AC1 + directAdv.AC3) + ")"
+                        });
+                        ViewBag.Advances = advList.OrderBy(a => string.IsNullOrEmpty(a.Value) ? "" : a.Text).ToList();
+                    }
+                }
+            }
 
             return View(new CommBookViewModel
             {
                 Head = new CommHead
                 {
-                    DocDate = DateTime.Now,
-                    DocNo = GenerateDocNo()
+                    DocDate = last?.DocDate ?? DateTime.Now,
+                    DocNo = GenerateDocNo(),
+                    StationId = last?.StationId,
+                    Station = last?.Station,
+                    StationCode = last?.StationCode,
+                    TransId = last?.TransId,
+                    Transporter = last?.Transporter,
+                    TransCode = last?.TransCode,
+                    AdvanceId = last?.AdvanceId,
+                    Advance = last?.Advance,
+                    AdvanceCode = last?.AdvanceCode,
+                    VehicleNo = last?.VehicleNo,
+                    Driver = last?.Driver
                 },
                 Details = new List<CommBookDetailVM>()
             });
@@ -513,13 +585,138 @@ namespace Nskg.Controllers
 
         public IActionResult Edit(int id)
         {
-            LoadDropdowns();
-
             var head = _context.CommHead
                 .FirstOrDefault(x => x.Id == id);
 
             if (head == null)
                 return NotFound();
+
+            int compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
+            if (compId <= 0) compId = 1006;
+            LoadDropdowns(compId);
+
+            // Ensure Station is in dropdown
+            var stationsList = ViewBag.Stations as List<SelectListItem> ?? new List<SelectListItem>();
+            bool stationFound = head.StationId.HasValue && head.StationId.Value > 0 && stationsList.Any(s => s.Value == head.StationId.Value.ToString() && !string.IsNullOrEmpty(s.Value));
+            if (!stationFound)
+            {
+                GLChart3? directStation = null;
+                if (head.StationId.HasValue && head.StationId.Value > 0)
+                {
+                    directStation = _context.GLChart3.FirstOrDefault(g => g.Id == head.StationId.Value);
+                }
+
+                if (directStation == null)
+                {
+                    directStation = _context.GLChart3
+                        .Where(g => g.AcType != "S" && (
+                            (!string.IsNullOrEmpty(head.Station) && g.Name == head.Station) ||
+                            (!string.IsNullOrEmpty(head.StationCode) && (g.AC1 + g.AC3) == head.StationCode) ||
+                            (!string.IsNullOrEmpty(head.Station) && (g.Name.Contains(head.Station) || head.Station.Contains(g.Name)))
+                        ))
+                        .OrderBy(g => g.CompanyId == compId ? 0 : 1)
+                        .FirstOrDefault();
+                }
+
+                if (directStation != null)
+                {
+                    head.StationId = directStation.Id;
+                    head.Station = directStation.Name;
+                    head.StationCode = directStation.AC1 + directStation.AC3;
+
+                    if (!stationsList.Any(s => s.Value == directStation.Id.ToString()))
+                    {
+                        stationsList.Add(new SelectListItem
+                        {
+                            Value = directStation.Id.ToString(),
+                            Text = directStation.Name + " (" + (directStation.AC1 + directStation.AC3) + ")"
+                        });
+                    }
+                }
+                ViewBag.Stations = stationsList.OrderBy(s => string.IsNullOrEmpty(s.Value) ? "" : s.Text).ToList();
+            }
+
+            // Ensure Transporter is in dropdown
+            var transList = ViewBag.Transporters as List<SelectListItem> ?? new List<SelectListItem>();
+            bool transFound = head.TransId.HasValue && head.TransId.Value > 0 && transList.Any(t => t.Value == head.TransId.Value.ToString() && !string.IsNullOrEmpty(t.Value));
+            if (!transFound)
+            {
+                GLChart3? directTrans = null;
+                if (head.TransId.HasValue && head.TransId.Value > 0)
+                {
+                    directTrans = _context.GLChart3.FirstOrDefault(g => g.Id == head.TransId.Value);
+                }
+
+                if (directTrans == null)
+                {
+                    directTrans = _context.GLChart3
+                        .Where(g => g.AcType != "S" && (
+                            (!string.IsNullOrEmpty(head.Transporter) && g.Name == head.Transporter) ||
+                            (!string.IsNullOrEmpty(head.TransCode) && (g.AC1 + g.AC3) == head.TransCode) ||
+                            (!string.IsNullOrEmpty(head.Transporter) && (g.Name.Contains(head.Transporter) || head.Transporter.Contains(g.Name)))
+                        ))
+                        .OrderBy(g => g.CompanyId == compId ? 0 : 1)
+                        .FirstOrDefault();
+                }
+
+                if (directTrans != null)
+                {
+                    head.TransId = directTrans.Id;
+                    head.Transporter = directTrans.Name;
+                    head.TransCode = directTrans.AC1 + directTrans.AC3;
+
+                    if (!transList.Any(t => t.Value == directTrans.Id.ToString()))
+                    {
+                        transList.Add(new SelectListItem
+                        {
+                            Value = directTrans.Id.ToString(),
+                            Text = directTrans.Name + " (" + (directTrans.AC1 + directTrans.AC3) + ")"
+                        });
+                    }
+                }
+                ViewBag.Transporters = transList.OrderBy(t => string.IsNullOrEmpty(t.Value) ? "" : t.Text).ToList();
+            }
+
+            // Ensure Advance is in dropdown
+            var advList = ViewBag.Advances as List<SelectListItem> ?? new List<SelectListItem>();
+            bool advFound = head.AdvanceId.HasValue && head.AdvanceId.Value > 0 && advList.Any(a => a.Value == head.AdvanceId.Value.ToString() && !string.IsNullOrEmpty(a.Value));
+            if (!advFound)
+            {
+                GLChart3? directAdv = null;
+                if (head.AdvanceId.HasValue && head.AdvanceId.Value > 0)
+                {
+                    directAdv = _context.GLChart3.FirstOrDefault(g => g.Id == head.AdvanceId.Value);
+                }
+
+                if (directAdv == null)
+                {
+                    directAdv = _context.GLChart3
+                        .Where(g => g.AcType != "S" && (
+                            (!string.IsNullOrEmpty(head.Advance) && g.Name == head.Advance) ||
+                            (!string.IsNullOrEmpty(head.AdvanceCode) && (g.AC1 + g.AC3) == head.AdvanceCode) ||
+                            (!string.IsNullOrEmpty(head.Advance) && (g.Name.Contains(head.Advance) || head.Advance.Contains(g.Name)))
+                        ))
+                        .OrderBy(g => g.CompanyId == compId ? 0 : 1)
+                        .FirstOrDefault();
+                }
+
+                if (directAdv != null)
+                {
+                    head.AdvanceId = directAdv.Id;
+                    head.Advance = directAdv.Name;
+                    head.AdvanceCode = directAdv.AC1 + directAdv.AC3;
+
+                    if (!advList.Any(a => a.Value == directAdv.Id.ToString()))
+                    {
+                        advList.Add(new SelectListItem
+                        {
+                            Value = directAdv.Id.ToString(),
+                            Text = directAdv.Name + " (" + (directAdv.AC1 + directAdv.AC3) + ")"
+                        });
+                    }
+                }
+                ViewBag.Advances = advList.OrderBy(a => string.IsNullOrEmpty(a.Value) ? "" : a.Text).ToList();
+            }
 
             var details = _context.CommDetail
                  .Where(x => x.CommHeadId == id)
@@ -611,6 +808,29 @@ namespace Nskg.Controllers
                     usedChallanIds.Add(match.Id);
                 }
             }
+
+            compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
+
+            // Next entry (next row down in list: older date, or same date with lower Id)
+            var nextId = _context.CommHead
+                .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
+                    (x.DocDate < head.DocDate || (x.DocDate == head.DocDate && x.Id < id)))
+                .OrderByDescending(x => x.DocDate)
+                .ThenByDescending(x => x.Id)
+                .Select(x => (long?)x.Id)
+                .FirstOrDefault();
+
+            // Prev entry (previous row up in list: newer date, or same date with higher Id)
+            var prevId = _context.CommHead
+                .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
+                    (x.DocDate > head.DocDate || (x.DocDate == head.DocDate && x.Id > id)))
+                .OrderBy(x => x.DocDate)
+                .ThenBy(x => x.Id)
+                .Select(x => (long?)x.Id)
+                .FirstOrDefault();
+
+            ViewBag.PrevId = prevId > 0 ? prevId : null;
+            ViewBag.NextId = nextId > 0 ? nextId : null;
 
             var model = new CommBookViewModel
             {
@@ -895,22 +1115,23 @@ namespace Nskg.Controllers
             }
         }
 
-        private void LoadDropdowns()
+        private void LoadDropdowns(int? companyId = null)
         {
             try
             {
-
+                int compId = companyId ?? User.GetCompanyId();
+                if (compId <= 0) compId = 1006;
 
                 var transporterlist = _context.AcPara
-    .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
-                && a.CompanyId == User.GetCompanyId()
-                && a.Parent == "P")
-    .Select(a => a.Accode)
-    .Distinct();
+                    .Where(a => AccountCategories.Transporter.Contains(a.ActypeCode)
+                                && (a.CompanyId == compId || a.CompanyId == 0)
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
 
                 var transporterAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
                         g.AcType != "S" &&
                         transporterlist.Contains(g.AC1)
                     )
@@ -932,15 +1153,15 @@ namespace Nskg.Controllers
                 ViewBag.Transporters = transporterAccounts;
 
                 var advancelist = _context.AcPara
-    .Where(a => AccountCategories.Advance.Contains(a.ActypeCode)
-                && a.CompanyId == User.GetCompanyId()
-                && a.Parent == "P")
-    .Select(a => a.Accode)
-    .Distinct();
+                    .Where(a => AccountCategories.Advance.Contains(a.ActypeCode)
+                                && (a.CompanyId == compId || a.CompanyId == 0)
+                                && a.Parent == "P")
+                    .Select(a => a.Accode)
+                    .Distinct();
 
                 var advanceAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
                         g.AcType != "S" &&
                         advancelist.Contains(g.AC1)
                     )
@@ -963,14 +1184,14 @@ namespace Nskg.Controllers
 
                 var stationList = _context.AcPara
                     .Where(a => AccountCategories.Station.Contains(a.ActypeCode)
-                                && a.CompanyId == User.GetCompanyId()
+                                && (a.CompanyId == compId || a.CompanyId == 0)
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var stationAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
                         g.AcType != "S" &&
                         stationList.Contains(g.AC1)
                     )
@@ -993,14 +1214,14 @@ namespace Nskg.Controllers
                 //party station 
                 var PartyStationList = _context.AcPara
                     .Where(a => AccountCategories.Party_Station.Contains(a.ActypeCode)
-                                && a.CompanyId == User.GetCompanyId()
+                                && (a.CompanyId == compId || a.CompanyId == 0)
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var PartyStationAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
                         g.AcType != "S" &&
                         PartyStationList.Contains(g.AC1)
                     )
@@ -1023,14 +1244,14 @@ namespace Nskg.Controllers
                 //party Exp
                 var PartyExpList = _context.AcPara
                     .Where(a => AccountCategories.Too_PayParty.Contains(a.ActypeCode)
-                                && a.CompanyId == User.GetCompanyId()
+                                && (a.CompanyId == compId || a.CompanyId == 0)
                                 && a.Parent == "P")
                     .Select(a => a.Accode)
                     .Distinct();
 
                 var PartyExpAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
                         g.AcType != "S" &&
                         PartyExpList.Contains(g.AC1)
                     )

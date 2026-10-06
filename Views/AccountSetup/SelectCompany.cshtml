@@ -1,4 +1,4 @@
-﻿
+
 @using Nskg.Models.ViewModels
 @model CompanySelectionViewModel
 
@@ -65,9 +65,12 @@
                                 </div>
 
                                 <div class="text-center mt-4">
-                                    <button type="submit" class="btn btn-primary account-btn">
+                                    <button type="submit" class="btn btn-primary account-btn w-100">
                                         Continue
                                     </button>
+                                    <a asp-area="Identity" asp-page="/Account/Logout" class="text-muted d-inline-block mt-3 text-decoration-none">
+                                        <i class="fa fa-sign-out-alt me-1"></i> Log out / Change User
+                                    </a>
                                 </div>
 
                             </form>
