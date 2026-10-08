@@ -222,12 +222,25 @@ namespace Nskg.Controllers
                 if (!string.IsNullOrWhiteSpace(accode))
                 {
                     using (SqlCommand cmdAcc = new SqlCommand(
-                        "SELECT TOP 1 Name FROM GLCHART3 WHERE (CompanyId = @CompanyId OR CompanyId = 0 OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
+                        "SELECT TOP 1 Name FROM GLCHART3 WHERE (@CompanyId = 0 OR CompanyId = @CompanyId OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
                     {
                         cmdAcc.Parameters.AddWithValue("@CompanyId", companyId);
                         cmdAcc.Parameters.AddWithValue("@Accode", accode.Trim());
                         var res = cmdAcc.ExecuteScalar();
-                        if (res != null && res != DBNull.Value) accName = res.ToString();
+                        if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
+                            accName = res.ToString()!.Trim();
+                    }
+
+                    if (accName == "ALL TRANSPORTERS")
+                    {
+                        using (SqlCommand cmdAccFallback = new SqlCommand(
+                            "SELECT TOP 1 Name FROM GLCHART3 WHERE (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
+                        {
+                            cmdAccFallback.Parameters.AddWithValue("@Accode", accode.Trim());
+                            var res = cmdAccFallback.ExecuteScalar();
+                            if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
+                                accName = res.ToString()!.Trim();
+                        }
                     }
                 }
                 if (!string.IsNullOrWhiteSpace(vehicleNo))

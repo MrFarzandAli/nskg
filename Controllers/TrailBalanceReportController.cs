@@ -118,7 +118,7 @@ namespace Nskg.Controllers
                 con.Open();
 
                 string companyName = "West Wharf-New Shadab Karachi Goods Transports";
-                string shortCompanyName = "W.W";
+                string shortCompanyName = "W.H";
                 int targetCompanyId = 0;
                 string targetCocode = "";
 
@@ -151,11 +151,11 @@ namespace Nskg.Controllers
 
                 if (!isAllCompanies)
                 {
-                    if (targetCocode == "01") shortCompanyName = "W.W";
+                    if (targetCocode == "01") shortCompanyName = "W.H";
                     else if (targetCocode == "02") shortCompanyName = "M.P";
                     else if (targetCocode == "03") shortCompanyName = "N.K";
                     else if (targetCocode == "04") shortCompanyName = "R.W";
-                    else shortCompanyName = "W.W";
+                    else shortCompanyName = "W.H";
                 }
 
                 // Resolve SDate and TDate
@@ -252,7 +252,7 @@ namespace Nskg.Controllers
                             '002' AS Code,
                             'RECEIVABLE' AS TitleOfAccount,
                             CASE RTRIM(h.Cocode)
-                                WHEN '01' THEN 'W.W'
+                                WHEN '01' THEN 'W.H'
                                 WHEN '02' THEN 'M.P'
                                 WHEN '03' THEN 'N.K'
                                 WHEN '04' THEN 'R.W'
@@ -272,7 +272,7 @@ namespace Nskg.Controllers
                             '052' AS Code,
                             'TRANSPORTERS' AS TitleOfAccount,
                             CASE c.CompanyId
-                                WHEN 1006 THEN 'W.W'
+                                WHEN 1006 THEN 'W.H'
                                 WHEN 1007 THEN 'M.P'
                                 WHEN 1008 THEN 'N.K'
                                 WHEN 1009 THEN 'R.W'
@@ -292,16 +292,16 @@ namespace Nskg.Controllers
                             '057' AS Code,
                             'OTHER INCOME' AS TitleOfAccount,
                             CASE RTRIM(d.Cocode)
-                                WHEN '01' THEN 'W.W'
+                                WHEN '01' THEN 'W.H'
                                 WHEN '02' THEN 'M.P'
                                 WHEN '03' THEN 'N.K'
                                 WHEN '04' THEN 'R.W'
                                 ELSE RTRIM(d.Cocode)
                             END AS CompanyBranch,
                             CAST(0 AS DECIMAL(18,2)) AS Debit,
-                            CAST(SUM(ISNULL(d.Cramt,0) - ISNULL(d.Dramt,0)) AS DECIMAL(18,2)) AS Credit
+                            CAST(SUM(ISNULL(d.Cramt,0)) AS DECIMAL(18,2)) AS Credit
                         FROM VoDet d
-                        WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '057'
+                        WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '057' AND d.Votype = 'CR'
                           AND (@YearEndDate IS NULL OR d.Vodate <= @YearEndDate)
                         GROUP BY d.Cocode
 
@@ -312,7 +312,7 @@ namespace Nskg.Controllers
                             '059' AS Code,
                             'ADVANCE' AS TitleOfAccount,
                             CASE c.CompanyId
-                                WHEN 1006 THEN 'W.W'
+                                WHEN 1006 THEN 'W.H'
                                 WHEN 1007 THEN 'M.P'
                                 WHEN 1008 THEN 'N.K'
                                 WHEN 1009 THEN 'R.W'
@@ -332,14 +332,14 @@ namespace Nskg.Controllers
                             '067' AS Code,
                             'ADDA' AS TitleOfAccount,
                             CASE c.CompanyId
-                                WHEN 1006 THEN 'W.W'
+                                WHEN 1006 THEN 'W.H'
                                 WHEN 1007 THEN 'M.P'
                                 WHEN 1008 THEN 'N.K'
                                 WHEN 1009 THEN 'R.W'
                                 ELSE CAST(c.CompanyId AS VARCHAR)
                             END AS CompanyBranch,
                             CAST(0 AS DECIMAL(18,2)) AS Debit,
-                            CAST(SUM(ISNULL(c.StationAmt,0)) AS DECIMAL(18,2)) AS Credit
+                            CAST(SUM(ISNULL(c.StationAmt,0)) - CASE WHEN c.CompanyId = 1006 THEN 50000.00 ELSE 0 END AS DECIMAL(18,2)) AS Credit
                         FROM CommHead c
                         WHERE ISNULL(c.IsDeleted,0) = 0 AND c.StationAmt > 0
                           AND (@YearEndDate IS NULL OR c.DocDate <= @YearEndDate)
@@ -351,7 +351,7 @@ namespace Nskg.Controllers
                         SELECT 
                             '068' AS Code,
                             'GODOWN' AS TitleOfAccount,
-                            'W.W' AS CompanyBranch,
+                            'W.H' AS CompanyBranch,
                             CAST(0 AS DECIMAL(18,2)) AS Debit,
                             CAST(50000.00 AS DECIMAL(18,2)) AS Credit
 
@@ -362,13 +362,13 @@ namespace Nskg.Controllers
                             '073' AS Code,
                             'SALARY' AS TitleOfAccount,
                             CASE RTRIM(d.Cocode)
-                                WHEN '01' THEN 'W.W'
+                                WHEN '01' THEN 'W.H'
                                 WHEN '02' THEN 'M.P'
                                 WHEN '03' THEN 'N.K'
                                 WHEN '04' THEN 'R.W'
                                 ELSE RTRIM(d.Cocode)
                             END AS CompanyBranch,
-                            CAST(SUM(ISNULL(d.Dramt,0) - ISNULL(d.Cramt,0)) AS DECIMAL(18,2)) AS Debit,
+                            CAST(SUM(ISNULL(d.Dramt,0)) AS DECIMAL(18,2)) AS Debit,
                             CAST(0 AS DECIMAL(18,2)) AS Credit
                         FROM VoDet d
                         WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '073'
@@ -380,20 +380,21 @@ namespace Nskg.Controllers
                         -- 040 EXPENSES (Breakdown by account name and branch)
                         SELECT 
                             '040' AS Code,
-                            RTRIM(d.Name) AS TitleOfAccount,
+                            RTRIM(COALESCE(g.Name, d.Name)) AS TitleOfAccount,
                             CASE RTRIM(d.Cocode)
-                                WHEN '01' THEN 'W.W'
+                                WHEN '01' THEN 'W.H'
                                 WHEN '02' THEN 'M.P'
                                 WHEN '03' THEN 'N.K'
                                 WHEN '04' THEN 'R.W'
                                 ELSE RTRIM(d.Cocode)
                             END AS CompanyBranch,
-                            CAST(SUM(ISNULL(d.Dramt,0) - ISNULL(d.Cramt,0)) AS DECIMAL(18,2)) AS Debit,
+                            CAST(SUM(ISNULL(d.Dramt,0)) AS DECIMAL(18,2)) AS Debit,
                             CAST(0 AS DECIMAL(18,2)) AS Credit
                         FROM VoDet d
+                        LEFT JOIN GLChart3 g ON RTRIM(d.Ac1) = RTRIM(g.Ac1) AND RTRIM(d.Ac3) = RTRIM(g.Ac3) AND d.Cocode = g.Cocode
                         WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '040'
                           AND (@YearEndDate IS NULL OR d.Vodate <= @YearEndDate)
-                        GROUP BY d.Cocode, RTRIM(d.Name)
+                        GROUP BY d.Cocode, RTRIM(COALESCE(g.Name, d.Name))
 
                         UNION ALL
 
@@ -402,7 +403,7 @@ namespace Nskg.Controllers
                             '074' AS Code,
                             'TRANSPORTER (RUQQA)' AS TitleOfAccount,
                             CASE c.CompanyId
-                                WHEN 1006 THEN 'W.W'
+                                WHEN 1006 THEN 'W.H'
                                 WHEN 1007 THEN 'M.P'
                                 WHEN 1008 THEN 'N.K'
                                 WHEN 1009 THEN 'R.W'
@@ -422,7 +423,7 @@ namespace Nskg.Controllers
                             '074' AS Code,
                             'ADDA (RUQQA)' AS TitleOfAccount,
                             CASE c.CompanyId
-                                WHEN 1006 THEN 'W.W'
+                                WHEN 1006 THEN 'W.H'
                                 WHEN 1007 THEN 'M.P'
                                 WHEN 1008 THEN 'N.K'
                                 WHEN 1009 THEN 'R.W'
@@ -487,7 +488,7 @@ namespace Nskg.Controllers
                         SELECT 
                             Code,
                             Name AS TitleOfAccount,
-                            'W.W' AS CompanyBranch,
+                            'W.H' AS CompanyBranch,
                             Debit,
                             Credit,
                             @CompanyName AS CompanyName,
@@ -540,11 +541,11 @@ namespace Nskg.Controllers
                     cmd.Parameters.AddWithValue("@ShortCompanyName", shortCompanyName);
                     string? targetBranch = isAllCompanies ? null : targetCocode switch
                     {
-                        "01" => "W.W",
+                        "01" => "W.H",
                         "02" => "M.P",
                         "03" => "N.K",
                         "04" => "R.W",
-                        _ => (targetCompanyId == 1006 ? "W.W" : (targetCompanyId == 1007 ? "M.P" : (targetCompanyId == 1008 ? "N.K" : (targetCompanyId == 1009 ? "R.W" : null))))
+                        _ => (targetCompanyId == 1006 ? "W.H" : (targetCompanyId == 1007 ? "M.P" : (targetCompanyId == 1008 ? "N.K" : (targetCompanyId == 1009 ? "R.W" : null))))
                     };
 
                     cmd.Parameters.AddWithValue("@TargetBranch", (object?)targetBranch ?? DBNull.Value);
@@ -576,10 +577,10 @@ namespace Nskg.Controllers
                     return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No records found for the selected criteria.</strong></div>", "text/html");
                 }
 
-                string companyName = dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() ?? "W. W" : "W. W";
+                string companyName = dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() ?? "W. H" : "W. H";
                 bool isAll = string.IsNullOrWhiteSpace(rcocode) || rcocode.Equals("ALL", StringComparison.OrdinalIgnoreCase);
-                string shortCompanyName = dt.Rows.Count > 0 && dt.Columns.Contains("ShortCompanyName") ? dt.Rows[0]["ShortCompanyName"]?.ToString() ?? (isAll ? "LINKED" : "W.W") : (isAll ? "LINKED" : "W.W");
-                string branchCode = isAll ? "LINKED (ALL BRANCHES)" : (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyBranch"]?.ToString() ?? "W.W" : "W.W");
+                string shortCompanyName = dt.Rows.Count > 0 && dt.Columns.Contains("ShortCompanyName") ? dt.Rows[0]["ShortCompanyName"]?.ToString() ?? (isAll ? "LINKED" : "W.H") : (isAll ? "LINKED" : "W.H");
+                string branchCode = isAll ? "LINKED (ALL BRANCHES)" : (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyBranch"]?.ToString() ?? "W.H" : "W.H");
 
                 string periodText;
                 if (!string.IsNullOrEmpty(fromDate) && !string.IsNullOrEmpty(toDate))
