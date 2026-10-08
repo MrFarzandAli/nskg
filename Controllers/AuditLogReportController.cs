@@ -169,8 +169,10 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
                 .num{text-align:right;}
                 .center{text-align:center;}
                 .bold{font-weight:bold;}
+                " + Nskg.Helpers.ReportPaginationHelper.GetPaginationStyles() + @"
             </style></head><body>");
 
+            sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationToolbarHtml("Audit Log"));
             sb.Append($"<div class='header-box'>");
             sb.Append($"<h2>AUDIT LOG REPORT</h2>");
             sb.Append($"<p>Period: <b>{fromDate:dd-MMM-yyyy}</b> to <b>{toDate:dd-MMM-yyyy}</b></p>");
@@ -208,7 +210,9 @@ namespace Nskg.Controllers  // Apna actual namespace dalo
                 sb.Append("</tr>");
             }
 
-            sb.Append("</tbody></table></body></html>");
+            sb.Append("</tbody></table>");
+            sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationScript());
+            sb.Append("</body></html>");
 
             return Content(sb.ToString(), "text/html");
         }

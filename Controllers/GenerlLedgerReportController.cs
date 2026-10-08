@@ -241,12 +241,17 @@ namespace Nskg.Controllers
                 .center{text-align:center;}
                 .bold{font-weight:bold;}
                 tfoot tr{background:#d0e2ff;font-weight:bold;}
+                " + Nskg.Helpers.ReportPaginationHelper.GetPaginationStyles() + @"
             </style></head><body>");
 
+            sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationToolbarHtml("General Ledger"));
             sb.Append($"<div class='header-box'>");
             sb.Append($"<h2>{compName}</h2>");
             sb.Append($"<h3>GENERAL LEDGER REPORT</h3>");
-            sb.Append($"<p>Account: <b>{(string.IsNullOrEmpty(accode) ? "ALL ACCOUNTS" : accode + " - " + accName)}</b> &nbsp;|&nbsp; Period: <b>{fromDate:dd-MMM-yyyy}</b> to <b>{toDate:dd-MMM-yyyy}</b></p>");
+            sb.Append($"<div style='display:flex; justify-content:space-between; align-items:center; margin:8px 0 4px 0; padding-bottom:4px; border-bottom:1.5px solid #000;'>");
+            sb.Append($"<div style='font-size:15px; font-weight:bold;'><span style='letter-spacing:1px;'>{accode}</span> &nbsp;&nbsp;&nbsp;&nbsp; <span style='color:#0d6efd;'>{accName}</span></div>");
+            sb.Append($"<div style='font-size:11px; color:#495057;'>Period: <b>{fromDate:dd-MMM-yyyy}</b> to <b>{toDate:dd-MMM-yyyy}</b></div>");
+            sb.Append($"</div>");
             sb.Append("</div>");
 
             sb.Append("<table><thead><tr>");
@@ -301,7 +306,9 @@ namespace Nskg.Controllers
                 sb.Append("</tr>");
             }
 
-            sb.Append("</tbody></table></body></html>");
+            sb.Append("</tbody></table>");
+            sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationScript());
+            sb.Append("</body></html>");
 
             return Content(sb.ToString(), "text/html");
         }

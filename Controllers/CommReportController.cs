@@ -201,25 +201,23 @@ namespace Nskg.Controllers
                 string query = @"
                     SELECT
                         h.DocDate                                                                   AS DocDate,
-                        ISNULL(CAST(cd.BillTiNo AS VARCHAR(30)), '')                               AS No,
+                        ISNULL(CAST(h.ChalNo AS VARCHAR(30)), '')                                  AS No,
                         COALESCE(NULLIF(RTRIM(h.Station), ''),
                             (SELECT TOP 1 g.Name FROM GLChart3 g WHERE g.Id = h.StationId), '')    AS Station,
                         ISNULL(h.VehicleNo, '')                                                    AS Vehicle,
                         COALESCE(NULLIF(RTRIM(h.Transporter), ''),
                             (SELECT TOP 1 g2.Name FROM GLChart3 g2 WHERE g2.Id = h.TransId), '')   AS Transporter,
-                        ISNULL(cd.PaidAmt, 0)                                                      AS DeliveryAmt,
-                        ISNULL(cd.Lifter2, 0)                                                      AS LifterAmt,
-                        ISNULL(cd.BillTiAmt, 0)                                                    AS BilltiAmt,
-                        ISNULL(cd.ToPaidAmt, 0)                                                    AS ToPaid,
-                        ISNULL(cd.PartyEx, 0)                                                      AS PartyExp,
-                        ISNULL(h.LocalAmt, 0)                                                      AS LocalAmt,
-                        ISNULL(cd.OtherEx, 0)                                                      AS OtherExp,
-                        CASE
-                            WHEN ISNULL(cd.NetAmt, 0) <> 0 THEN ISNULL(cd.NetAmt, 0)
-                            ELSE ISNULL(cd.PaidAmt,0) + ISNULL(cd.Lifter2,0) + ISNULL(cd.BillTiAmt,0)
-                               - ISNULL(cd.ToPaidAmt,0) - ISNULL(cd.PartyEx,0)
-                               - ISNULL(h.LocalAmt,0)  - ISNULL(cd.OtherEx,0)
-                        END                                                                        AS NetAmt,
+                        h.DeliveryAmt                                                              AS DeliveryAmt,
+                        h.TotLifter2                                                               AS LifterAmt,
+                        h.BillTiAmt                                                                AS BilltiAmt,
+                        h.TotToPaid                                                                AS ToPaid,
+                        ISNULL(h.PartyEx2, '')                                                     AS BParty,
+                        COALESCE(h.TotPartyEx, ISNULL(h.PExpAmt, 0) + ISNULL(h.PExpAmt2, 0) + ISNULL(h.PExpAmt3, 0), 0) AS PartyExp,
+                        ISNULL(h.LocalAmt2, '')                                                    AS BLocal,
+                        h.LocalAmt                                                                 AS LocalAmt,
+                        ISNULL(h.OtherEx2, '')                                                     AS BOtherEx,
+                        h.TotOtherEx                                                               AS OtherExp,
+                        h.NetAmt                                                                   AS NetAmt,
                         CASE c.Cocode
                             WHEN '01' THEN 'W.H'
                             WHEN '02' THEN 'M.P'
@@ -232,7 +230,6 @@ namespace Nskg.Controllers
                         @FromDate                                                                  AS FromDate,
                         @ToDate                                                                    AS ToDate
                     FROM ChallanHead h
-                    INNER JOIN ChallanDet cd ON cd.ChallanHeadId = h.Id
                     LEFT JOIN Companies c ON c.Id = h.CompanyId
                     WHERE ISNULL(h.IsDeleted, 0) = 0
                       AND (@CompanyId = 0 OR h.CompanyId = @CompanyId)";
@@ -246,7 +243,7 @@ namespace Nskg.Controllers
                 if (toDate.HasValue)
                     query += " AND h.DocDate <= @ToDate";
 
-                query += " ORDER BY h.DocDate ASC, h.ChalNo ASC, cd.BillTiNo ASC";
+                query += " ORDER BY h.DocDate ASC, h.ChalNo ASC";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
@@ -309,33 +306,36 @@ namespace Nskg.Controllers
 
                 var sbPdf = new StringBuilder();
                 sbPdf.Append("<!DOCTYPE html><html><head><meta charset='utf-8'>");
+                sbPdf.Append("<title>Challan report</title>");
                 sbPdf.Append("<style>");
-                sbPdf.Append("body{font-family:Arial,sans-serif;font-size:9px;margin:8px;color:#111;}");
-                sbPdf.Append(".title{text-align:center;font-size:14px;font-weight:bold;margin-bottom:2px;}");
+                sbPdf.Append("body{font-family:Arial,sans-serif;font-size:10px;margin:10px;color:#000;}");
+                sbPdf.Append(".title{text-align:center;font-size:16px;font-weight:bold;margin-bottom:8px;}");
                 sbPdf.Append(".subtitle{text-align:center;font-size:10px;margin-bottom:8px;color:#333;}");
-                sbPdf.Append("table{width:100%;border-collapse:collapse;}");
-                sbPdf.Append("th{background:#333;color:#fff;padding:4px 3px;text-align:left;font-size:8px;border:1px solid #555;white-space:nowrap;}");
-                sbPdf.Append("td{padding:3px;border:1px solid #ccc;font-size:8px;white-space:nowrap;}");
-                sbPdf.Append("tr:nth-child(even){background:#f5f5f5;}");
+                sbPdf.Append("table{width:100%;border-collapse:collapse;border:1px solid #000;}");
+                sbPdf.Append("th{background:#fff;color:#000;padding:4px 3px;text-align:center;font-size:9.5px;font-weight:bold;border:1px solid #000;white-space:nowrap;}");
+                sbPdf.Append("td{padding:3px 4px;border:1px solid #000;font-size:9.5px;white-space:nowrap;}");
                 sbPdf.Append(".num{text-align:right;}");
                 sbPdf.Append(".center{text-align:center;}");
-                sbPdf.Append("@media print{@page{size:A4 landscape;margin:8mm;}}");
+                sbPdf.Append(".bold{font-weight:bold;}");
+                sbPdf.Append("@media print{@page{size:A4 landscape;margin:6mm;}.no-print{display:none;}}");
                 sbPdf.Append("</style>");
-                // Set document title so browser Print-to-PDF suggests "challanreport" as filename
-                sbPdf.Append("<script>window.onload=function(){document.title='challanreport';window.print();};</script>");
+                sbPdf.Append("<script>window.onload=function(){document.title='Challan report';window.print();};</script>");
                 sbPdf.Append("</head><body>");
 
-                sbPdf.Append($"<div class='title'>{System.Net.WebUtility.HtmlEncode(compName)}</div>");
-                sbPdf.Append($"<div class='subtitle'>Challan Report &nbsp;|&nbsp; Period: {periodText}</div>");
+                sbPdf.Append("<div class='title'>Challan report</div>");
+                if (!string.IsNullOrEmpty(compName) && compName != "All Companies")
+                {
+                    sbPdf.Append($"<div class='subtitle'>{System.Net.WebUtility.HtmlEncode(compName)} &nbsp;|&nbsp; Period: {periodText}</div>");
+                }
 
                 sbPdf.Append("<table><thead><tr>");
-                sbPdf.Append("<th>#</th><th>Date</th><th>No</th><th>Station</th><th>Vehicle</th><th>Transporter</th>");
+                sbPdf.Append("<th>Date</th><th>No</th><th>Station</th><th>Vehicle</th><th>Transporter</th>");
                 sbPdf.Append("<th class='num'>Delivery Amt</th><th class='num'>Lifter Amt</th><th class='num'>Billti Amt</th>");
-                sbPdf.Append("<th class='num'>To Paid</th><th class='num'>Party Exp</th>");
-                sbPdf.Append("<th class='num'>Local Amt</th><th class='num'>Other Exp</th><th class='num'>Net Amt</th>");
+                sbPdf.Append("<th class='num'>To paid</th><th>B#/ Party</th><th class='num'>Party Exp</th>");
+                sbPdf.Append("<th>B# Local</th><th class='num'>Local Amt</th><th>B#/ Ex Other</th>");
+                sbPdf.Append("<th class='num'>Other Exp</th><th class='num'>Net Amt</th>");
                 sbPdf.Append("</tr></thead><tbody>");
 
-                int srPdf = 1;
                 foreach (DataRow row in dt.Rows)
                 {
                     string docDate = row["DocDate"] != DBNull.Value ? Convert.ToDateTime(row["DocDate"]).ToString("dd/MM/yy") : "";
@@ -343,46 +343,60 @@ namespace Nskg.Controllers
                     string stationVal2 = row["Station"]?.ToString() ?? "";
                     string vehicle2 = row["Vehicle"]?.ToString() ?? "";
                     string transporter2 = row["Transporter"]?.ToString() ?? "";
-                    decimal deliveryAmt = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : 0;
-                    decimal lifterAmt = row["LifterAmt"] != DBNull.Value ? Convert.ToDecimal(row["LifterAmt"]) : 0;
-                    decimal billtiAmt = row["BilltiAmt"] != DBNull.Value ? Convert.ToDecimal(row["BilltiAmt"]) : 0;
-                    decimal toPaid = row["ToPaid"] != DBNull.Value ? Convert.ToDecimal(row["ToPaid"]) : 0;
-                    decimal partyExp = row["PartyExp"] != DBNull.Value ? Convert.ToDecimal(row["PartyExp"]) : 0;
-                    decimal localAmt = row["LocalAmt"] != DBNull.Value ? Convert.ToDecimal(row["LocalAmt"]) : 0;
-                    decimal otherExp = row["OtherExp"] != DBNull.Value ? Convert.ToDecimal(row["OtherExp"]) : 0;
-                    decimal netAmt = row["NetAmt"] != DBNull.Value ? Convert.ToDecimal(row["NetAmt"]) : 0;
 
-                    totDelivery += deliveryAmt; totLifter += lifterAmt; totBillti += billtiAmt;
-                    totToPaid += toPaid; totPartyExp += partyExp; totLocalAmt += localAmt;
-                    totOtherExp += otherExp; totNet += netAmt;
+                    decimal? deliveryAmt = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : null;
+                    decimal? lifterAmt = row["LifterAmt"] != DBNull.Value ? Convert.ToDecimal(row["LifterAmt"]) : null;
+                    decimal? billtiAmt = row["BilltiAmt"] != DBNull.Value ? Convert.ToDecimal(row["BilltiAmt"]) : null;
+                    decimal? toPaid = row["ToPaid"] != DBNull.Value ? Convert.ToDecimal(row["ToPaid"]) : null;
+                    string bParty = row["BParty"]?.ToString() ?? "";
+                    decimal? partyExp = row["PartyExp"] != DBNull.Value ? Convert.ToDecimal(row["PartyExp"]) : null;
+                    string bLocal = row["BLocal"]?.ToString() ?? "";
+                    decimal? localAmt = row["LocalAmt"] != DBNull.Value ? Convert.ToDecimal(row["LocalAmt"]) : null;
+                    string bOtherEx = row["BOtherEx"]?.ToString() ?? "";
+                    decimal? otherExp = row["OtherExp"] != DBNull.Value ? Convert.ToDecimal(row["OtherExp"]) : null;
+                    decimal? netAmt = row["NetAmt"] != DBNull.Value ? Convert.ToDecimal(row["NetAmt"]) : null;
+
+                    if (deliveryAmt.HasValue) totDelivery += deliveryAmt.Value;
+                    if (lifterAmt.HasValue) totLifter += lifterAmt.Value;
+                    if (billtiAmt.HasValue) totBillti += billtiAmt.Value;
+                    if (toPaid.HasValue) totToPaid += toPaid.Value;
+                    if (partyExp.HasValue) totPartyExp += partyExp.Value;
+                    if (localAmt.HasValue) totLocalAmt += localAmt.Value;
+                    if (otherExp.HasValue) totOtherExp += otherExp.Value;
+                    if (netAmt.HasValue) totNet += netAmt.Value;
 
                     sbPdf.Append("<tr>");
-                    sbPdf.Append($"<td class='center'>{srPdf++}</td>");
-                    sbPdf.Append($"<td>{docDate}</td>");
-                    sbPdf.Append($"<td>{System.Net.WebUtility.HtmlEncode(no)}</td>");
+                    sbPdf.Append($"<td class='center'>{docDate}</td>");
+                    sbPdf.Append($"<td class='center bold'>{System.Net.WebUtility.HtmlEncode(no)}</td>");
                     sbPdf.Append($"<td>{System.Net.WebUtility.HtmlEncode(stationVal2)}</td>");
                     sbPdf.Append($"<td>{System.Net.WebUtility.HtmlEncode(vehicle2)}</td>");
                     sbPdf.Append($"<td>{System.Net.WebUtility.HtmlEncode(transporter2)}</td>");
-                    sbPdf.Append($"<td class='num'>{(deliveryAmt != 0 ? deliveryAmt.ToString("#,##0") : "")}</td>");
-                    sbPdf.Append($"<td class='num'>{(lifterAmt != 0 ? lifterAmt.ToString("#,##0") : "")}</td>");
-                    sbPdf.Append($"<td class='num'>{(billtiAmt != 0 ? billtiAmt.ToString("#,##0") : "")}</td>");
-                    sbPdf.Append($"<td class='num'>{(toPaid != 0 ? toPaid.ToString("#,##0") : "")}</td>");
-                    sbPdf.Append($"<td class='num'>{(partyExp != 0 ? partyExp.ToString("#,##0") : "")}</td>");
-                    sbPdf.Append($"<td class='num'>{(localAmt != 0 ? localAmt.ToString("#,##0") : "")}</td>");
-                    sbPdf.Append($"<td class='num'>{(otherExp != 0 ? otherExp.ToString("#,##0") : "")}</td>");
-                    sbPdf.Append($"<td class='num'>{(netAmt != 0 ? netAmt.ToString("#,##0") : "")}</td>");
+                    sbPdf.Append($"<td class='num'>{(deliveryAmt.HasValue ? deliveryAmt.Value.ToString("#,##0") : "")}</td>");
+                    sbPdf.Append($"<td class='num'>{(lifterAmt.HasValue ? lifterAmt.Value.ToString("#,##0") : "")}</td>");
+                    sbPdf.Append($"<td class='num'>{(billtiAmt.HasValue ? billtiAmt.Value.ToString("#,##0") : "")}</td>");
+                    sbPdf.Append($"<td class='num'>{(toPaid.HasValue ? toPaid.Value.ToString("#,##0") : "")}</td>");
+                    sbPdf.Append($"<td class='center'>{System.Net.WebUtility.HtmlEncode(bParty)}</td>");
+                    sbPdf.Append($"<td class='num'>{(partyExp.HasValue ? partyExp.Value.ToString("#,##0") : "0")}</td>");
+                    sbPdf.Append($"<td class='center'>{System.Net.WebUtility.HtmlEncode(bLocal)}</td>");
+                    sbPdf.Append($"<td class='num'>{(localAmt.HasValue && localAmt.Value != 0 ? localAmt.Value.ToString("#,##0") : "")}</td>");
+                    sbPdf.Append($"<td class='center'>{System.Net.WebUtility.HtmlEncode(bOtherEx)}</td>");
+                    sbPdf.Append($"<td class='num'>{(otherExp.HasValue && otherExp.Value != 0 ? otherExp.Value.ToString("#,##0") : "")}</td>");
+                    sbPdf.Append($"<td class='num'>{(netAmt.HasValue ? netAmt.Value.ToString("#,##0") : "0")}</td>");
                     sbPdf.Append("</tr>");
                 }
 
-                sbPdf.Append("<tr style='background:#ddd;font-weight:bold;'>");
-                sbPdf.Append("<td colspan='6' style='text-align:right;'>Total:</td>");
+                sbPdf.Append("<tr style='background:#f2f2f2;font-weight:bold;'>");
+                sbPdf.Append("<td colspan='5' style='text-align:right;'>Total:</td>");
                 sbPdf.Append($"<td class='num'>{totDelivery:#,##0}</td>");
-                sbPdf.Append($"<td class='num'>{totLifter:#,##0}</td>");
+                sbPdf.Append($"<td class='num'>{(totLifter != 0 ? totLifter.ToString("#,##0") : "")}</td>");
                 sbPdf.Append($"<td class='num'>{totBillti:#,##0}</td>");
                 sbPdf.Append($"<td class='num'>{totToPaid:#,##0}</td>");
+                sbPdf.Append("<td></td>");
                 sbPdf.Append($"<td class='num'>{totPartyExp:#,##0}</td>");
-                sbPdf.Append($"<td class='num'>{totLocalAmt:#,##0}</td>");
-                sbPdf.Append($"<td class='num'>{totOtherExp:#,##0}</td>");
+                sbPdf.Append("<td></td>");
+                sbPdf.Append($"<td class='num'>{(totLocalAmt != 0 ? totLocalAmt.ToString("#,##0") : "")}</td>");
+                sbPdf.Append("<td></td>");
+                sbPdf.Append($"<td class='num'>{(totOtherExp != 0 ? totOtherExp.ToString("#,##0") : "")}</td>");
                 sbPdf.Append($"<td class='num'>{totNet:#,##0}</td>");
                 sbPdf.Append("</tr>");
                 sbPdf.Append("</tbody></table></body></html>");
@@ -521,36 +535,42 @@ namespace Nskg.Controllers
 
                 var sb = new StringBuilder();
                 sb.Append("<!DOCTYPE html><html><head><meta charset='utf-8'>");
+                sb.Append("<title>Challan report</title>");
                 sb.Append("<style>");
-                sb.Append("body{font-family:Arial,sans-serif;font-size:11px;margin:10px;color:#333;}");
+                sb.Append("body{font-family:Arial,sans-serif;font-size:11px;margin:15px;color:#000;}");
                 sb.Append(".header-box{text-align:center;margin-bottom:12px;}");
-                sb.Append(".header-box h2{margin:0 0 4px;color:#0d6efd;font-size:18px;}");
-                sb.Append(".header-box h3{margin:0 0 4px;font-size:14px;color:#495057;}");
-                sb.Append(".header-box p{margin:0;font-size:11px;color:#6c757d;}");
-                sb.Append("table{width:100%;border-collapse:collapse;margin-top:8px;}");
-                sb.Append("th{background:#0d6efd;color:#fff;padding:6px 4px;text-align:left;font-size:10px;white-space:nowrap;border:1px solid #0b5ed7;}");
-                sb.Append("td{padding:4px;border:1px solid #dee2e6;font-size:10px;white-space:nowrap;}");
-                sb.Append("tr:nth-child(even){background:#f8f9fa;}");
-                sb.Append("tr:hover td{background:#e7f1ff;}");
-                sb.Append("tfoot tr{background:#d0e2ff;font-weight:bold;}");
+                sb.Append(".header-box h2{margin:0 0 4px;font-size:18px;font-weight:bold;color:#111;}");
+                sb.Append(".header-box p{margin:0;font-size:11px;color:#555;}");
+                sb.Append("table{width:100%;border-collapse:collapse;border:1px solid #000;margin-top:8px;}");
+                sb.Append("th{background:#f8f9fa;color:#000;padding:5px 4px;text-align:center;font-size:10px;font-weight:bold;white-space:nowrap;border:1px solid #000;}");
+                sb.Append("td{padding:4px 4px;border:1px solid #000;font-size:10.5px;white-space:nowrap;}");
+                sb.Append("tr:nth-child(even){background:#fafafa;}");
+                sb.Append("tr:hover td{background:#f1f8ff;}");
+                sb.Append("tfoot tr{background:#f0f0f0;font-weight:bold;}");
                 sb.Append(".num{text-align:right;}.center{text-align:center;}.bold{font-weight:bold;}");
+                sb.Append("@media print{.no-print{display:none;}body{margin:5mm;}th,td{border:1px solid #000;}}");
                 sb.Append("</style></head><body>");
 
                 sb.Append("<div class='header-box'>");
-                sb.Append($"<h2>{System.Net.WebUtility.HtmlEncode(compName)}</h2>");
-                sb.Append("<h3>Challan Report</h3>");
-                sb.Append($"<p>{periodText}</p>");
+                sb.Append("<h2>Challan report</h2>");
+                if (!string.IsNullOrEmpty(compName) && compName != "All Companies")
+                {
+                    sb.Append($"<p>{System.Net.WebUtility.HtmlEncode(compName)} &nbsp;|&nbsp; {periodText}</p>");
+                }
+                else
+                {
+                    sb.Append($"<p>{periodText}</p>");
+                }
                 sb.Append("</div>");
 
                 sb.Append("<table><thead><tr>");
-                sb.Append("<th class='center' style='width:30px;'>#</th>");
                 sb.Append("<th>Date</th><th>No</th><th>Station</th><th>Vehicle</th><th>Transporter</th>");
                 sb.Append("<th class='num'>Delivery Amt</th><th class='num'>Lifter Amt</th><th class='num'>Billti Amt</th>");
-                sb.Append("<th class='num'>To Paid</th><th class='num'>Party Exp</th>");
-                sb.Append("<th class='num'>Local Amt</th><th class='num'>Other Exp</th><th class='num'>Net Amt</th>");
+                sb.Append("<th class='num'>To paid</th><th>B#/ Party</th><th class='num'>Party Exp</th>");
+                sb.Append("<th>B# Local</th><th class='num'>Local Amt</th><th>B#/ Ex Other</th>");
+                sb.Append("<th class='num'>Other Exp</th><th class='num'>Net Amt</th>");
                 sb.Append("</tr></thead><tbody>");
 
-                int sr = 1;
                 foreach (DataRow row in dt.Rows)
                 {
                     string docDate = row["DocDate"] != DBNull.Value ? Convert.ToDateTime(row["DocDate"]).ToString("dd/MM/yy") : "";
@@ -558,46 +578,60 @@ namespace Nskg.Controllers
                     string stationVal = row["Station"]?.ToString() ?? "";
                     string vehicle = row["Vehicle"]?.ToString() ?? "";
                     string transporter = row["Transporter"]?.ToString() ?? "";
-                    decimal deliveryAmt = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : 0;
-                    decimal lifterAmt = row["LifterAmt"] != DBNull.Value ? Convert.ToDecimal(row["LifterAmt"]) : 0;
-                    decimal billtiAmt = row["BilltiAmt"] != DBNull.Value ? Convert.ToDecimal(row["BilltiAmt"]) : 0;
-                    decimal toPaid = row["ToPaid"] != DBNull.Value ? Convert.ToDecimal(row["ToPaid"]) : 0;
-                    decimal partyExp = row["PartyExp"] != DBNull.Value ? Convert.ToDecimal(row["PartyExp"]) : 0;
-                    decimal localAmt = row["LocalAmt"] != DBNull.Value ? Convert.ToDecimal(row["LocalAmt"]) : 0;
-                    decimal otherExp = row["OtherExp"] != DBNull.Value ? Convert.ToDecimal(row["OtherExp"]) : 0;
-                    decimal netAmt = row["NetAmt"] != DBNull.Value ? Convert.ToDecimal(row["NetAmt"]) : 0;
 
-                    grandDelivery += deliveryAmt; grandLifter += lifterAmt; grandBillti += billtiAmt;
-                    grandToPaid += toPaid; grandPartyExp += partyExp; grandLocalAmt += localAmt;
-                    grandOtherExp += otherExp; grandNet += netAmt;
+                    decimal? deliveryAmt = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : null;
+                    decimal? lifterAmt = row["LifterAmt"] != DBNull.Value ? Convert.ToDecimal(row["LifterAmt"]) : null;
+                    decimal? billtiAmt = row["BilltiAmt"] != DBNull.Value ? Convert.ToDecimal(row["BilltiAmt"]) : null;
+                    decimal? toPaid = row["ToPaid"] != DBNull.Value ? Convert.ToDecimal(row["ToPaid"]) : null;
+                    string bParty = row["BParty"]?.ToString() ?? "";
+                    decimal? partyExp = row["PartyExp"] != DBNull.Value ? Convert.ToDecimal(row["PartyExp"]) : null;
+                    string bLocal = row["BLocal"]?.ToString() ?? "";
+                    decimal? localAmt = row["LocalAmt"] != DBNull.Value ? Convert.ToDecimal(row["LocalAmt"]) : null;
+                    string bOtherEx = row["BOtherEx"]?.ToString() ?? "";
+                    decimal? otherExp = row["OtherExp"] != DBNull.Value ? Convert.ToDecimal(row["OtherExp"]) : null;
+                    decimal? netAmt = row["NetAmt"] != DBNull.Value ? Convert.ToDecimal(row["NetAmt"]) : null;
+
+                    if (deliveryAmt.HasValue) grandDelivery += deliveryAmt.Value;
+                    if (lifterAmt.HasValue) grandLifter += lifterAmt.Value;
+                    if (billtiAmt.HasValue) grandBillti += billtiAmt.Value;
+                    if (toPaid.HasValue) grandToPaid += toPaid.Value;
+                    if (partyExp.HasValue) grandPartyExp += partyExp.Value;
+                    if (localAmt.HasValue) grandLocalAmt += localAmt.Value;
+                    if (otherExp.HasValue) grandOtherExp += otherExp.Value;
+                    if (netAmt.HasValue) grandNet += netAmt.Value;
 
                     sb.Append("<tr>");
-                    sb.Append($"<td class='center'>{sr++}</td>");
-                    sb.Append($"<td>{docDate}</td>");
-                    sb.Append($"<td class='bold'>{System.Net.WebUtility.HtmlEncode(no)}</td>");
+                    sb.Append($"<td class='center'>{docDate}</td>");
+                    sb.Append($"<td class='center bold'>{System.Net.WebUtility.HtmlEncode(no)}</td>");
                     sb.Append($"<td>{System.Net.WebUtility.HtmlEncode(stationVal)}</td>");
-                    sb.Append($"<td class='bold'>{System.Net.WebUtility.HtmlEncode(vehicle)}</td>");
+                    sb.Append($"<td>{System.Net.WebUtility.HtmlEncode(vehicle)}</td>");
                     sb.Append($"<td>{System.Net.WebUtility.HtmlEncode(transporter)}</td>");
-                    sb.Append($"<td class='num'>{(deliveryAmt != 0 ? deliveryAmt.ToString("#,##0") : "")}</td>");
-                    sb.Append($"<td class='num'>{(lifterAmt != 0 ? lifterAmt.ToString("#,##0") : "")}</td>");
-                    sb.Append($"<td class='num'>{(billtiAmt != 0 ? billtiAmt.ToString("#,##0") : "")}</td>");
-                    sb.Append($"<td class='num'>{(toPaid != 0 ? toPaid.ToString("#,##0") : "")}</td>");
-                    sb.Append($"<td class='num'>{(partyExp != 0 ? partyExp.ToString("#,##0") : "")}</td>");
-                    sb.Append($"<td class='num'>{(localAmt != 0 ? localAmt.ToString("#,##0") : "")}</td>");
-                    sb.Append($"<td class='num'>{(otherExp != 0 ? otherExp.ToString("#,##0") : "")}</td>");
-                    sb.Append($"<td class='num'>{(netAmt != 0 ? netAmt.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(deliveryAmt.HasValue ? deliveryAmt.Value.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(lifterAmt.HasValue ? lifterAmt.Value.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(billtiAmt.HasValue ? billtiAmt.Value.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(toPaid.HasValue ? toPaid.Value.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='center'>{System.Net.WebUtility.HtmlEncode(bParty)}</td>");
+                    sb.Append($"<td class='num'>{(partyExp.HasValue ? partyExp.Value.ToString("#,##0") : "0")}</td>");
+                    sb.Append($"<td class='center'>{System.Net.WebUtility.HtmlEncode(bLocal)}</td>");
+                    sb.Append($"<td class='num'>{(localAmt.HasValue && localAmt.Value != 0 ? localAmt.Value.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='center'>{System.Net.WebUtility.HtmlEncode(bOtherEx)}</td>");
+                    sb.Append($"<td class='num'>{(otherExp.HasValue && otherExp.Value != 0 ? otherExp.Value.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(netAmt.HasValue ? netAmt.Value.ToString("#,##0") : "0")}</td>");
                     sb.Append("</tr>");
                 }
 
                 sb.Append("</tbody><tfoot><tr>");
-                sb.Append("<td colspan='6' style='text-align:right;' class='bold'>GRAND TOTAL:</td>");
+                sb.Append("<td colspan='5' style='text-align:right;' class='bold'>Total:</td>");
                 sb.Append($"<td class='num bold'>{grandDelivery:#,##0}</td>");
-                sb.Append($"<td class='num bold'>{grandLifter:#,##0}</td>");
+                sb.Append($"<td class='num bold'>{(grandLifter != 0 ? grandLifter.ToString("#,##0") : "")}</td>");
                 sb.Append($"<td class='num bold'>{grandBillti:#,##0}</td>");
                 sb.Append($"<td class='num bold'>{grandToPaid:#,##0}</td>");
+                sb.Append("<td></td>");
                 sb.Append($"<td class='num bold'>{grandPartyExp:#,##0}</td>");
-                sb.Append($"<td class='num bold'>{grandLocalAmt:#,##0}</td>");
-                sb.Append($"<td class='num bold'>{grandOtherExp:#,##0}</td>");
+                sb.Append("<td></td>");
+                sb.Append($"<td class='num bold'>{(grandLocalAmt != 0 ? grandLocalAmt.ToString("#,##0") : "")}</td>");
+                sb.Append("<td></td>");
+                sb.Append($"<td class='num bold'>{(grandOtherExp != 0 ? grandOtherExp.ToString("#,##0") : "")}</td>");
                 sb.Append($"<td class='num bold'>{grandNet:#,##0}</td>");
                 sb.Append("</tr></tfoot></table></body></html>");
 
@@ -678,29 +712,38 @@ namespace Nskg.Controllers
                 sb.AppendLine($"\"Date From:\",\"{effFromDate:dd-MM-yyyy}\",\"Date To:\",\"{effToDate:dd-MM-yyyy}\"");
                 sb.AppendLine();
 
-                sb.AppendLine("Date,No,Station,Vehicle,Transporter,Delivery Amt,Lifter Amt,Billti Amt,To Paid,Party Exp,Local Amt,Other Exp,Net Amt");
+                sb.AppendLine("Date,No,Station,Vehicle,Transporter,Delivery Amt,Lifter Amt,Billti Amt,To paid,B#/ Party,Party Exp,B# Local,Local Amt,B#/ Ex Other,Other Exp,Net Amt");
 
                 decimal totDel = 0, totLif = 0, totBil = 0, totTopaid = 0, totPExp = 0, totLoc = 0, totOth = 0, totNet = 0;
 
                 foreach (DataRow row in dt.Rows)
                 {
-                    string docDate = row["DocDate"] != DBNull.Value ? Convert.ToDateTime(row["DocDate"]).ToString("dd-MM-yyyy") : "";
-                    decimal deliveryAmt = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : 0;
-                    decimal lifterAmt = row["LifterAmt"] != DBNull.Value ? Convert.ToDecimal(row["LifterAmt"]) : 0;
-                    decimal billtiAmt = row["BilltiAmt"] != DBNull.Value ? Convert.ToDecimal(row["BilltiAmt"]) : 0;
-                    decimal toPaid = row["ToPaid"] != DBNull.Value ? Convert.ToDecimal(row["ToPaid"]) : 0;
-                    decimal partyExp = row["PartyExp"] != DBNull.Value ? Convert.ToDecimal(row["PartyExp"]) : 0;
-                    decimal localAmt = row["LocalAmt"] != DBNull.Value ? Convert.ToDecimal(row["LocalAmt"]) : 0;
-                    decimal otherExp = row["OtherExp"] != DBNull.Value ? Convert.ToDecimal(row["OtherExp"]) : 0;
-                    decimal netAmt = row["NetAmt"] != DBNull.Value ? Convert.ToDecimal(row["NetAmt"]) : 0;
+                    string docDate = row["DocDate"] != DBNull.Value ? Convert.ToDateTime(row["DocDate"]).ToString("dd/MM/yy") : "";
+                    decimal? deliveryAmt = row["DeliveryAmt"] != DBNull.Value ? Convert.ToDecimal(row["DeliveryAmt"]) : null;
+                    decimal? lifterAmt = row["LifterAmt"] != DBNull.Value ? Convert.ToDecimal(row["LifterAmt"]) : null;
+                    decimal? billtiAmt = row["BilltiAmt"] != DBNull.Value ? Convert.ToDecimal(row["BilltiAmt"]) : null;
+                    decimal? toPaid = row["ToPaid"] != DBNull.Value ? Convert.ToDecimal(row["ToPaid"]) : null;
+                    string bParty = row["BParty"]?.ToString() ?? "";
+                    decimal? partyExp = row["PartyExp"] != DBNull.Value ? Convert.ToDecimal(row["PartyExp"]) : null;
+                    string bLocal = row["BLocal"]?.ToString() ?? "";
+                    decimal? localAmt = row["LocalAmt"] != DBNull.Value ? Convert.ToDecimal(row["LocalAmt"]) : null;
+                    string bOtherEx = row["BOtherEx"]?.ToString() ?? "";
+                    decimal? otherExp = row["OtherExp"] != DBNull.Value ? Convert.ToDecimal(row["OtherExp"]) : null;
+                    decimal? netAmt = row["NetAmt"] != DBNull.Value ? Convert.ToDecimal(row["NetAmt"]) : null;
 
-                    totDel += deliveryAmt; totLif += lifterAmt; totBil += billtiAmt; totTopaid += toPaid;
-                    totPExp += partyExp; totLoc += localAmt; totOth += otherExp; totNet += netAmt;
+                    if (deliveryAmt.HasValue) totDel += deliveryAmt.Value;
+                    if (lifterAmt.HasValue) totLif += lifterAmt.Value;
+                    if (billtiAmt.HasValue) totBil += billtiAmt.Value;
+                    if (toPaid.HasValue) totTopaid += toPaid.Value;
+                    if (partyExp.HasValue) totPExp += partyExp.Value;
+                    if (localAmt.HasValue) totLoc += localAmt.Value;
+                    if (otherExp.HasValue) totOth += otherExp.Value;
+                    if (netAmt.HasValue) totNet += netAmt.Value;
 
-                    sb.AppendLine($"{docDate},{EscapeCsv(row["No"]?.ToString())},{EscapeCsv(row["Station"]?.ToString())},{EscapeCsv(row["Vehicle"]?.ToString())},{EscapeCsv(row["Transporter"]?.ToString())},{deliveryAmt},{lifterAmt},{billtiAmt},{toPaid},{partyExp},{localAmt},{otherExp},{netAmt}");
+                    sb.AppendLine($"{docDate},{EscapeCsv(row["No"]?.ToString())},{EscapeCsv(row["Station"]?.ToString())},{EscapeCsv(row["Vehicle"]?.ToString())},{EscapeCsv(row["Transporter"]?.ToString())},{(deliveryAmt.HasValue ? deliveryAmt.Value.ToString() : "")},{(lifterAmt.HasValue ? lifterAmt.Value.ToString() : "")},{(billtiAmt.HasValue ? billtiAmt.Value.ToString() : "")},{(toPaid.HasValue ? toPaid.Value.ToString() : "")},{EscapeCsv(bParty)},{(partyExp.HasValue ? partyExp.Value.ToString() : "0")},{EscapeCsv(bLocal)},{(localAmt.HasValue && localAmt.Value != 0 ? localAmt.Value.ToString() : "")},{EscapeCsv(bOtherEx)},{(otherExp.HasValue && otherExp.Value != 0 ? otherExp.Value.ToString() : "")},{(netAmt.HasValue ? netAmt.Value.ToString() : "0")}");
                 }
 
-                sb.AppendLine($"\"TOTAL\",,,,{totDel},{totLif},{totBil},{totTopaid},{totPExp},{totLoc},{totOth},{totNet}");
+                sb.AppendLine($"\"TOTAL\",,,,{totDel},{(totLif != 0 ? totLif.ToString() : "")},{totBil},{totTopaid},,{totPExp},,{(totLoc != 0 ? totLoc.ToString() : "")},,{(totOth != 0 ? totOth.ToString() : "")},{totNet}");
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
                 return File(bytes, "text/csv", $"challanreport_{DateTime.Now:yyyyMMdd_HHmmss}.csv");

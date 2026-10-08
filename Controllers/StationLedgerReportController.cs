@@ -28,7 +28,7 @@ namespace Nskg.Controllers
 
         private int GetCompanyId(int? companyId = null)
         {
-            if (companyId.HasValue && companyId.Value > 0) return companyId.Value;
+            if (companyId.HasValue) return companyId.Value;
             var compId = User.FindFirst("CompanyId")?.Value;
             if (int.TryParse(compId, out int id) && id > 0) return id;
             return 1006;
@@ -44,14 +44,26 @@ namespace Nskg.Controllers
         [HttpGet]
         public IActionResult GetAccountsByCompany(int companyId)
         {
-            var accounts = _context.GLChart3
-                .Where(x => x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null)
+            var query = _context.GLChart3
+                .Where(x => (companyId == 0 || x.CompanyId == companyId || x.CompanyId == 0 || x.CompanyId == null) 
+                         && (x.AC1 == "067" || x.AC1 == "068") 
+                         && !string.IsNullOrEmpty(x.Name));
+
+            var accounts = query
                 .Select(x => new
                 {
-                    Code = x.ACC ?? (x.AC1 + x.AC3),
-                    Name = x.Name
+                    Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                    Name = x.Name.Trim()
                 })
-                .OrderBy(x => x.Code)
+                .Where(x => !string.IsNullOrEmpty(x.Code))
+                .ToList()
+                .GroupBy(x => x.Code)
+                .Select(g => new
+                {
+                    code = g.Key,
+                    name = g.First().Name
+                })
+                .OrderBy(x => x.name)
                 .ToList();
 
             return Json(accounts);
@@ -73,21 +85,33 @@ namespace Nskg.Controllers
                 })
                 .ToList();
 
-            var accounts = _context.GLChart3
-                .Where(x => x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null)
+            var query = _context.GLChart3
+                .Where(x => (selectedCompanyId == 0 || x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null) 
+                         && (x.AC1 == "067" || x.AC1 == "068") 
+                         && !string.IsNullOrEmpty(x.Name));
+
+            var accounts = query
                 .Select(x => new
                 {
-                    Code = x.ACC ?? (x.AC1 + x.AC3),
-                    Name = x.Name
+                    Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                    Name = x.Name.Trim()
                 })
-                .OrderBy(x => x.Code)
+                .Where(x => !string.IsNullOrEmpty(x.Code))
+                .ToList()
+                .GroupBy(x => x.Code)
+                .Select(g => new
+                {
+                    Code = g.Key,
+                    Name = g.First().Name
+                })
+                .OrderBy(x => x.Name)
                 .ToList();
 
             ViewBag.CompanyList = companies;
             ViewBag.SelectedCompanyId = selectedCompanyId;
             ViewBag.AccountList = accounts;
             ViewBag.Accode = accode;
-            ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.ToString("yyyy-MM-dd") : fromDate;
+            ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? DateTime.Now.ToString("yyyy-07-01") : fromDate;
             ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
 
             return View();
@@ -103,20 +127,92 @@ namespace Nskg.Controllers
                 con.Open();
 
                 // 1. Run dbo.PROCESSDETAIL_Station to populate ACCUMULATED & ACCOPEN
-                using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_Station", con))
+                try
                 {
-                    cmdProc.CommandType = CommandType.StoredProcedure;
-                    cmdProc.CommandTimeout = 180;
-                    cmdProc.Parameters.AddWithValue("@CompanyId", companyId);
-                    cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
-                    cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                    cmdProc.ExecuteNonQuery();
+                    if (companyId > 0)
+                    {
+                        using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_Station", con))
+                        {
+                            cmdProc.CommandType = CommandType.StoredProcedure;
+                            cmdProc.CommandTimeout = 180;
+                            cmdProc.Parameters.AddWithValue("@CompanyId", companyId);
+                            cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
+                            cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                            cmdProc.ExecuteNonQuery();
+                        }
+                    }
+                    else
+                    {
+                        var activeCompanies = _context.Companies.Where(c => !c.IsDeleted).Select(c => c.Id).ToList();
+                        if (activeCompanies.Count > 0)
+                        {
+                            using (SqlCommand cmdSetup = new SqlCommand(@"
+                                IF OBJECT_ID('tempdb..#AllAcc') IS NOT NULL DROP TABLE #AllAcc;
+                                SELECT TOP 0 * INTO #AllAcc FROM ACCUMULATED;", con))
+                            {
+                                cmdSetup.ExecuteNonQuery();
+                            }
+
+                            foreach (var cId in activeCompanies)
+                            {
+                                using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_Station", con))
+                                {
+                                    cmdProc.CommandType = CommandType.StoredProcedure;
+                                    cmdProc.CommandTimeout = 180;
+                                    cmdProc.Parameters.AddWithValue("@CompanyId", cId);
+                                    cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
+                                    cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                                    cmdProc.ExecuteNonQuery();
+                                }
+
+                                using (SqlCommand cmdCopy = new SqlCommand("INSERT INTO #AllAcc SELECT * FROM ACCUMULATED;", con))
+                                {
+                                    cmdCopy.ExecuteNonQuery();
+                                }
+                            }
+
+                            using (SqlCommand cmdMerge = new SqlCommand(@"
+                                DELETE FROM ACCUMULATED;
+
+                                ;WITH DistinctAcc AS
+                                (
+                                    SELECT *,
+                                           ROW_NUMBER() OVER(
+                                               PARTITION BY VONO, VOTYPE, CAST(VODATE AS DATE), DRAMT, CRAMT, ISNULL(BILLTINO, 0), ISNULL(BILNO, 0), ISNULL(VEHICLENO, ''), ISNULL(NARRATION, '')
+                                               ORDER BY COCODE
+                                           ) AS rn
+                                    FROM #AllAcc
+                                )
+                                INSERT INTO ACCUMULATED (
+                                    COCODE, VONO, VODATE, VOTYPE, AC1, AC2, AC3, ACTYPE, DRAMT, CRAMT, NARRATION,
+                                    CANCEL, PAY, INVNO, INVDATE, ACC, NDRAMT, NCRAMT, RATE, AMOUNT, CHQNO,
+                                    CHQDATE, STAXAMT, DUEDATE, INAME, QTY, BILLTINO, BILNO, DELIVERYAMT, DELIVERYAMT2,
+                                    STATION, VEHICLENO
+                                )
+                                SELECT 
+                                    COCODE, VONO, VODATE, VOTYPE, AC1, AC2, AC3, ACTYPE, DRAMT, CRAMT, NARRATION,
+                                    CANCEL, PAY, INVNO, INVDATE, ACC, NDRAMT, NCRAMT, RATE, AMOUNT, CHQNO,
+                                    CHQDATE, STAXAMT, DUEDATE, INAME, QTY, BILLTINO, BILNO, DELIVERYAMT, DELIVERYAMT2,
+                                    STATION, VEHICLENO
+                                FROM DistinctAcc
+                                WHERE rn = 1;
+
+                                DROP TABLE #AllAcc;", con))
+                            {
+                                cmdMerge.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Fallback
                 }
 
                 // 2. Fetch Account Name & Company Name
                 string accName = "";
                 using (SqlCommand cmdAcc = new SqlCommand(
-                    "SELECT TOP 1 Name FROM GLCHART3 WHERE (CompanyId = @CompanyId OR CompanyId = 0 OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
+                    "SELECT TOP 1 Name FROM GLCHART3 WHERE (@CompanyId = 0 OR CompanyId = @CompanyId OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
                 {
                     cmdAcc.Parameters.AddWithValue("@CompanyId", companyId);
                     cmdAcc.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
@@ -125,12 +221,19 @@ namespace Nskg.Controllers
                 }
 
                 string companyName = "West Wharf-New Shadab Karachi Goods Transports";
-                using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
+                if (companyId > 0)
                 {
-                    cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
-                    var res = cmdComp.ExecuteScalar();
-                    if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
-                        companyName = res.ToString();
+                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
+                    {
+                        cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
+                        var res = cmdComp.ExecuteScalar();
+                        if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
+                            companyName = res.ToString();
+                    }
+                }
+                else
+                {
+                    companyName = "New Shadab Karachi Goods Transport Company (All Branches - Linked)";
                 }
 
                 // 3. Query Opening Balance and Transactions with Running Balance
@@ -142,7 +245,7 @@ namespace Nskg.Controllers
                         SELECT @AnnualOpeningBal = ISNULL(SUM(Debit - Credit), 0)
                         FROM OpeningBalances
                         WHERE Accode = @Accode
-                          AND CompanyId = @CompanyId
+                          AND (@CompanyId = 0 OR CompanyId = @CompanyId)
                           AND FinancialYearId = @FinancialYearId;
                     END
 
@@ -161,7 +264,7 @@ namespace Nskg.Controllers
                             CAST('' AS VARCHAR(50)) AS DocNo,
                             CAST('' AS VARCHAR(10)) AS Votype,
                             CAST(NULL AS VARCHAR(50)) AS Comm,
-                            CAST('Balance Brought Farword' AS VARCHAR(100)) AS VehicleNo,
+                            CAST('Opening Balance' AS VARCHAR(100)) AS VehicleNo,
                             CAST('' AS VARCHAR(100)) AS Station,
                             CAST('' AS VARCHAR(250)) AS Narration,
                             CAST('' AS VARCHAR(50)) AS CompanyCode,
@@ -178,22 +281,34 @@ namespace Nskg.Controllers
                         SELECT 
                             1 AS SortOrder,
                             CAST(a.VODATE AS DATE) AS DocDate,
-                            ISNULL(a.VONO, '') AS DocNo,
+                            CASE 
+                                WHEN CHARINDEX('/', a.VONO) > 0 THEN LEFT(a.VONO, CHARINDEX('/', a.VONO) - 1)
+                                ELSE ISNULL(a.VONO, '')
+                            END AS DocNo,
                             ISNULL(a.VOTYPE, '') AS Votype,
                             CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS Comm,
                             CASE 
                                 WHEN NULLIF(RTRIM(LTRIM(a.VEHICLENO)), '') IS NOT NULL THEN RTRIM(LTRIM(a.VEHICLENO))
                                 ELSE COALESCE(
+                                    (SELECT TOP 1 vd.Vehicleno FROM VoDet vd WHERE vd.Vono = a.VONO AND vd.Votype = a.VOTYPE AND NULLIF(RTRIM(LTRIM(vd.Vehicleno)), '') IS NOT NULL),
                                     (SELECT TOP 1 ish.VehicleNo FROM ISSHEAD ish WHERE (ish.BillTiNo = a.BILLTINO OR ish.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ish.VehicleNo)), '') IS NOT NULL),
                                     (SELECT TOP 1 ch.VehicleNo FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL),
                                     (SELECT TOP 1 cm.VehicleNo FROM CommDetail cmd INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id WHERE cmd.BillTiNo = a.BILLTINO AND NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') IS NOT NULL),
+                                    (SELECT TOP 1 ch.VehicleNo FROM ChallanHead ch WHERE ch.ChalNo = a.BILLTINO AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL),
+                                    (SELECT TOP 1 cm.VehicleNo FROM CommHead cm WHERE cm.DocNo = a.VONO AND NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') IS NOT NULL),
                                     CASE WHEN a.VOTYPE = 'CL' THEN NULLIF(RTRIM(LTRIM(a.NARRATION)), '') ELSE NULL END,
                                     ''
                                 )
                             END AS VehicleNo,
                             ISNULL(a.INAME, '') AS Station,
                             ISNULL(a.NARRATION, '') AS Narration,
-                            'W.H' AS CompanyCode,
+                            CASE 
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('01', '1006', '1') THEN 'W.W'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('02', '1007', '2') THEN 'M.P'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('03', '1008', '3') THEN 'N.K'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('04', '1009', '4') THEN 'R.W'
+                                ELSE 'W.W'
+                            END AS CompanyCode,
                             a.DELIVERYAMT AS DeliveryAmt,
                             a.DELIVERYAMT2 AS DeliveryAmt2,
                             ISNULL(a.DRAMT, 0) AS Debit,
@@ -311,54 +426,70 @@ namespace Nskg.Controllers
                     return Content("<div style='font-family:Arial; padding:30px; text-align:center; color:#721c24; background-color:#f8d7da; border:1px solid #f5c6cb; border-radius:6px; margin:20px;'><strong>No data found for selected date range and station account.</strong></div>", "text/html");
                 }
 
-                string compName = (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "Company";
+                string compName = (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "West Wharf-New Shadab Karachi Goods Transports";
                 string accName = (dt.Rows.Count > 0 ? dt.Rows[0]["AccName"]?.ToString() : null) ?? "";
+                string formattedAccode = accode ?? "";
 
                 decimal totalDebit = 0, totalCredit = 0;
                 var sb = new StringBuilder();
                 sb.Append(@"<!DOCTYPE html><html><head><meta charset='utf-8'>
+                <title>Station Ledger - " + formattedAccode + @"</title>
                 <style>
-                    body{font-family:Arial,sans-serif;font-size:12px;margin:12px;color:#333;}
-                    .header-box{text-align:center;margin-bottom:12px;}
-                    .header-box h2{margin:0 0 4px;color:#0d6efd;font-size:18px;}
-                    .header-box h3{margin:0 0 4px;font-size:14px;color:#495057;}
-                    .header-box p{margin:0;font-size:11px;color:#6c757d;}
-                    table{width:100%;border-collapse:collapse;margin-top:8px;}
-                    th{background:#0d6efd;color:#fff;padding:7px 6px;text-align:left;font-size:11px;border:1px solid #0b5ed7;}
-                    td{padding:5px 6px;border:1px solid #dee2e6;font-size:11px;}
-                    tr:nth-child(even){background:#f8f9fa;}
-                    tr:hover{background:#e9ecef;}
-                    .num{text-align:right;}
-                    .center{text-align:center;}
-                    .bold{font-weight:bold;}
-                    .op-row{background:#e7f1ff;font-weight:bold;}
-                    tfoot tr{background:#d0e2ff;font-weight:bold;}
+                    body { font-family: Arial, sans-serif; font-size: 11px; margin: 15px; color: #000; }
+                    .header-box { text-align: center; margin-bottom: 12px; }
+                    .comp-name { font-size: 16px; font-weight: bold; margin-bottom: 3px; letter-spacing: 0.5px; }
+                    .report-title { font-size: 13px; font-weight: bold; letter-spacing: 3px; margin-bottom: 8px; }
+                    .meta-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 8px; }
+                    .acc-prominent { font-size: 14px; font-weight: bold; text-align: left; margin: 10px 0 6px 0; border-bottom: 1px solid #000; padding-bottom: 3px; }
+                    .acc-code { display: inline-block; width: 100px; font-weight: bold; }
+                    .acc-name { font-weight: bold; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+                    th { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 5px; font-size: 10.5px; font-weight: bold; text-align: left; }
+                    td { padding: 4px 5px; border-bottom: 1px solid #e0e0e0; font-size: 10.5px; }
+                    .num { text-align: right; }
+                    .center { text-align: center; }
+                    .bold { font-weight: bold; }
+                    .op-row td { font-weight: bold; background-color: #fafafa; }
+                    tfoot tr td { border-top: 1px solid #000; border-bottom: 2px solid #000; font-weight: bold; padding: 6px; }
+                    @media print {
+                        body { margin: 5mm; }
+                        .no-print { display: none !important; }
+                    }
+                    " + Nskg.Helpers.ReportPaginationHelper.GetPaginationStyles() + @"
                 </style></head><body>");
 
-                sb.Append($"<div class='header-box'>");
-                sb.Append($"<h2>{compName}</h2>");
-                sb.Append($"<h3>STATION LEDGER REPORT</h3>");
-                sb.Append($"<p>Account: <b>{(string.IsNullOrEmpty(accode) ? "ALL STATIONS" : accode + " - " + accName)}</b> &nbsp;|&nbsp; Period: <b>{fromDate:dd-MMM-yyyy}</b> to <b>{toDate:dd-MMM-yyyy}</b></p>");
+                sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationToolbarHtml("Station Ledger"));
+                sb.Append("<div class='header-box'>");
+                sb.Append($"<div class='comp-name'>{compName}</div>");
+                sb.Append("<div class='report-title'>G E N E R A L &nbsp;&nbsp; L E D G E R</div>");
+                sb.Append("<div class='meta-row'>");
+                sb.Append($"<span>Printed On : {DateTime.Now:dd MMMM yyyy}</span>");
+                sb.Append($"<span>From : {fromDate:dd MMMM yyyy} &nbsp;&nbsp;&nbsp;&nbsp; To: {toDate:dd MMMM yyyy}</span>");
+                sb.Append("<span>Page No. &nbsp;1 &nbsp;of: 1</span>");
+                sb.Append("</div>");
+                sb.Append("</div>");
+
+                sb.Append("<div class='acc-prominent'>");
+                sb.Append($"<span class='acc-code'>{formattedAccode}</span>");
+                sb.Append($"<span class='acc-name'>{accName}</span>");
                 sb.Append("</div>");
 
                 sb.Append("<table><thead><tr>");
-                sb.Append("<th style='width:35px;' class='center'>#</th>");
-                sb.Append("<th style='width:75px;'>Doc Date</th>");
-                sb.Append("<th style='width:65px;'>Doc #</th>");
-                sb.Append("<th style='width:45px;'>Type</th>");
-                sb.Append("<th style='width:65px;'>Comm</th>");
-                sb.Append("<th style='width:85px;'>Vehicle No</th>");
-                sb.Append("<th>Station</th>");
+                sb.Append("<th style='width:65px;'>Doc.Date</th>");
+                sb.Append("<th style='width:55px;'>Doc. #</th>");
+                sb.Append("<th style='width:35px;'>Typ</th>");
+                sb.Append("<th style='width:45px;'>Comm</th>");
+                sb.Append("<th style='width:80px;'>Vehicle No</th>");
+                sb.Append("<th style='width:120px;'>Station</th>");
                 sb.Append("<th>Narration</th>");
-                sb.Append("<th style='width:50px;'>Branch</th>");
-                sb.Append("<th class='num' style='width:75px;'>Delivery</th>");
-                sb.Append("<th class='num' style='width:65px;'>6% Del.</th>");
-                sb.Append("<th class='num' style='width:80px;'>Debit</th>");
-                sb.Append("<th class='num' style='width:80px;'>Credit</th>");
-                sb.Append("<th class='num' style='width:85px;'>Balance</th>");
+                sb.Append("<th style='width:55px;'>Comapny</th>");
+                sb.Append("<th class='num' style='width:75px;'>Delivery AMT</th>");
+                sb.Append("<th class='num' style='width:70px;'>6% Delivery</th>");
+                sb.Append("<th class='num' style='width:75px;'>DEBIT</th>");
+                sb.Append("<th class='num' style='width:75px;'>CREDIT</th>");
+                sb.Append("<th class='num' style='width:85px;'>BALANCE</th>");
                 sb.Append("</tr></thead><tbody>");
 
-                int sr = 1;
                 foreach (DataRow row in dt.Rows)
                 {
                     int sortOrder = row["SortOrder"] != DBNull.Value ? Convert.ToInt32(row["SortOrder"]) : 1;
@@ -376,11 +507,10 @@ namespace Nskg.Controllers
                         totalCredit += credit;
                     }
 
-                    string docDate = row["DocDate"] != DBNull.Value ? Convert.ToDateTime(row["DocDate"]).ToString("dd-MMM-yy") : "";
+                    string docDate = row["DocDate"] != DBNull.Value && row["DocDate"] != null ? Convert.ToDateTime(row["DocDate"]).ToString("dd-MM-yy") : "";
                     string rowClass = isOpening ? "class='op-row'" : "";
 
                     sb.Append($"<tr {rowClass}>");
-                    sb.Append($"<td class='center'>{(isOpening ? "" : sr++.ToString())}</td>");
                     sb.Append($"<td>{docDate}</td>");
                     sb.Append($"<td>{row["DocNo"]}</td>");
                     sb.Append($"<td>{row["Votype"]}</td>");
@@ -389,28 +519,30 @@ namespace Nskg.Controllers
                     sb.Append($"<td>{row["Station"]}</td>");
                     sb.Append($"<td>{row["Narration"]}</td>");
                     sb.Append($"<td>{row["CompanyCode"]}</td>");
-                    sb.Append($"<td class='num'>{(delAmt != 0 ? delAmt.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(delAmt2 != 0 ? delAmt2.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(debit != 0 ? debit.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num'>{(credit != 0 ? credit.ToString("#,##0.00") : "")}</td>");
-                    sb.Append($"<td class='num bold'>{balance:#,##0.00}</td>");
+                    sb.Append($"<td class='num'>{(delAmt != 0 ? delAmt.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(delAmt2 != 0 ? delAmt2.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(debit != 0 ? debit.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num'>{(credit != 0 ? credit.ToString("#,##0") : "")}</td>");
+                    sb.Append($"<td class='num bold'>{balance:#,##0}</td>");
                     sb.Append("</tr>");
                 }
 
                 decimal closingBal = (dt.Rows.Count > 0 && dt.Rows[dt.Rows.Count - 1]["Balance"] != DBNull.Value) ? Convert.ToDecimal(dt.Rows[dt.Rows.Count - 1]["Balance"]) : 0;
 
                 sb.Append("</tbody><tfoot><tr>");
-                sb.Append($"<td colspan='11' class='bold' style='text-align:right;'>TOTAL:</td>");
+                sb.Append("<td colspan='10' class='bold' style='text-align:left;'>GRAND TOTAL.........................................................................................................</td>");
                 sb.Append($"<td class='num bold'>{totalDebit:#,##0.00}</td>");
                 sb.Append($"<td class='num bold'>{totalCredit:#,##0.00}</td>");
                 sb.Append($"<td class='num bold'>{closingBal:#,##0.00}</td>");
-                sb.Append("</tr></tfoot></table></body></html>");
+                sb.Append("</tr></tfoot></table>");
+                sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationScript());
+                sb.Append("</body></html>");
 
                 return Content(sb.ToString(), "text/html");
             }
             catch (Exception ex)
             {
-                return Content($"ERROR: {ex.Message}\n\nSTACK: {ex.StackTrace}");
+                return Content($"<div style='color:red; padding:20px;'><strong>Error:</strong> {ex.Message}<br/><pre>{ex.StackTrace}</pre></div>", "text/html");
             }
         }
 
@@ -440,7 +572,7 @@ namespace Nskg.Controllers
                 sb.AppendLine();
 
                 // Table Header
-                sb.AppendLine("Doc.Date,Doc. #,Typ,Comm,Vehicle No,Station,Narration,Company,Delivery AMT,6% Delivery,DEBIT,CREDIT,BALANCE");
+                sb.AppendLine("Doc.Date,Doc. #,Typ,Comm,Vehicle No,Station,Narration,Comapny,Delivery AMT,6% Delivery,DEBIT,CREDIT,BALANCE");
 
                 foreach (DataRow row in dt.Rows)
                 {

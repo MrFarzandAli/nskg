@@ -46,6 +46,7 @@
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Company</label>
                         <select class="form-select select2" name="companyId" id="companySelect">
+                            <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies (Linked) --</option>
                             @if (companyList != null)
                             {
                                 foreach (var comp in companyList)
@@ -74,7 +75,7 @@
                                 {
                                     <option value="@item.Code" 
                                             selected="@(item.Code == accodeValue ? "selected" : null)">
-                                        @item.Code - @item.Name
+                                        @item.Name (@item.Code)
                                     </option>
                                 }
                             }
@@ -169,13 +170,13 @@
 
             $('#companySelect').on('change', function () {
                 var compId = $(this).val();
-                if (!compId) return;
+                if (compId === '' || compId === null || compId === undefined) return;
 
                 $.getJSON('@Url.Action("GetAccountsByCompany", "StationLedgerReport")', { companyId: compId }, function (data) {
                     var $acc = $('#accodeSelect');
                     $acc.empty().append('<option value="">-- Select Station Account --</option>');
                     $.each(data, function (i, item) {
-                        $acc.append('<option value="' + item.code + '">' + item.code + ' - ' + item.name + '</option>');
+                        $acc.append('<option value="' + item.code + '">' + item.name + ' (' + item.code + ')</option>');
                     });
                     $acc.trigger('change');
                 });

@@ -268,7 +268,9 @@ BEGIN
             INVNO,
             BILLTINO,
             BILNO,
-            INAME
+            INAME,
+            VEHICLENO,
+            STATION
         )
         SELECT
             h.companyid,
@@ -286,7 +288,9 @@ BEGIN
             d.INVNO,
             BILLTINO,
             BILNO,
-            d.NARRATION
+            d.NARRATION,
+            d.VEHICLENO,
+            d.TRANSPORTER
         FROM VODET d
         JOIN vohead h on h.id = d.voheadid
         WHERE h.companyid = @companyid
@@ -298,9 +302,9 @@ BEGIN
 
 
         /* =========================================================
-           TAX DETECTION (Bypassed: PTAX is already reflected in voucher totals and not counted as extra credit in Trial Balance)
+           TAX DETECTION
            ========================================================= */
-        /*
+
         INSERT INTO ACCUMULATED
         (
             COCODE,
@@ -342,7 +346,6 @@ BEGIN
           AND ISNULL(d.HACC, '') <> @ACCODE
           AND d.ACC = @ACCODE
           AND ISNULL(h.IsDeleted, 0) = 0;
-        */
 
 
         /* =========================================================

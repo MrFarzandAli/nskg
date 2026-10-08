@@ -193,16 +193,35 @@ namespace Nskg.Controllers
                     if (res != null && res != DBNull.Value) accName = res.ToString();
                 }
 
-                string companyName = companyId == 0 ? "All Companies" : "West Wharf-New Shadab Karachi Goods Transports";
+                string companyName = "West Wharf-New Shadab Karachi Goods Transports";
+                string shortCompanyName = "W.W";
+                string cocode = "";
                 if (companyId > 0)
                 {
-                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name FROM Companies WHERE Id = @CompanyId", con))
+                    using (SqlCommand cmdComp = new SqlCommand("SELECT TOP 1 Name, Cocode FROM Companies WHERE Id = @CompanyId", con))
                     {
                         cmdComp.Parameters.AddWithValue("@CompanyId", companyId);
-                        var res = cmdComp.ExecuteScalar();
-                        if (res != null && res != DBNull.Value && !string.IsNullOrWhiteSpace(res.ToString()))
-                            companyName = res.ToString();
+                        using (var readerComp = cmdComp.ExecuteReader())
+                        {
+                            if (readerComp.Read())
+                            {
+                                if (readerComp["Name"] != DBNull.Value && !string.IsNullOrWhiteSpace(readerComp["Name"].ToString()))
+                                    companyName = readerComp["Name"].ToString()!;
+                                if (readerComp["Cocode"] != DBNull.Value)
+                                    cocode = readerComp["Cocode"].ToString() ?? "";
+                            }
+                        }
                     }
+
+                    if (cocode == "01" || companyId == 1006) shortCompanyName = "W.W";
+                    else if (cocode == "02" || companyId == 1007) shortCompanyName = "M.P";
+                    else if (cocode == "03" || companyId == 1008) shortCompanyName = "N.K";
+                    else if (cocode == "04" || companyId == 1009) shortCompanyName = "R.W";
+                }
+                else
+                {
+                    companyName = "New Shadab Karachi Goods Transport Company (All Branches - Linked)";
+                    shortCompanyName = "LINKED";
                 }
 
                 // 3. Query Opening Balance and Transactions with Running Balance and robust Vehicle/Station resolution
@@ -251,65 +270,128 @@ namespace Nskg.Controllers
                             1 AS SortOrder,
                             CAST(a.VODATE AS DATE) AS DocDate,
                             ISNULL(a.VONO, '') AS DocNo,
-                            ISNULL(a.VOTYPE, '') AS Votype,
-                            CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BillTiNo,
-                            CASE WHEN a.BILNO IS NOT NULL AND a.BILNO <> 0 THEN CAST(CAST(a.BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BilNo,
-                            CASE 
-                                WHEN NULLIF(RTRIM(LTRIM(a.VEHICLENO)), '') IS NOT NULL THEN RTRIM(LTRIM(a.VEHICLENO))
-                                WHEN a.VOTYPE = 'CL' AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND a.NARRATION NOT LIKE '%-%-%' THEN RTRIM(LTRIM(a.NARRATION))
-                                ELSE ISNULL(RTRIM(LTRIM(a.VEHICLENO)), '')
-                            END AS VehicleNo,
-                            ISNULL(RTRIM(LTRIM(a.STATION)), '') AS Station,
+                            COALESCE(
+                                NULLIF(RTRIM(LTRIM(a.VOTYPE)), ''),
+                                (SELECT TOP 1 NULLIF(RTRIM(LTRIM(vd.Votype)), '') FROM VoDet vd WHERE vd.Vono = a.VONO),
+                                (SELECT TOP 1 NULLIF(RTRIM(LTRIM(vh.Votype)), '') FROM VoHead vh WHERE vh.Vono = a.VONO),
+                                CASE 
+                                    WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN 'BL'
+                                    WHEN a.VONO LIKE '%CL%' THEN 'CL'
+                                    ELSE ''
+                                END
+                            ) AS Votype,
+                            COALESCE(
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
+                                (SELECT TOP 1 CAST(CAST(ish.BillTiNo AS BIGINT) AS VARCHAR(50)) FROM IssHead ish WHERE ish.DocNo = a.VONO AND ish.BillTiNo IS NOT NULL AND ish.BillTiNo <> 0 AND ISNULL(ish.IsDeleted, 0) = 0),
+                                (SELECT TOP 1 CAST(CAST(vd.Billtino AS BIGINT) AS VARCHAR(50)) FROM VoDet vd WHERE vd.Vono = a.VONO AND vd.Billtino IS NOT NULL AND TRY_CAST(vd.Billtino AS BIGINT) > 0 AND ISNULL(vd.IsDeleted, 0) = 0),
+                                NULL
+                            ) AS BillTiNo,
+                            COALESCE(
+                                CASE WHEN a.BILNO IS NOT NULL AND a.BILNO <> 0 THEN CAST(CAST(a.BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (SELECT TOP 1 CAST(CAST(ish.BilNo AS BIGINT) AS VARCHAR(50)) FROM IssHead ish WHERE ish.BillTiNo = a.BILLTINO AND ish.BilNo IS NOT NULL AND ish.BilNo <> 0 AND ISNULL(ish.IsDeleted, 0) = 0) ELSE NULL END,
+                                (SELECT TOP 1 CAST(CAST(ish.BilNo AS BIGINT) AS VARCHAR(50)) FROM IssHead ish WHERE ish.DocNo = a.VONO AND ish.BilNo IS NOT NULL AND ish.BilNo <> 0 AND ISNULL(ish.IsDeleted, 0) = 0),
+                                (SELECT TOP 1 CAST(CAST(vd.Bilno AS BIGINT) AS VARCHAR(50)) FROM VoDet vd WHERE vd.Vono = a.VONO AND vd.Bilno IS NOT NULL AND TRY_CAST(vd.Bilno AS BIGINT) > 0 AND ISNULL(vd.IsDeleted, 0) = 0),
+                                NULL
+                            ) AS BilNo,
+                            COALESCE(
+                                NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''),
+                                -- From VoDet.Vehicleno
+                                (SELECT TOP 1 NULLIF(RTRIM(LTRIM(vd.Vehicleno)), '') FROM VoDet vd WHERE vd.Vono = a.VONO AND NULLIF(RTRIM(LTRIM(vd.Vehicleno)), '') IS NOT NULL),
+                                -- From ChallanDet matching BillTiNo and BilNo
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (
+                                    SELECT TOP 1 NULLIF(RTRIM(LTRIM(cd.VehicleNo)), '') 
+                                    FROM ChallanDet cd 
+                                    WHERE cd.BillTiNo = a.BILLTINO 
+                                      AND (a.BILNO IS NULL OR a.BILNO = 0 OR cd.BilNo = a.BILNO)
+                                      AND NULLIF(RTRIM(LTRIM(cd.VehicleNo)), '') IS NOT NULL
+                                ) ELSE NULL END,
+                                -- From ChallanHead matching ChallanDet BillTiNo
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (
+                                    SELECT TOP 1 NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') 
+                                    FROM ChallanDet cd 
+                                    INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id 
+                                    WHERE cd.BillTiNo = a.BILLTINO 
+                                      AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL
+                                      AND ISNULL(ch.IsDeleted, 0) = 0
+                                ) ELSE NULL END,
+                                -- From CommHead matching BillTiNo
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (
+                                    SELECT TOP 1 NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') 
+                                    FROM CommDetail cmd 
+                                    INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id 
+                                    WHERE cmd.BillTiNo = a.BILLTINO 
+                                      AND NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') IS NOT NULL
+                                      AND ISNULL(cm.IsDeleted, 0) = 0
+                                ) ELSE NULL END,
+                                -- From IssHead matching BillTiNo
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (
+                                    SELECT TOP 1 NULLIF(RTRIM(LTRIM(iss.VehicleNo)), '') 
+                                    FROM IssHead iss 
+                                    WHERE iss.BillTiNo = a.BILLTINO 
+                                      AND NULLIF(RTRIM(LTRIM(iss.VehicleNo)), '') IS NOT NULL
+                                      AND ISNULL(iss.IsDeleted, 0) = 0
+                                ) ELSE NULL END,
+                                -- If Challan / Narration has vehicle
+                                CASE WHEN a.VOTYPE = 'CL' AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND a.NARRATION NOT LIKE '%-%-%' THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
+                                CASE WHEN a.VOTYPE IN ('CR', 'CP', 'BR', 'BP', 'JV') AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND (a.NARRATION LIKE '%[0-9]%' OR a.NARRATION LIKE '%-%') THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
+                                ''
+                            ) AS VehicleNo,
+                            COALESCE(
+                                NULLIF(RTRIM(LTRIM(a.STATION)), ''),
+                                ''
+                            ) AS Station,
                             ISNULL(a.INAME, ISNULL(a.NARRATION, '')) AS IName,
                             COALESCE(
-                                a.QTY,
-                                CASE 
-                                    WHEN a.VOTYPE IN ('BL', 'SL') 
-                                    THEN (
-                                        SELECT TOP 1 ih.Qty 
-                                        FROM IssHead ih 
-                                        WHERE RTRIM(ih.DocNo) = RTRIM(a.VONO) 
-                                          AND (RTRIM(ih.CusCode) = RTRIM(@Accode) OR RTRIM(ih.AccCode) = RTRIM(@Accode))
-                                          AND (CAST(ih.CompanyId AS VARCHAR) = RTRIM(a.COCODE) OR ih.Cocode = RTRIM(a.COCODE) OR @CompanyId = 0)
-                                          AND ISNULL(ih.IsDeleted, 0) = 0
-                                        ORDER BY ih.Id DESC
-                                    )
-                                    WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 
-                                    THEN (
-                                        SELECT TOP 1 ih.Qty 
-                                        FROM IssHead ih 
-                                        WHERE ih.BillTiNo = a.BILLTINO 
-                                          AND (ih.BilNo = a.BILNO OR a.BILNO IS NULL)
-                                          AND (RTRIM(ih.CusCode) = RTRIM(@Accode) OR RTRIM(ih.AccCode) = RTRIM(@Accode))
-                                          AND ISNULL(ih.IsDeleted, 0) = 0
-                                        ORDER BY ih.Id DESC
-                                    )
-                                    ELSE NULL
-                                END
+                                NULLIF(a.QTY, 0),
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (SELECT TOP 1 ish.Qty FROM IssHead ish WHERE ish.BillTiNo = a.BILLTINO AND ish.Qty IS NOT NULL AND ish.Qty <> 0 AND ISNULL(ish.IsDeleted, 0) = 0) ELSE NULL END,
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (SELECT SUM(id.Qty) FROM IssDetail id INNER JOIN IssHead ish ON id.IssHeadId = ish.Id WHERE ish.BillTiNo = a.BILLTINO AND ISNULL(id.IsDeleted, 0) = 0) ELSE NULL END,
+                                (SELECT TOP 1 ish.Qty FROM IssHead ish WHERE ish.DocNo = a.VONO AND ish.Qty IS NOT NULL AND ish.Qty <> 0 AND ISNULL(ish.IsDeleted, 0) = 0),
+                                (SELECT SUM(id.Qty) FROM IssDetail id INNER JOIN IssHead ish ON id.IssHeadId = ish.Id WHERE ish.DocNo = a.VONO AND ISNULL(id.IsDeleted, 0) = 0),
+                                (SELECT TOP 1 vd.Qty FROM VoDet vd WHERE vd.Vono = a.VONO AND vd.Qty IS NOT NULL AND vd.Qty <> 0 AND ISNULL(vd.IsDeleted, 0) = 0),
+                                NULL
                             ) AS Qty,
                             CASE 
-                                WHEN a.VOTYPE IN ('JV','CB','BB','SB','PV','RV','CR','CP','BR','BP') THEN (
-                                    SELECT TOP 1 COALESCE(NULLIF(RTRIM(vh.UserId),''), NULLIF(RTRIM(vh.CreatedBy),''), '')
-                                    FROM VoHead vh 
-                                    WHERE RTRIM(vh.Vono) = RTRIM(a.VONO) 
-                                      AND (CAST(vh.CompanyId AS VARCHAR) = RTRIM(a.COCODE) OR vh.Cocode = RTRIM(a.COCODE) OR @CompanyId = 0)
-                                      AND ISNULL(vh.IsDeleted, 0) = 0
-                                )
-                                WHEN a.VOTYPE IN ('BL','SL') THEN (
-                                    SELECT TOP 1 COALESCE(NULLIF(RTRIM(ih.UserId),''), NULLIF(RTRIM(ih.CreatedBy),''), '')
-                                    FROM IssHead ih 
-                                    WHERE RTRIM(ih.DocNo) = RTRIM(a.VONO) 
-                                      AND (CAST(ih.CompanyId AS VARCHAR) = RTRIM(a.COCODE) OR ih.Cocode = RTRIM(a.COCODE) OR @CompanyId = 0)
-                                      AND ISNULL(ih.IsDeleted, 0) = 0
-                                )
-                                WHEN a.VOTYPE = 'CL' THEN (
-                                    SELECT TOP 1 COALESCE(NULLIF(RTRIM(ch.CreatedBy),''), '')
-                                    FROM ChallanHead ch 
-                                    WHERE RTRIM(ch.DocNo) = RTRIM(a.VONO) 
-                                      AND (CAST(ch.CompanyId AS VARCHAR) = RTRIM(a.COCODE) OR ch.Cocode = RTRIM(a.COCODE) OR @CompanyId = 0)
-                                      AND ISNULL(ch.IsDeleted, 0) = 0
-                                )
-                                ELSE ''
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('01', '1006', '1') THEN 'W.W'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('02', '1007', '2') THEN 'M.P'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('03', '1008', '3') THEN 'N.K'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('04', '1009', '4') THEN 'R.W'
+                                WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN 
+                                    CASE (SELECT TOP 1 ish.CompanyId FROM IssHead ish WHERE ish.BillTiNo = a.BILLTINO AND ISNULL(ish.IsDeleted, 0) = 0)
+                                        WHEN 1006 THEN 'W.W'
+                                        WHEN 1007 THEN 'M.P'
+                                        WHEN 1008 THEN 'N.K'
+                                        WHEN 1009 THEN 'R.W'
+                                        ELSE (
+                                            CASE (SELECT TOP 1 ish.Cocode FROM IssHead ish WHERE ish.BillTiNo = a.BILLTINO AND ISNULL(ish.IsDeleted, 0) = 0)
+                                                WHEN '01' THEN 'W.W'
+                                                WHEN '02' THEN 'M.P'
+                                                WHEN '03' THEN 'N.K'
+                                                WHEN '04' THEN 'R.W'
+                                                ELSE 'W.W'
+                                            END
+                                        )
+                                    END
+                                WHEN a.VONO IS NOT NULL AND a.VONO <> '' THEN
+                                    CASE (SELECT TOP 1 vh.CompanyId FROM VoHead vh WHERE vh.Vono = a.VONO AND ISNULL(vh.IsDeleted, 0) = 0)
+                                        WHEN 1006 THEN 'W.W'
+                                        WHEN 1007 THEN 'M.P'
+                                        WHEN 1008 THEN 'N.K'
+                                        WHEN 1009 THEN 'R.W'
+                                        ELSE (
+                                            CASE (SELECT TOP 1 vd.Cocode FROM VoDet vd WHERE vd.Vono = a.VONO AND ISNULL(vd.IsDeleted, 0) = 0)
+                                                WHEN '01' THEN 'W.W'
+                                                WHEN '02' THEN 'M.P'
+                                                WHEN '03' THEN 'N.K'
+                                                WHEN '04' THEN 'R.W'
+                                                ELSE 'W.W'
+                                            END
+                                        )
+                                    END
+                                WHEN @CompanyId = 1006 OR @CompanyId = 1 THEN 'W.W'
+                                WHEN @CompanyId = 1007 OR @CompanyId = 2 THEN 'M.P'
+                                WHEN @CompanyId = 1008 OR @CompanyId = 3 THEN 'N.K'
+                                WHEN @CompanyId = 1009 OR @CompanyId = 4 THEN 'R.W'
+                                ELSE 'W.W'
                             END AS Initials,
                             ISNULL(a.DRAMT, 0) AS Debit,
                             ISNULL(a.CRAMT, 0) AS Credit,
@@ -339,6 +421,7 @@ namespace Nskg.Controllers
                         @Accode AS Accode,
                         @AccName AS AccName,
                         @CompanyName AS CompanyName,
+                        @ShortCompanyName AS ShortCompanyName,
                         @FromDate AS FromDate,
                         @ToDate AS ToDate
                     FROM RawData
@@ -352,6 +435,7 @@ namespace Nskg.Controllers
                     cmdData.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
                     cmdData.Parameters.AddWithValue("@AccName", accName);
                     cmdData.Parameters.AddWithValue("@CompanyName", companyName);
+                    cmdData.Parameters.AddWithValue("@ShortCompanyName", shortCompanyName);
                     cmdData.Parameters.AddWithValue("@CompanyId", companyId);
                     cmdData.Parameters.AddWithValue("@FinancialYearId", financialYearId);
 
@@ -428,16 +512,20 @@ namespace Nskg.Controllers
 
                 string compName = (dt.Rows.Count > 0 ? dt.Rows[0]["CompanyName"]?.ToString() : null) ?? "Company";
                 string accName = (dt.Rows.Count > 0 ? dt.Rows[0]["AccName"]?.ToString() : null) ?? "";
+                string shortCompName = (dt.Rows.Count > 0 && dt.Columns.Contains("ShortCompanyName") ? dt.Rows[0]["ShortCompanyName"]?.ToString() : null) ?? "W.W";
 
                 decimal totalDebit = 0, totalCredit = 0;
                 var sb = new StringBuilder();
                 sb.Append(@"<!DOCTYPE html><html><head><meta charset='utf-8'>
                 <style>
                     body{font-family:Arial,sans-serif;font-size:12px;margin:12px;color:#333;}
-                    .header-box{text-align:center;margin-bottom:12px;}
-                    .header-box h2{margin:0 0 4px;color:#0d6efd;font-size:18px;}
-                    .header-box h3{margin:0 0 4px;font-size:14px;color:#495057;}
-                    .header-box p{margin:0;font-size:11px;color:#6c757d;}
+                    .header-box{margin-bottom:12px;}
+                    .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+                    .comp-initial{font-size:14px;font-weight:bold;border:2px solid #0d6efd;color:#0d6efd;padding:2px 10px;border-radius:4px;background:#f0f7ff;}
+                    .header-box h2{margin:0;color:#0d6efd;font-size:18px;text-align:center;flex-grow:1;}
+                    .print-meta{font-size:11px;color:#6c757d;text-align:right;}
+                    .header-box h3{margin:4px 0;font-size:14px;color:#495057;text-align:center;}
+                    .header-box p{margin:0;font-size:11px;color:#495057;text-align:center;}
                     table{width:100%;border-collapse:collapse;margin-top:8px;}
                     th{background:#0d6efd;color:#fff;padding:7px 6px;text-align:left;font-size:11px;border:1px solid #0b5ed7;}
                     td{padding:5px 6px;border:1px solid #dee2e6;font-size:11px;}
@@ -447,16 +535,24 @@ namespace Nskg.Controllers
                     .bold{font-weight:bold;}
                     .op-row{background:#e7f1ff;font-weight:bold;}
                     tfoot tr{background:#d0e2ff;font-weight:bold;}
+                    " + Nskg.Helpers.ReportPaginationHelper.GetPaginationStyles() + @"
                 </style></head><body>");
 
+                sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationToolbarHtml("Account Ledger"));
                 sb.Append($"<div class='header-box'>");
+                sb.Append($"<div class='header-top'>");
+                sb.Append($"<div class='comp-initial'>{shortCompName}</div>");
                 sb.Append($"<h2>{compName}</h2>");
-                sb.Append($"<h3>GENERAL / ACCOUNT LEDGER</h3>");
-                sb.Append($"<p><b>Account:</b> {accode} - {accName} &nbsp;|&nbsp; <b>From:</b> {fromDate:dd-MMM-yyyy} &nbsp; <b>To:</b> {toDate:dd-MMM-yyyy}</p>");
+                sb.Append($"<div class='print-meta'>Print Date: {DateTime.Now:dd-MMM-yyyy HH:mm:ss}</div>");
+                sb.Append($"</div>");
+                sb.Append($"<div style='display:flex; justify-content:space-between; align-items:center; margin:8px 0 4px 0; padding-bottom:4px; border-bottom:1.5px solid #000;'>");
+                sb.Append($"<div style='font-size:15px; font-weight:bold;'><span style='letter-spacing:1px;'>{accode}</span> &nbsp;&nbsp;&nbsp;&nbsp; <span style='color:#0d6efd;'>{accName}</span></div>");
+                sb.Append($"<div style='font-size:11px; color:#495057;'>Period: <b>{fromDate:dd-MMM-yyyy}</b> to <b>{toDate:dd-MMM-yyyy}</b></div>");
+                sb.Append($"</div>");
                 sb.Append($"</div>");
 
                 sb.Append("<table><thead><tr>");
-                sb.Append("<th>Date</th><th>Doc #</th><th>Typ</th><th>Bilty #</th><th>Bill #</th><th>Vehicle No</th><th>Station</th><th>Party / Item</th><th class='num'>Qty</th><th>Initials</th><th class='num'>Debit</th><th class='num'>Credit</th><th class='num'>Balance</th>");
+                sb.Append("<th>Date</th><th>Doc #</th><th>Typ</th><th>Bilty #</th><th>Bill #</th><th>Vehicle No</th><th>Party / Item</th><th class='num'>Qty</th><th>Initials</th><th class='num'>Debit</th><th class='num'>Credit</th><th class='num'>Balance</th>");
                 sb.Append("</tr></thead><tbody>");
 
                 foreach (DataRow row in dt.Rows)
@@ -467,7 +563,6 @@ namespace Nskg.Controllers
                     string biltiNo = row["BillTiNo"]?.ToString() ?? "";
                     string bilNo = row["BilNo"]?.ToString() ?? "";
                     string vNo = row["VehicleNo"]?.ToString() ?? "";
-                    string station = row["Station"]?.ToString() ?? "";
                     string iname = row["IName"]?.ToString() ?? "";
                     string qty = row["Qty"] != DBNull.Value && row["Qty"] != null ? (row["Qty"]?.ToString() ?? "") : "";
                     string initials = row["Initials"]?.ToString() ?? "";
@@ -488,13 +583,15 @@ namespace Nskg.Controllers
                     string creditStr = credit != 0 ? credit.ToString("#,##0.00") : "";
 
                     sb.Append($"<tr {rowClass}>");
-                    sb.Append($"<td>{docDate}</td><td>{docNo}</td><td>{votype}</td><td>{biltiNo}</td><td>{bilNo}</td><td>{vNo}</td><td>{station}</td><td>{iname}</td><td class='num'>{qty}</td><td>{initials}</td><td class='num'>{debitStr}</td><td class='num'>{creditStr}</td><td class='num bold'>{balance:#,##0.00}</td>");
+                    sb.Append($"<td>{docDate}</td><td>{docNo}</td><td>{votype}</td><td>{biltiNo}</td><td>{bilNo}</td><td>{vNo}</td><td>{iname}</td><td class='num'>{qty}</td><td>{initials}</td><td class='num'>{debitStr}</td><td class='num'>{creditStr}</td><td class='num bold'>{balance:#,##0.00}</td>");
                     sb.Append($"</tr>");
                 }
 
                 sb.Append("</tbody><tfoot><tr>");
-                sb.Append($"<td colspan='10' style='text-align:right;' class='bold'>TOTALS:</td><td class='num bold'>{totalDebit:#,##0.00}</td><td class='num bold'>{totalCredit:#,##0.00}</td><td></td>");
-                sb.Append("</tr></tfoot></table></body></html>");
+                sb.Append($"<td colspan='9' style='text-align:right;' class='bold'>TOTALS:</td><td class='num bold'>{totalDebit:#,##0.00}</td><td class='num bold'>{totalCredit:#,##0.00}</td><td></td>");
+                sb.Append("</tr></tfoot></table>");
+                sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationScript());
+                sb.Append("</body></html>");
 
                 return Content(sb.ToString(), "text/html");
             }
@@ -530,7 +627,7 @@ namespace Nskg.Controllers
                 sb.AppendLine();
 
                 // Table Header
-                sb.AppendLine("Doc.Date,Doc. #,Typ,BilltiNo,Bill. No,Vehicle No,Station,Party name / Item,Qty,Initials,DEBIT,CREDIT,BALANCE");
+                sb.AppendLine("Doc.Date,Doc. #,Typ,BilltiNo,Bill. No,Vehicle No,Party name / Item,Qty,Initials,DEBIT,CREDIT,BALANCE");
 
                 foreach (DataRow row in dt.Rows)
                 {
@@ -540,7 +637,6 @@ namespace Nskg.Controllers
                     string billtiNo = EscapeCsv(row["BillTiNo"]?.ToString() ?? "");
                     string bilNo = EscapeCsv(row["BilNo"]?.ToString() ?? "");
                     string vehicleNo = EscapeCsv(row["VehicleNo"]?.ToString() ?? "");
-                    string station = EscapeCsv(row["Station"]?.ToString() ?? "");
                     string iname = EscapeCsv(row["IName"]?.ToString() ?? "");
                     string qty = row["Qty"] != DBNull.Value && row["Qty"] != null ? (row["Qty"]?.ToString() ?? "") : "";
                     string initials = EscapeCsv(row["Initials"]?.ToString() ?? "");
@@ -548,7 +644,7 @@ namespace Nskg.Controllers
                     string credit = row["Credit"] != DBNull.Value && Convert.ToDecimal(row["Credit"]) != 0 ? Convert.ToDecimal(row["Credit"]).ToString("F2") : "";
                     string balance = row["Balance"] != DBNull.Value ? Convert.ToDecimal(row["Balance"]).ToString("F2") : "";
 
-                    sb.AppendLine($"{docDate},{docNo},{votype},{billtiNo},{bilNo},{vehicleNo},{station},{iname},{qty},{initials},{debit},{credit},{balance}");
+                    sb.AppendLine($"{docDate},{docNo},{votype},{billtiNo},{bilNo},{vehicleNo},{iname},{qty},{initials},{debit},{credit},{balance}");
                 }
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());

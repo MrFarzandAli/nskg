@@ -216,6 +216,7 @@ namespace Nskg.Controllers
 
             if (lastEntry != null)
             {
+                ViewBag.PrevId = lastEntry.Id;
                 var stationsList = ViewBag.Stations as List<SelectListItem> ?? new List<SelectListItem>();
                 if (lastEntry.StationId > 0 && !stationsList.Any(s => s.Value == lastEntry.StationId.ToString()))
                 {
@@ -555,7 +556,7 @@ namespace Nskg.Controllers
 
             int compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
             if (compId <= 0) compId = 1006;
-            LoadDropdowns(compId);
+            LoadDropdowns(compId, id);
 
             // FIX: Ensure Station is properly matched and selected in dropdown
             var stationsList = ViewBag.Stations as List<SelectListItem> ?? new List<SelectListItem>();
@@ -722,7 +723,7 @@ namespace Nskg.Controllers
 
                 if (!ModelState.IsValid)
                 {
-                    LoadDropdowns();
+                    LoadDropdowns(model?.Head?.CompanyId > 0 ? model.Head.CompanyId : null, model?.Head?.Id);
                     return View(model);
                 }
 
@@ -956,7 +957,7 @@ namespace Nskg.Controllers
             }
         }
 
-        private void LoadDropdowns(int? companyId = null)
+        private void LoadDropdowns(int? companyId = null, int? currentChallanId = null)
         {
             try
             {
@@ -1087,7 +1088,7 @@ namespace Nskg.Controllers
                 var userCompanyId = User.GetCompanyId();
                 var threeDaysAgo = DateTime.Today.AddDays(-3);
                 ViewBag.BiltyList = _context.IssHead
-                    .Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) && !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId))
+                    .Where(x => ((x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) || (currentChallanId.HasValue && x.ChallanId == currentChallanId.Value)) && !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId))
                     .Select(x => new
                     {
                         x.Id,
@@ -1109,7 +1110,10 @@ namespace Nskg.Controllers
                         x.Cartage3,
                         x.PartyEx,
                         x.Lifter2,
-                        x.OtherEx
+                        x.OtherEx,
+                        x.DescYN,
+                        x.ChallanId,
+                        ChallanDocNo = x.Challan != null ? x.Challan.DocNo : null
                     })
                     .AsEnumerable()
                     .OrderBy(x => x.DocDate.HasValue && x.DocDate.Value.Date <= threeDaysAgo ? 0 : 1)
@@ -1120,6 +1124,136 @@ namespace Nskg.Controllers
             {
                 _audit.LogAsync("Error", "LoadDropdowns", "0", ex.Message).Wait();
                 throw;
+            }
+        }
+
+        [HttpGet]
+        public IActionResult SearchBilties(
+            string? docNo,
+            string? docDate,
+            string? biltyNo,
+            string? party,
+            string? sendTo,
+            string? qty,
+            string? netAmt,
+            string? biltyType,
+            int? currentChallanId)
+        {
+            try
+            {
+                int userCompanyId = User.GetCompanyId();
+                if (userCompanyId <= 0) userCompanyId = 1006;
+
+                var query = _context.IssHead.AsNoTracking()
+                    .Where(x => !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId));
+
+                bool hasFilter = false;
+
+                if (!string.IsNullOrWhiteSpace(docNo))
+                {
+                    var val = docNo.Trim().ToLower();
+                    query = query.Where(x => x.DocNo != null && x.DocNo.ToLower().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(biltyNo))
+                {
+                    var val = biltyNo.Trim();
+                    query = query.Where(x => x.BillTiNo != null && x.BillTiNo.ToString().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(party))
+                {
+                    var val = party.Trim().ToLower();
+                    query = query.Where(x => x.CusName != null && x.CusName.ToLower().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(sendTo))
+                {
+                    var val = sendTo.Trim().ToLower();
+                    query = query.Where(x => x.SendTo != null && x.SendTo.ToLower().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(qty) && decimal.TryParse(qty, out var qVal))
+                {
+                    query = query.Where(x => x.Qty == qVal);
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(netAmt) && decimal.TryParse(netAmt, out var nVal))
+                {
+                    query = query.Where(x => x.NetAmt == nVal);
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(docDate))
+                {
+                    var val = docDate.Trim();
+                    if (DateTime.TryParse(val, out var dVal))
+                    {
+                        var dt = dVal.Date;
+                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.Date == dt);
+                        hasFilter = true;
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.ToString().Contains(val));
+                        hasFilter = true;
+                    }
+                }
+
+                // If no specific column search is entered, only return active/pending bilties (DescYN != 'Y')
+                if (!hasFilter)
+                {
+                    query = query.Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) || (currentChallanId.HasValue && x.ChallanId == currentChallanId.Value));
+                    if (!string.IsNullOrEmpty(biltyType) && biltyType != "All")
+                    {
+                        if (biltyType == "ToPay") query = query.Where(x => x.PType == "ToPay");
+                        else if (biltyType == "Paid") query = query.Where(x => x.PType == "Paid" || string.IsNullOrEmpty(x.PType));
+                    }
+                }
+
+                var results = query
+                    .OrderByDescending(x => x.DocDate)
+                    .ThenByDescending(x => x.Id)
+                    .Take(100)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.StationId,
+                        x.Fooder,
+                        x.DocNo,
+                        docDate = x.DocDate.HasValue ? x.DocDate.Value.ToString("dd/MM/yyyy") : "",
+                        docDateRaw = x.DocDate.HasValue ? x.DocDate.Value.ToString("yyyy-MM-dd") : "",
+                        billTiNo = x.BillTiNo.HasValue ? x.BillTiNo.Value.ToString() : "",
+                        bilNo = x.BilNo.HasValue ? x.BilNo.Value.ToString() : "",
+                        cusName = x.CusName ?? "",
+                        sendTo = x.SendTo ?? "",
+                        qty = x.Qty ?? 0,
+                        pType = x.PType ?? "",
+                        netAmt = x.NetAmt ?? 0,
+                        labour = x.Labour ?? 0,
+                        cartage2 = x.Cartage2 ?? 0,
+                        cartage3 = x.Cartage3 ?? 0,
+                        partyEx = x.PartyEx ?? 0,
+                        lifter2 = x.Lifter2 ?? 0,
+                        otherEx = x.OtherEx ?? 0,
+                        descYN = x.DescYN ?? "",
+                        x.ChallanId,
+                        challanDocNo = x.Challan != null ? x.Challan.DocNo : "",
+                        isInChallan = (x.ChallanId != null && x.ChallanId > 0) || x.DescYN == "Y",
+                        isOld = x.DocDate.HasValue && x.DocDate.Value.Date <= DateTime.Today.AddDays(-3)
+                    })
+                    .ToList();
+
+                return Json(new { success = true, data = results });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
             }
         }
         private string GenerateDocNo()

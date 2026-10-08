@@ -487,13 +487,18 @@ namespace Nskg.Controllers
                     .bold{font-weight:bold;}
                     .op-row{background:#e7f1ff;font-weight:bold;}
                     tfoot tr{background:#d0e2ff;font-weight:bold;}
+                    " + Nskg.Helpers.ReportPaginationHelper.GetPaginationStyles() + @"
                 </style></head><body>");
 
+                sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationToolbarHtml("Transporter Ledger"));
                 sb.Append($"<div class='header-box'>");
                 sb.Append($"<h2>{compName}</h2>");
                 sb.Append($"<h3>TRANSPORTER LEDGER</h3>");
                 string vehicleInfo = string.IsNullOrWhiteSpace(vehicleNo) ? "" : $" &nbsp;|&nbsp; Vehicle: <b>{vehicleNo}</b>";
-                sb.Append($"<p>Account: <b>{(string.IsNullOrEmpty(accode) ? "ALL TRANSPORTERS" : accode + " - " + accName)}</b> &nbsp;|&nbsp; Period: <b>{effFromDate:dd-MMM-yyyy}</b> to <b>{effToDate:dd-MMM-yyyy}</b>{vehicleInfo}</p>");
+                sb.Append($"<div style='display:flex; justify-content:space-between; align-items:center; margin:8px 0 4px 0; padding-bottom:4px; border-bottom:1.5px solid #000;'>");
+                sb.Append($"<div style='font-size:15px; font-weight:bold;'><span style='letter-spacing:1px;'>{accode}</span> &nbsp;&nbsp;&nbsp;&nbsp; <span style='color:#0d6efd;'>{accName}</span></div>");
+                sb.Append($"<div style='font-size:11px; color:#495057;'>Period: <b>{effFromDate:dd-MMM-yyyy}</b> to <b>{effToDate:dd-MMM-yyyy}</b>{vehicleInfo}</div>");
+                sb.Append($"</div>");
                 sb.Append("</div>");
 
                 // Columns exactly matching old software
@@ -567,7 +572,9 @@ namespace Nskg.Controllers
                 sb.Append($"<td class='num bold'>{totalDebit:#,##0}</td>");
                 sb.Append($"<td class='num bold'>{totalCredit:#,##0}</td>");
                 sb.Append($"<td class='num bold'>{closingBal:#,##0}</td>");
-                sb.Append("</tr></tfoot></table></body></html>");
+                sb.Append("</tr></tfoot></table>");
+                sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationScript());
+                sb.Append("</body></html>");
 
                 return Content(sb.ToString(), "text/html");
             }

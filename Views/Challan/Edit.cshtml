@@ -51,6 +51,66 @@
         .form-control, .form-select, .btn {
             transition: all 0.2s ease;
         }
+
+        /* Bilty Modal Filter Buttons styling */
+        #biltyTypeFilterGroup {
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        #biltyTypeFilterGroup .btn {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 5px 14px;
+            transition: all 0.2s ease-in-out;
+            border-width: 1px;
+        }
+        #filterBtnAll {
+            background-color: #ffffff;
+            color: #495057;
+            border-color: #6c757d;
+        }
+        #filterBtnAll:hover {
+            background-color: #e9ecef;
+            color: #212529;
+        }
+        #filterBtnAll.active, #filterBtnAll.btn-active-filter {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 5px rgba(13, 110, 253, 0.4) !important;
+        }
+
+        #filterBtnToPay {
+            background-color: #ffffff;
+            color: #fd7e14;
+            border-color: #fd7e14;
+        }
+        #filterBtnToPay:hover {
+            background-color: #fff3cd;
+            color: #d35400;
+        }
+        #filterBtnToPay.active, #filterBtnToPay.btn-active-filter {
+            background-color: #fd7e14 !important;
+            border-color: #fd7e14 !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 5px rgba(253, 126, 20, 0.4) !important;
+        }
+
+        #filterBtnPaid {
+            background-color: #ffffff;
+            color: #198754;
+            border-color: #198754;
+        }
+        #filterBtnPaid:hover {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        #filterBtnPaid.active, #filterBtnPaid.btn-active-filter {
+            background-color: #198754 !important;
+            border-color: #198754 !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 5px rgba(25, 135, 84, 0.4) !important;
+        }
     </style>
 }
 
@@ -115,10 +175,6 @@
                     tabindex="9">
                 <i class="fa fa-check-circle me-1"></i> Paid Bilty
             </button>
-            <button type="button" class="btn btn-outline-secondary btn-sm custom-btn me-1" onclick="addRow()" id="addChallanBtn">
-                <i class="fa fa-plus me-1"></i> Add Empty Row
-            </button>
-
             <button type="submit" class="btn btn-primary btn-sm custom-btn shadow-sm" id="btnUpdate">
                 <i class="fa fa-save me-1"></i> Update Challan
             </button>
@@ -281,51 +337,63 @@
                     </h6>
                 </div>
                 <div class="card-body p-3">
-                    <!-- Hidden inputs for legacy fields -->
-                    <input type="hidden" asp-for="Head.PartyEx2" />
-                    <input type="hidden" asp-for="Head.LocalAmt2" />
-                    <input type="hidden" asp-for="Head.OtherEx2" />
+                    <input type="hidden" asp-for="Head.PartyEx2" id="Head_PartyEx2" />
 
-                    <div class="row g-2">
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Local Amount</label>
-                            <input asp-for="Head.LocalAmt" id="Head_LocalAmt" class="form-control form-control-sm text-end" tabindex="113" />
+                    <!-- 1. B#/ Row (Box 1 in image: B#/ Party omitted, B#/ Local & B#/ Other Ex kept) -->
+                    <div class="p-2 mb-2 border rounded bg-light">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small fw-semibold mb-1">B#/ Local</label>
+                                <input asp-for="Head.LocalAmt2" id="Head_LocalAmt2" class="form-control form-control-sm text-end" tabindex="111" />
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small fw-semibold mb-1">B#/ Other Ex</label>
+                                <input asp-for="Head.OtherEx2" id="Head_OtherEx2" class="form-control form-control-sm text-end" tabindex="112" />
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Other Expense</label>
-                            <input asp-for="Head.TotOtherEx" id="Head_TotOtherEx" class="form-control form-control-sm text-end" tabindex="114" />
+                    <!-- 2. Local Amount, Other Expense, Total Billti AMT (Box 2 in image) -->
+                    <div class="p-2 mb-2 border rounded bg-light">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small fw-semibold mb-1">Local Amount</label>
+                                <input asp-for="Head.LocalAmt" id="Head_LocalAmt" class="form-control form-control-sm text-end" tabindex="113" />
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small fw-semibold mb-1">Other Expense</label>
+                                <input asp-for="Head.TotOtherEx" id="Head_TotOtherEx" class="form-control form-control-sm text-end" tabindex="114" />
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small fw-semibold mb-1">Total Billti AMT</label>
+                                <input asp-for="Head.TotBillTi" id="Head_TotBillTi" readonly class="form-control form-control-sm bg-light text-end" />
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Total Bilty</label>
-                            <input asp-for="Head.TotBillTi" id="Head_TotBillTi" readonly class="form-control form-control-sm bg-light text-end" />
-                        </div>
-
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">To Pay</label>
-                            <input asp-for="Head.TotToPaid" id="Head_TotToPaid" class="form-control form-control-sm text-end" tabindex="115" />
-                        </div>
-
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Delivery Amt</label>
-                            <input asp-for="Head.DeliveryAmt" id="Head_DeliveryAmt" class="form-control form-control-sm text-end" tabindex="116" />
-                        </div>
-
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Bilty Amt</label>
-                            <input asp-for="Head.BillTiAmt" id="Head_BillTiAmt" class="form-control form-control-sm text-end" tabindex="117" />
-                        </div>
-
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Lifter</label>
-                            <input asp-for="Head.TotLifter2" id="Head_TotLifter2" class="form-control form-control-sm text-end" tabindex="118" />
-                        </div>
-
-                        <!-- NET / TOTAL AMOUNT -->
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-bold text-primary mb-1">Net Amount</label>
-                            <input asp-for="Head.NetAmt" id="Head_NetAmt" readonly class="form-control form-control-sm fw-bold text-primary bg-light border-primary text-end" />
+                    <!-- 3. Calculations Row: To Pay, Delivery Amount, Billti AMT, Lifter, Net Amount (Box 3 in image) -->
+                    <div class="p-2 border rounded bg-light">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-6 col-md">
+                                <label class="form-label small fw-semibold mb-1">To Pay</label>
+                                <input asp-for="Head.TotToPaid" id="Head_TotToPaid" class="form-control form-control-sm text-end" tabindex="115" />
+                            </div>
+                            <div class="col-6 col-md">
+                                <label class="form-label small fw-semibold mb-1">Delivery Amount</label>
+                                <input asp-for="Head.DeliveryAmt" id="Head_DeliveryAmt" class="form-control form-control-sm text-end" tabindex="116" />
+                            </div>
+                            <div class="col-6 col-md">
+                                <label class="form-label small fw-semibold mb-1">Billti AMT</label>
+                                <input asp-for="Head.BillTiAmt" id="Head_BillTiAmt" class="form-control form-control-sm text-end" tabindex="117" />
+                            </div>
+                            <div class="col-6 col-md">
+                                <label class="form-label small fw-semibold mb-1">Lifter</label>
+                                <input asp-for="Head.TotLifter2" id="Head_TotLifter2" class="form-control form-control-sm text-end" tabindex="118" />
+                            </div>
+                            <div class="col-12 col-md">
+                                <label class="form-label small fw-bold text-primary mb-1">Net Amount</label>
+                                <input asp-for="Head.NetAmt" id="Head_NetAmt" readonly class="form-control form-control-sm fw-bold text-primary bg-light border-primary text-end" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -414,18 +482,25 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="fw-semibold text-muted"><i class="fa fa-filter me-1"></i> Filter Bilty Type:</span>
-                    <div class="btn-group" role="group" id="biltyTypeFilterGroup">
-                        <button type="button" class="btn btn-sm btn-outline-secondary active" id="filterBtnAll" onclick="setBiltyFilterType('All')">All Bilties</button>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="filterBtnToPay" onclick="setBiltyFilterType('ToPay')"><i class="fa fa-hand-holding-usd me-1"></i> To Pay Bilty</button>
-                        <button type="button" class="btn btn-sm btn-outline-success" id="filterBtnPaid" onclick="setBiltyFilterType('Paid')"><i class="fa fa-check-circle me-1"></i> Paid Bilty</button>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 bg-light p-2 rounded border">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="fw-semibold text-muted small"><i class="fa fa-filter me-1"></i> Filter Type:</span>
+                        <div class="btn-group" role="group" id="biltyTypeFilterGroup">
+                            <button type="button" class="btn btn-sm btn-outline-secondary active" id="filterBtnAll" onclick="setBiltyFilterType('All')">All Bilties</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="filterBtnToPay" onclick="setBiltyFilterType('ToPay')"><i class="fa fa-hand-holding-usd me-1"></i> To Pay Bilty</button>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="filterBtnPaid" onclick="setBiltyFilterType('Paid')"><i class="fa fa-check-circle me-1"></i> Paid Bilty</button>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshBiltyList()" title="Reset filters to normal list">
+                            <i class="fa fa-refresh me-1"></i> Refresh List
+                        </button>
                     </div>
                 </div>
-                <table class="table table-bordered table-sm">
+                <table class="table table-bordered table-sm align-middle" id="biltyModalTable">
                     <thead>
-                        <tr>
-                            <th>Select</th>
+                        <tr class="table-light">
+                            <th class="text-center" style="width:50px;">Select</th>
                             <th>Doc No</th>
                             <th>Date</th>
                             <th>Bilty No</th>
@@ -434,19 +509,37 @@
                             <th>Qty</th>
                             <th>Net Amt</th>
                         </tr>
+                        <tr class="bg-white filter-row">
+                            <th class="text-center text-muted small"><i class="fa fa-search"></i></th>
+                            <th><input type="text" class="form-control form-control-sm col-search" data-col="1" placeholder="Search Doc #" /></th>
+                            <th><input type="text" class="form-control form-control-sm col-search" data-col="2" placeholder="Search Date" /></th>
+                            <th><input type="text" class="form-control form-control-sm col-search" data-col="3" placeholder="Search Bilty #" /></th>
+                            <th><input type="text" class="form-control form-control-sm col-search" data-col="4" placeholder="Search Party" /></th>
+                            <th><input type="text" class="form-control form-control-sm col-search" data-col="5" placeholder="Search Send To" /></th>
+                            <th><input type="text" class="form-control form-control-sm col-search" data-col="6" placeholder="Search Qty" /></th>
+                            <th><input type="text" class="form-control form-control-sm col-search" data-col="7" placeholder="Search Net" /></th>
+                        </tr>
                     </thead>
                     <tbody>
                         @foreach (var bilty in ViewBag.BiltyList)
                         {
                             var isOld = bilty.DocDate != null && ((DateTime)bilty.DocDate).Date <= DateTime.Today.AddDays(-3);
+                            var isInChallanDb = (bilty.ChallanId != null && bilty.ChallanId > 0) || bilty.DescYN == "Y";
+                            var challanInfo = !string.IsNullOrEmpty((string?)bilty.ChallanDocNo) ? (string)bilty.ChallanDocNo : "";
                             var rowClass = isOld ? "table-warning fw-semibold" : "";
-                            <tr class="@rowClass" data-stationid="@bilty.StationId" data-fooder="@bilty.Fooder">
+                            <tr class="@rowClass"
+                                data-stationid="@bilty.StationId"
+                                data-fooder="@bilty.Fooder"
+                                data-inchallan="@(isInChallanDb ? "true" : "false")"
+                                data-challandocno="@challanInfo">
                                 <td>
                                     <input type="checkbox"
                                            class="bilty-check"
                                            data-id="@bilty.Id"
                                            data-stationid="@bilty.StationId"
                                            data-fooder="@bilty.Fooder"
+                                           data-inchallan="@(isInChallanDb ? "true" : "false")"
+                                           data-challandocno="@challanInfo"
                                            data-billtino="@bilty.BillTiNo"
                                            data-bilno="@bilty.BilNo"
                                            data-docno="@bilty.DocNo"
@@ -468,6 +561,10 @@
                                     @if (isOld)
                                     {
                                         <span class="badge bg-danger ms-1" title="Older than 3 days">3+ Days</span>
+                                    }
+                                    @if (isInChallanDb)
+                                    {
+                                        <span class="badge bg-secondary ms-1 inchallan-badge" title="Already in Challan @challanInfo"><i class="fa fa-check me-1"></i>Selected @(!string.IsNullOrEmpty(challanInfo) ? $"({challanInfo})" : "")</span>
                                     }
                                 </td>
                                 <td>@(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("dd/MM/yyyy") : "")</td>
@@ -543,18 +640,9 @@
                 }
             });
 
-            // Prevent focus from going back to Add Bilty button and check station
-            $('#biltyModal').on('show.bs.modal', function(e) {
-                var stationId = $('#Head_StationId').val() || $('#StationId').val();
-                if (!stationId || stationId === "" || stationId === "0") {
-                    alert("Please select Station first.");
-                    e.preventDefault();
-                    var $st = $('#Head_StationId').length ? $('#Head_StationId') : $('#StationId');
-                    $st.focus();
-                    highlightField($st);
-                    return false;
-                }
-                filterBiltiesByStation(stationId);
+            $('#biltyModal').on('show.bs.modal', function() {
+                syncModalSelectedBilties();
+                applyBiltyFilters();
             });
 
             $('#biltyModal').on('shown.bs.modal', function() {
@@ -634,82 +722,167 @@
         let i = @(Model.Details?.Count ?? 0);
         var currentBiltyFilterType = 'All';
 
-        // Open bilty modal after verifying station is selected
+        // Open bilty modal
         function openBiltyModal(type) {
             type = type || 'All';
             currentBiltyFilterType = type;
 
-            var stationId = $('#Head_StationId').val() || $('#StationId').val();
-            if (!stationId || stationId === "" || stationId === "0") {
-                alert("Please select Station first.");
-                var $st = $('#Head_StationId').length ? $('#Head_StationId') : $('#StationId');
-                $st.focus();
-                highlightField($st);
-                return;
-            }
-
+            syncModalSelectedBilties();
             updateBiltyFilterButtons(type);
-            filterBiltiesByStation(stationId, type);
+            applyBiltyFilters();
 
             isModalClosing = true;
             focusTarget = '#PartyStationCode';
             var modalEl = document.getElementById('biltyModal');
             if (modalEl) {
-                var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                modal.show();
+                try {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                    } else {
+                        $('#biltyModal').modal('show');
+                    }
+                } catch (e) {
+                    $('#biltyModal').modal('show');
+                }
             }
+        }
+
+        // Sync and mark bilties that are already in the Challan as checked
+        function syncModalSelectedBilties() {
+            var selectedBiltyIds = [];
+            var selectedDocNos = [];
+            var selectedBiltyNos = [];
+
+            $("#tbodyItems tr").not("#noDataRow").each(function() {
+                var bid = ($(this).find(".bilty-id").val() || "").toString().trim();
+                var dno = ($(this).find(".dc-no").val() || $(this).find('input[name*="DCNo"]').val() || "").toString().trim().toLowerCase();
+                var bno = ($(this).find(".billti-no").val() || $(this).find('input[name*="BillTiNo"]').val() || "").toString().trim().toLowerCase();
+                if (bid && bid !== "0") selectedBiltyIds.push(bid);
+                if (dno) selectedDocNos.push(dno);
+                if (bno) selectedBiltyNos.push(bno);
+            });
+
+            $("#biltyModal tbody tr").each(function() {
+                var $tr = $(this);
+                if ($tr.attr('id') === 'noBiltyMatchRow') return;
+                var $chk = $tr.find(".bilty-check");
+                if (!$chk.length) return;
+
+                var bid = ($chk.data("id") || "").toString().trim();
+                var dno = ($chk.data("docno") || "").toString().trim().toLowerCase();
+                var bno = ($chk.data("billtino") || "").toString().trim().toLowerCase();
+                var isInChallanDb = ($chk.data("inchallan") === true || $chk.data("inchallan") === "true");
+                var challanDocNo = ($chk.data("challandocno") || "").toString().trim();
+
+                var isAlreadyInCurrentChallan = 
+                    (bid && selectedBiltyIds.indexOf(bid) !== -1) ||
+                    (dno && selectedDocNos.indexOf(dno) !== -1) ||
+                    (bno && selectedBiltyNos.indexOf(bno) !== -1);
+
+                if (isAlreadyInCurrentChallan) {
+                    $chk.prop("checked", true);
+                    $tr.addClass("table-primary fw-semibold");
+                    $tr.find(".inchallan-badge").remove();
+                    if (!$tr.find(".already-selected-badge").length) {
+                        $tr.find("td").eq(1).append(' <span class="badge bg-primary already-selected-badge ms-1"><i class="fa fa-check me-1"></i>Selected</span>');
+                    }
+                } else if (isInChallanDb) {
+                    $chk.prop("checked", true);
+                    $tr.addClass("table-light text-muted");
+                    if (!$tr.find(".inchallan-badge").length && !$tr.find(".already-selected-badge").length) {
+                        var label = challanDocNo ? 'Selected (' + challanDocNo + ')' : 'Selected';
+                        $tr.find("td").eq(1).append(' <span class="badge bg-secondary inchallan-badge ms-1"><i class="fa fa-check me-1"></i>' + label + '</span>');
+                    }
+                } else {
+                    $chk.prop("checked", false);
+                    $tr.removeClass("table-primary table-light fw-semibold text-muted");
+                    $tr.find(".already-selected-badge").remove();
+                    $tr.find(".inchallan-badge").remove();
+                }
+            });
         }
 
         function setBiltyFilterType(type) {
             currentBiltyFilterType = type;
-            var stationId = $('#Head_StationId').val() || $('#StationId').val();
             updateBiltyFilterButtons(type);
-            filterBiltiesByStation(stationId, type);
+            applyBiltyFilters();
         }
 
         function updateBiltyFilterButtons(type) {
-            $('#biltyTypeFilterGroup button').removeClass('active');
-            if (type === 'ToPay') $('#filterBtnToPay').addClass('active');
-            else if (type === 'Paid') $('#filterBtnPaid').addClass('active');
-            else $('#filterBtnAll').addClass('active');
+            $('#biltyTypeFilterGroup button').removeClass('active btn-active-filter');
+            if (type === 'ToPay') {
+                $('#filterBtnToPay').addClass('active btn-active-filter');
+            } else if (type === 'Paid') {
+                $('#filterBtnPaid').addClass('active btn-active-filter');
+            } else {
+                $('#filterBtnAll').addClass('active btn-active-filter');
+            }
         }
 
-        // Filter modal bilty rows by selected station and bilty type
-        function filterBiltiesByStation(stationId, biltyType) {
-            biltyType = biltyType || currentBiltyFilterType || 'All';
+        // Filter modal bilty rows by selected station, bilty type and column searches
+        function applyBiltyFilters() {
+            var biltyType = currentBiltyFilterType || 'All';
             var $st = $('#Head_StationId').length ? $('#Head_StationId') : $('#StationId');
+            var stationId = $st.val() || '';
             var selectedText = ($st.find("option:selected").text() || "").toLowerCase().trim();
             var stationName = selectedText.replace(/\s*\([^)]*\)/g, '').trim();
+
+            var searches = {};
+            $('.col-search').each(function () {
+                var col = $(this).data('col');
+                var val = $(this).val().toLowerCase().trim();
+                if (val) searches[col] = val;
+            });
+
+            var hasActiveSearch = Object.keys(searches).length > 0;
 
             var visibleCount = 0;
             $("#biltyModal tbody tr").each(function () {
                 var $tr = $(this);
                 if ($tr.attr('id') === 'noBiltyMatchRow') return;
 
-                var rowStationId = $tr.data('stationid') || $tr.find('.bilty-check').data('stationid');
-                var rowFooder = ($tr.data('fooder') || $tr.find('.bilty-check').data('fooder') || '').toString().toLowerCase().trim();
-                var ptype = ($tr.find('.bilty-check').data('ptype') || '').toString().toLowerCase().trim();
-
-                var stationMatches = false;
-                if (rowStationId && stationId && rowStationId.toString() === stationId.toString()) {
-                    stationMatches = true;
-                } else if (stationName && rowFooder && (rowFooder === stationName || rowFooder.indexOf(stationName) !== -1 || stationName.indexOf(rowFooder) !== -1)) {
-                    stationMatches = true;
+                // 1. Station match: if active column search is entered, allow searching across all stations
+                var stationMatches = true;
+                if (!hasActiveSearch && stationId && stationId !== "0") {
+                    var rowStationId = $tr.data('stationid') || $tr.find('.bilty-check').data('stationid');
+                    var rowFooder = ($tr.data('fooder') || $tr.find('.bilty-check').data('fooder') || '').toString().toLowerCase().trim();
+                    if (rowStationId && rowStationId.toString() === stationId.toString()) {
+                        stationMatches = true;
+                    } else if (stationName && rowFooder && (rowFooder === stationName || rowFooder.indexOf(stationName) !== -1 || stationName.indexOf(rowFooder) !== -1)) {
+                        stationMatches = true;
+                    } else {
+                        stationMatches = false;
+                    }
                 }
 
+                // 2. Type match: if active column search is entered, allow searching across all bilty types
                 var typeMatches = true;
-                if (biltyType === 'ToPay') {
-                    typeMatches = (ptype === 'topay' || ptype === 'pay');
-                } else if (biltyType === 'Paid') {
-                    typeMatches = (ptype === 'paid' || ptype === '' || !ptype);
+                if (!hasActiveSearch && biltyType !== 'All') {
+                    var ptype = ($tr.find('.bilty-check').data('ptype') || '').toString().toLowerCase().trim();
+                    if (biltyType === 'ToPay') {
+                        typeMatches = (ptype === 'topay' || ptype === 'pay');
+                    } else if (biltyType === 'Paid') {
+                        typeMatches = (ptype === 'paid' || ptype === '' || !ptype);
+                    }
                 }
 
-                if (stationMatches && typeMatches) {
+                // 3. Column searches match
+                var searchMatches = true;
+                for (var col in searches) {
+                    var cellText = $tr.find('td').eq(col).text().toLowerCase().trim();
+                    if (cellText.indexOf(searches[col]) === -1) {
+                        searchMatches = false;
+                        break;
+                    }
+                }
+
+                if (stationMatches && typeMatches && searchMatches) {
                     $tr.show();
                     visibleCount++;
                 } else {
                     $tr.hide();
-                    $tr.find('.bilty-check').prop('checked', false);
+                    // Preserves checkbox state - do NOT uncheck
                 }
             });
 
@@ -719,55 +892,200 @@
                 $("#biltyModal tbody").append(`
                     <tr id="noBiltyMatchRow">
                         <td colspan="8" class="text-center text-muted py-3">
-                            <i class="fa fa-info-circle me-1 text-warning"></i> No pending ${typeLabel} bilties found for the selected station.
+                            <i class="fa fa-info-circle me-1 text-warning"></i> No bilties found matching the current filter/search.
                         </td>
                     </tr>
                 `);
             }
         }
 
-        function addRow() {
+        var initialModalTableHtml = '';
+        var searchDebounceTimer = null;
 
+        function handleColumnSearch() {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(function() {
+                var docNo = $('.col-search[data-col="1"]').val() || '';
+                var docDate = $('.col-search[data-col="2"]').val() || '';
+                var biltyNo = $('.col-search[data-col="3"]').val() || '';
+                var party = $('.col-search[data-col="4"]').val() || '';
+                var sendTo = $('.col-search[data-col="5"]').val() || '';
+                var qty = $('.col-search[data-col="6"]').val() || '';
+                var netAmt = $('.col-search[data-col="7"]').val() || '';
+
+                var hasSearch = (docNo.trim() !== '') || (docDate.trim() !== '') || (biltyNo.trim() !== '') || (party.trim() !== '') || (sendTo.trim() !== '') || (qty.trim() !== '') || (netAmt.trim() !== '');
+                if (hasSearch) {
+                    performServerBiltySearch({
+                        docNo: docNo,
+                        docDate: docDate,
+                        biltyNo: biltyNo,
+                        party: party,
+                        sendTo: sendTo,
+                        qty: qty,
+                        netAmt: netAmt,
+                        biltyType: currentBiltyFilterType || 'All'
+                    });
+                } else {
+                    if (initialModalTableHtml) {
+                        $("#biltyModalTable tbody").html(initialModalTableHtml);
+                    }
+                    syncModalSelectedBilties();
+                    applyBiltyFilters();
+                }
+            }, 300);
+        }
+
+        function performServerBiltySearch(params) {
+            $("#noBiltyMatchRow").remove();
+            $("#biltyModalTable tbody").html(`
+                <tr id="searchingRow">
+                    <td colspan="8" class="text-center text-primary py-3">
+                        <i class="fa fa-spinner fa-spin me-2"></i> Searching bilties in database...
+                    </td>
+                </tr>
+            `);
+
+            $.get('/Challan/SearchBilties', params, function(res) {
+                $("#searchingRow").remove();
+                if (res && res.success && res.data && res.data.length > 0) {
+                    var html = '';
+                    res.data.forEach(function(bilty) {
+                        var isOldClass = bilty.isOld ? 'table-warning fw-semibold' : '';
+                        var challanBadge = bilty.isInChallan ? 
+                            `<span class="badge bg-secondary ms-1 inchallan-badge" title="Already in Challan ${escapeHtml(bilty.challanDocNo)}"><i class="fa fa-check me-1"></i>Selected ${bilty.challanDocNo ? '(' + escapeHtml(bilty.challanDocNo) + ')' : ''}</span>` : '';
+                        var oldBadge = bilty.isOld ? `<span class="badge bg-danger ms-1" title="Older than 3 days">3+ Days</span>` : '';
+
+                        html += `
+                            <tr class="${isOldClass}"
+                                data-stationid="${bilty.stationId || ''}"
+                                data-fooder="${escapeHtml(bilty.fooder || '')}"
+                                data-inchallan="${bilty.isInChallan ? 'true' : 'false'}"
+                                data-challandocno="${escapeHtml(bilty.challanDocNo || '')}">
+                                <td>
+                                    <input type="checkbox"
+                                           class="bilty-check"
+                                           data-id="${bilty.id}"
+                                           data-stationid="${bilty.stationId || ''}"
+                                           data-fooder="${escapeHtml(bilty.fooder || '')}"
+                                           data-inchallan="${bilty.isInChallan ? 'true' : 'false'}"
+                                           data-challandocno="${escapeHtml(bilty.challanDocNo || '')}"
+                                           data-billtino="${escapeHtml(bilty.billTiNo || '')}"
+                                           data-bilno="${escapeHtml(bilty.bilNo || '')}"
+                                           data-docno="${escapeHtml(bilty.docNo || '')}"
+                                           data-docdate="${escapeHtml(bilty.docDateRaw || '')}"
+                                           data-cusname="${escapeHtml(bilty.cusName || '')}"
+                                           data-sendto="${escapeHtml(bilty.sendTo || '')}"
+                                           data-qty="${bilty.qty || 0}"
+                                           data-ptype="${escapeHtml(bilty.pType || '')}"
+                                           data-netamt="${bilty.netAmt || 0}"
+                                           data-labour="${bilty.labour || 0}"
+                                           data-cartage2="${bilty.cartage2 || 0}"
+                                           data-cartage3="${bilty.cartage3 || 0}"
+                                           data-partyex="${bilty.partyEx || 0}"
+                                           data-lifter2="${bilty.lifter2 || 0}"
+                                           data-otherex="${bilty.otherEx || 0}" />
+                                </td>
+                                <td>
+                                    ${escapeHtml(bilty.docNo)}
+                                    ${oldBadge}
+                                    ${challanBadge}
+                                </td>
+                                <td>${escapeHtml(bilty.docDate)}</td>
+                                <td>${escapeHtml(bilty.billTiNo)}</td>
+                                <td>${escapeHtml(bilty.cusName)}</td>
+                                <td>${escapeHtml(bilty.sendTo)}</td>
+                                <td>${bilty.qty}</td>
+                                <td>${bilty.netAmt}</td>
+                            </tr>
+                        `;
+                    });
+                    $("#biltyModalTable tbody").html(html);
+                    syncModalSelectedBilties();
+                } else {
+                    $("#biltyModalTable tbody").html(`
+                        <tr id="noBiltyMatchRow">
+                            <td colspan="8" class="text-center text-muted py-3">
+                                <i class="fa fa-info-circle me-1 text-warning"></i> No bilties found matching the current search.
+                            </td>
+                        </tr>
+                    `);
+                }
+            }).fail(function() {
+                $("#searchingRow").remove();
+                $("#biltyModalTable tbody").html(`
+                    <tr id="noBiltyMatchRow">
+                        <td colspan="8" class="text-center text-danger py-3">
+                            <i class="fa fa-exclamation-triangle me-1"></i> Error searching bilties.
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
+        function refreshBiltyList() {
+            $('.col-search').val('');
+            setBiltyFilterType('All');
+            if (initialModalTableHtml) {
+                $("#biltyModalTable tbody").html(initialModalTableHtml);
+            }
+            syncModalSelectedBilties();
+            applyBiltyFilters();
+        }
+
+        function filterBiltiesByStation(stationId, biltyType) {
+            applyBiltyFilters();
+        }
+
+        // Function to reindex all rows (important for after deletions)
+        function reindexRows() {
+            $("#tbodyItems tr").not("#noDataRow").each(function(index) {
+                $(this).find("input, select").each(function() {
+                    const name = $(this).attr("name");
+                    if (name) {
+                        const newName = name.replace(/Details\[\d+\]/, `Details[${index}]`);
+                        $(this).attr("name", newName);
+                    }
+                });
+                $(this).attr("data-row-index", index);
+            });
+            i = $("#tbodyItems tr").not("#noDataRow").length;
+        }
+
+        function addRow() {
             const noData = document.getElementById("noDataRow");
             if (noData) noData.remove();
 
-            // Calculate tabindex for new row
-            var rowCount = $("#tbodyItems tr").length;
+            var rowCount = $("#tbodyItems tr").not("#noDataRow").length;
             var baseTabIndex = 9 + (rowCount * 10);
+            const currentIndex = rowCount;
 
             let row = `
-            <tr>
+            <tr data-row-index="${currentIndex}">
                 <td>
-                    <input name="Details[${i}].BillTiNo" class="form-control form-control-sm billti-no" tabindex="${baseTabIndex}"/>
+                    <input name="Details[${currentIndex}].BillTiNo" class="form-control form-control-sm billti-no" tabindex="${baseTabIndex}"/>
                 </td>
-
                 <td>
-                    <input name="Details[${i}].CusName" class="form-control form-control-sm cus-name" tabindex="${baseTabIndex + 1}"/>
+                    <input name="Details[${currentIndex}].CusName" class="form-control form-control-sm cus-name" tabindex="${baseTabIndex + 1}"/>
                 </td>
-
                 <td>
-                    <input name="Details[${i}].SendTo" class="form-control form-control-sm send-to" tabindex="${baseTabIndex + 2}"/>
+                    <input name="Details[${currentIndex}].SendTo" class="form-control form-control-sm send-to" tabindex="${baseTabIndex + 2}"/>
                 </td>
-
                 <td>
-                    <input name="Details[${i}].Qty" type="number"
+                    <input name="Details[${currentIndex}].Qty" type="number"
                            class="form-control form-control-sm qty" tabindex="${baseTabIndex + 3}"/>
                 </td>
-
                 <td>
-                    <input name="Details[${i}].BillTiAmt" type="number"
+                    <input name="Details[${currentIndex}].BillTiAmt" type="number"
                            class="form-control form-control-sm biltyamt" tabindex="${baseTabIndex + 4}"/>
                 </td>
-
                 <td>
-                    <input name="Details[${i}].PaidAmt" type="number"
+                    <input name="Details[${currentIndex}].PaidAmt" type="number"
                            class="form-control form-control-sm paidamt" tabindex="${baseTabIndex + 5}"/>
                 </td>
-
                 <td class="text-center">
-                    <input type="hidden" name="Details[${i}].DCNo" class="dc-no" value="" />
-                    <input type="hidden" name="Details[${i}].BilNo" class="bil-no" value="" />
-                    <input type="hidden" name="Details[${i}].BiltyId" class="bilty-id" value="" />
+                    <input type="hidden" name="Details[${currentIndex}].DCNo" class="dc-no" value="" />
+                    <input type="hidden" name="Details[${currentIndex}].BilNo" class="bil-no" value="" />
+                    <input type="hidden" name="Details[${currentIndex}].BiltyId" class="bilty-id" value="" />
                     <div class="d-flex justify-content-center gap-1">
                         <button type="button" class="btn btn-info btn-sm text-white" title="View Bilty in Edit mode" onclick="viewBilty(this)">
                             <i class="fa fa-eye"></i>
@@ -780,7 +1098,8 @@
             </tr>`;
 
             $("#tbodyItems").append(row);
-            i++;
+            reindexRows();
+            calculateTotals();
         }
 
         // Replace your existing addSelectedBilties function with this:
@@ -794,10 +1113,34 @@
             let hasSelected = false;
             let selectedCount = 0;
 
+            // Collect existing bilty identifiers already in challan
+            var existingBiltyIds = [];
+            var existingDocNos = [];
+            var existingBiltyNos = [];
+            $("#tbodyItems tr").not("#noDataRow").each(function() {
+                var bid = ($(this).find(".bilty-id").val() || "").toString().trim();
+                var dno = ($(this).find(".dc-no").val() || $(this).find('input[name*="DCNo"]').val() || "").toString().trim().toLowerCase();
+                var bno = ($(this).find(".billti-no").val() || $(this).find('input[name*="BillTiNo"]').val() || "").toString().trim().toLowerCase();
+                if (bid && bid !== "0") existingBiltyIds.push(bid);
+                if (dno) existingDocNos.push(dno);
+                if (bno) existingBiltyNos.push(bno);
+            });
+
             $(".bilty-check:checked").each(function() {
                 hasSelected = true;
-                const currentIndex = getNextRowIndex();
                 const $checkbox = $(this);
+                const biltyId = ($checkbox.data("id") || "").toString().trim();
+                const docNo = ($checkbox.data("docno") || "").toString().trim();
+                const billTiNoValue = ($checkbox.data("billtino") || "").toString().trim();
+
+                // If this bilty is already in the table, don't duplicate it
+                if ((biltyId && existingBiltyIds.indexOf(biltyId) !== -1) ||
+                    (docNo && existingDocNos.indexOf(docNo.toLowerCase()) !== -1) ||
+                    (billTiNoValue && existingBiltyNos.indexOf(billTiNoValue.toLowerCase()) !== -1)) {
+                    return;
+                }
+
+                const currentIndex = getNextRowIndex();
 
                 const ptype = ($checkbox.data("ptype") || "").trim();
                 const netAmt = parseFloat($checkbox.data("netamt")) || 0;
@@ -814,9 +1157,6 @@
                 // Calculate BillTiAmt properly
                 const billtiAmt = labour + cartage2 + cartage3 + partyEx + lifter2 + otherEx;
 
-                const biltyId = $checkbox.data("id") || "";
-                const billTiNoValue = $checkbox.data("billtino") || "";
-                const docNo = $checkbox.data("docno") || "";
                 const bilNo = $checkbox.data("bilno") || "";
                 const cusName = $checkbox.data("cusname") || "";
                 const sendTo = $checkbox.data("sendto") || "";
@@ -913,6 +1253,9 @@
             const modal = bootstrap.Modal.getInstance(document.getElementById('biltyModal'));
             if (modal) modal.hide();
 
+            // Reindex all rows to ensure sequential order
+            reindexRows();
+
             // Recalculate totals
             calculateTotals();
 
@@ -922,7 +1265,7 @@
 
         // Helper function to get next row index
         function getNextRowIndex() {
-            return $("#tbodyItems tr").length;
+            return $("#tbodyItems tr").not("#noDataRow").length;
         }
 
         // Helper function to escape HTML
@@ -938,7 +1281,13 @@
 
         function removeRow(btn) {
             $(btn).closest("tr").remove();
+            reindexRows();
             calculateTotals();
+
+            // When no rows exist, automatically add an empty row
+            if ($("#tbodyItems tr").not("#noDataRow").length === 0) {
+                addRow();
+            }
         }
 
         // View Bilty function - Opens Bilty Edit in a new tab
@@ -1039,7 +1388,29 @@
             calculateTotals();
         });
 
+        // Initialize on document ready
+        $(document).ready(function() {
+            // Cache initial modal table content
+            initialModalTableHtml = $("#biltyModalTable tbody").html();
+
+            // Trigger calculation on page load
+            calculateTotals();
+
+            // Bind column searches in modal
+            $(document).on("input", ".col-search", handleColumnSearch);
+
+            // Ensure at least one row exists if empty
+            if ($("#tbodyItems tr").not("#noDataRow").length === 0) {
+                addRow();
+            }
+        });
+
         // Make functions global
+        window.openBiltyModal = openBiltyModal;
+        window.setBiltyFilterType = setBiltyFilterType;
+        window.refreshBiltyList = refreshBiltyList;
+        window.applyBiltyFilters = applyBiltyFilters;
+        window.handleColumnSearch = handleColumnSearch;
         window.addRow = addRow;
         window.removeRow = removeRow;
         window.addSelectedBilties = addSelectedBilties;

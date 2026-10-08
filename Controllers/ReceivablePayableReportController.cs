@@ -385,8 +385,13 @@ namespace Nskg.Controllers
             .no-print { display: none !important; }
         }
     </style>
+    <style>
+        " + Nskg.Helpers.ReportPaginationHelper.GetPaginationStyles() + @"
+    </style>
 </head>
 <body>");
+
+                sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationToolbarHtml("Receivable & Payable"));
 
                 sb.Append($@"
     <div class='report-header'>
@@ -481,6 +486,7 @@ namespace Nskg.Controllers
             </tr>
         </tfoot>
     </table>
+    " + Nskg.Helpers.ReportPaginationHelper.GetPaginationScript() + @"
 </body>
 </html>");
 

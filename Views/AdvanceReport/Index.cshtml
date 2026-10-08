@@ -1,20 +1,21 @@
 @{
-    ViewData["Title"] = "Advance Report";
+    ViewData["Title"] = "Advance Ledger Report";
 
     var fromDateValue = ViewBag.FromDate as string;
     var toDateValue = ViewBag.ToDate as string;
-    var docNoValue = ViewBag.DocNo != null ? ViewBag.DocNo.ToString() : "";
-    var chalNoValue = ViewBag.ChalNo != null ? ViewBag.ChalNo.ToString() : "";
-    var vehicleNoValue = ViewBag.VehicleNo as string ?? "";
-    var transporterValue = ViewBag.Transporter as string ?? "";
+    var accodeValue = ViewBag.Accode as string;
     var selectedCompanyId = ViewBag.SelectedCompanyId != null ? (int)ViewBag.SelectedCompanyId : 0;
     var companyList = ViewBag.CompanyList as IEnumerable<dynamic>;
 
     if (string.IsNullOrEmpty(fromDateValue))
-        fromDateValue = DateTime.Now.ToString("yyyy-MM-dd");
+    {
+        fromDateValue = DateTime.Now.ToString("yyyy-07-01");
+    }
 
     if (string.IsNullOrEmpty(toDateValue))
+    {
         toDateValue = DateTime.Now.ToString("yyyy-MM-dd");
+    }
 }
 
 <style>
@@ -30,28 +31,27 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h3 class="fw-bold mb-0 text-navy">
-                <i class="fa fa-money me-2 text-primary"></i> Advance Report
+                <i class="fa fa-money me-2 text-primary"></i> Advance Ledger Report
             </h3>
-            <small class="text-muted">Vehicle advances, driver expenses, and delivery balances</small>
+            <small class="text-muted">General Ledger for Advance Accounts</small>
         </div>
     </div>
 
     <!-- Filter Card -->
     <div class="card custom-card mb-4 shadow-sm border-0">
         <div class="card-header card-header-brand py-3">
-            <h5 class="mb-0 fw-semibold">
-                <i class="fa fa-sliders me-2"></i> Filter Parameters
+            <h5 class="mb-0 fw-semibold text-white">
+                <i class="fa fa-filter me-2"></i> ACCOUNT PROCESS - Filter Parameters
             </h5>
-            <small class="text-white-50">Filter by Company, Challan No, Doc No, Vehicle, and Transporter</small>
         </div>
         <div class="card-body report-filter-body">
             <form method="get" id="filterForm">
                 <div class="row g-3">
                     <!-- Company Dropdown -->
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold small text-secondary">Company</label>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Company Name</label>
                         <select class="form-select select2" name="companyId" id="companySelect">
-                                <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies --</option>
+                            <option value="0" selected="@(selectedCompanyId == 0 ? "selected" : null)">-- All Companies (Linked) --</option>
                             @if (companyList != null)
                             {
                                 foreach (var comp in companyList)
@@ -69,43 +69,38 @@
                         </select>
                     </div>
 
+                    <!-- Account Code Selector -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">A/c Code</label>
+                        <select class="form-control select2" id="accodeSelect" name="accode" required>
+                            <option value="">-- Select Advance Account --</option>
+                            @if (ViewBag.AccountList != null)
+                            {
+                                foreach (var item in ViewBag.AccountList)
+                                {
+                                    <option value="@item.Code" 
+                                            selected="@(item.Code == accodeValue ? "selected" : null)">
+                                        @item.Name (@item.Code)
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
                     <!-- From Date -->
-                    <div class="col-md-2">
-                        <label class="form-label fw-semibold small text-secondary">From Date</label>
-                        <input type="date" class="form-control form-control-sm" name="fromDate" id="fromDate" value="@fromDateValue" />
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">From Date</label>
+                        <input type="date" class="form-control" name="fromDate" id="fromDate" value="@fromDateValue" required />
                     </div>
 
                     <!-- To Date -->
-                    <div class="col-md-2">
-                        <label class="form-label fw-semibold small text-secondary">To Date</label>
-                        <input type="date" class="form-control form-control-sm" name="toDate" id="toDate" value="@toDateValue" />
-                    </div>
-
-                    <!-- Chal No -->
-                    <div class="col-md-2">
-                        <label class="form-label fw-semibold small text-secondary">Chal No</label>
-                        <input type="number" class="form-control form-control-sm" name="chalNo" id="chalNo" placeholder="Challan No" value="@chalNoValue" min="0" />
-                    </div>
-
-                    <!-- Doc No -->
-                    <div class="col-md-2">
-                        <label class="form-label fw-semibold small text-secondary">Doc No</label>
-                        <input type="number" class="form-control form-control-sm" name="docNo" id="docNo" placeholder="Doc No" value="@docNoValue" min="0" />
-                    </div>
-
-                    <!-- Vehicle No -->
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold small text-secondary">Vehicle No</label>
-                        <input type="text" class="form-control form-control-sm" name="vehicleNo" id="vehicleNo" placeholder="e.g. TLA-123" value="@vehicleNoValue" />
+                        <label class="form-label fw-bold">To Date</label>
+                        <input type="date" class="form-control" name="toDate" id="toDate" value="@toDateValue" required />
                     </div>
 
-                    <!-- Transporter -->
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold small text-secondary">Transporter</label>
-                        <input type="text" class="form-control form-control-sm" name="transporter" id="transporter" placeholder="Transporter name" value="@transporterValue" />
-                    </div>
-
-                    <div class="col-md-6 d-flex justify-content-end align-items-end gap-2 mt-3 pt-2">
+                    <!-- Actions -->
+                    <div class="col-md-12 d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                         <!-- VIEW ON SCREEN -->
                         <button type="button"
                                 class="btn btn-primary btn-sm custom-btn px-3 shadow-sm fw-semibold"
@@ -117,15 +112,14 @@
                         <button type="submit"
                                 class="btn btn-success btn-sm custom-btn px-3 shadow-sm fw-semibold"
                                 asp-action="ExportExcel">
-                            <i class="fa fa-file-excel-o me-1"></i> Excel
+                            <i class="fa fa-file-excel-o me-1"></i> Export Excel (CSV)
                         </button>
 
-                        <!-- PDF DOWNLOAD / PRINT -->
-                        <button type="submit"
-                                class="btn btn-danger btn-sm custom-btn px-3 shadow-sm fw-semibold"
-                                asp-action="GeneratePDF"
-                                formtarget="_blank">
-                            <i class="fa fa-file-pdf-o me-1"></i> Print / PDF
+                        <!-- PRINT FRAME -->
+                        <button type="button"
+                                class="btn btn-secondary btn-sm custom-btn px-3 shadow-sm fw-semibold"
+                                onclick="printReportFrame()">
+                            <i class="fa fa-print me-1"></i> Print / PDF
                         </button>
                     </div>
                 </div>
@@ -134,15 +128,15 @@
     </div>
 
     <!-- ON SCREEN REPORT PREVIEW -->
-    <div id="reportCard" class="card shadow-sm border-0 mb-4" style="display:none;">
-        <div class="card-header card-header-brand text-white d-flex justify-content-between align-items-center py-2">
-            <h5 class="mb-0 fs-6 fw-semibold"><i class="fa fa-file-text-o me-2"></i> Report Preview</h5>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-light btn-sm fw-semibold" onclick="printReportFrame()">
-                    <i class="fa fa-print me-1"></i> Print
+    <div id="reportCard" class="card shadow border-0" style="display:none;">
+        <div class="card-header card-header-brand d-flex justify-content-between align-items-center py-2 text-white">
+            <h5 class="mb-0 fs-6"><i class="fa fa-file-text-o me-2"></i> Report Preview</h5>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-light py-0 px-2 fw-semibold" onclick="printReportFrame()">
+                    <i class="fa fa-print me-1"></i> Print / Save as PDF
                 </button>
-                <button type="button" class="btn btn-outline-light btn-sm" onclick="$('#reportCard').slideUp(200)">
-                    <i class="fa fa-times me-1"></i> Close
+                <button type="button" class="btn btn-sm btn-outline-light py-0 px-2" onclick="$('#reportCard').hide()">
+                    <i class="fa fa-times"></i> Close
                 </button>
             </div>
         </div>
@@ -152,13 +146,13 @@
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <div class="mt-3 fw-bold text-muted">Generating advance report, please wait...</div>
+            <div class="mt-3 fw-bold text-muted">Running account process and generating Advance Ledger... please wait</div>
         </div>
 
         <!-- REPORT IFRAME -->
         <div class="card-body p-0">
-            <iframe id="reportFrame"
-                    style="width:100%; height:750px; border:none; display:none;"></iframe>
+            <iframe id="reportFrame" class="report-preview-frame"
+                    style="width:100%; height:750px; border:none;"></iframe>
         </div>
     </div>
 
@@ -166,29 +160,62 @@
 
 @section Scripts {
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             if ($.fn.select2) {
                 $('#companySelect').select2({ theme: 'bootstrap-5', width: '100%' });
+
+                $('#accodeSelect').select2({
+                    theme: 'bootstrap-5',
+                    placeholder: "-- Select Advance Account --",
+                    allowClear: true,
+                    width: '100%'
+                });
             }
+
+            $('#companySelect').on('change', function () {
+                var compId = $(this).val();
+                if (compId === '' || compId === null || compId === undefined) return;
+
+                $.getJSON('@Url.Action("GetAccountsByCompany", "AdvanceReport")', { companyId: compId }, function (data) {
+                    var $acc = $('#accodeSelect');
+                    $acc.empty().append('<option value="">-- Select Advance Account --</option>');
+                    $.each(data, function (i, item) {
+                        $acc.append('<option value="' + item.code + '">' + item.name + ' (' + item.code + ')</option>');
+                    });
+                    $acc.trigger('change');
+                });
+            });
         });
 
         function loadOnScreenReport() {
             var companyId = $('#companySelect').val() || '';
-            var fromDate = $('input[name="fromDate"]').val() || '';
-            var toDate = $('input[name="toDate"]').val() || '';
-            var docNo = $('input[name="docNo"]').val() || '';
-            var chalNo = $('input[name="chalNo"]').val() || '';
-            var vehicleNo = $('input[name="vehicleNo"]').val() || '';
-            var transporter = $('input[name="transporter"]').val() || '';
+            var accode = $('#accodeSelect').val() || '';
+            var fromDate = $('input[name="fromDate"]').val();
+            var toDate = $('input[name="toDate"]').val();
 
-            if (fromDate && toDate && fromDate > toDate && !docNo && !chalNo && !vehicleNo && !transporter) {
+            if (!accode) {
+                alert("Please select an Advance Account.");
+                return;
+            }
+
+            if (!fromDate) {
+                alert("Please select From Date.");
+                return;
+            }
+
+            if (!toDate) {
+                alert("Please select To Date.");
+                return;
+            }
+
+            if (fromDate > toDate) {
                 alert("From Date cannot be greater than To Date.");
                 return;
             }
 
             $('#reportCard').show();
             $('#reportLoader').show();
-            $('#reportFrame').hide();
+            $('#reportFrame').show();
 
             $('html, body').animate({
                 scrollTop: $("#reportCard").offset().top - 20
@@ -196,20 +223,31 @@
 
             var url = '@Url.Action("OnScreenReport", "AdvanceReport")'
                 + '?companyId=' + encodeURIComponent(companyId)
+                + '&accode=' + encodeURIComponent(accode)
                 + '&fromDate=' + encodeURIComponent(fromDate)
-                + '&toDate=' + encodeURIComponent(toDate)
-                + '&docNo=' + encodeURIComponent(docNo)
-                + '&chalNo=' + encodeURIComponent(chalNo)
-                + '&vehicleNo=' + encodeURIComponent(vehicleNo)
-                + '&transporter=' + encodeURIComponent(transporter);
+                + '&toDate=' + encodeURIComponent(toDate);
 
-            $('#reportFrame').off('load');
-            $('#reportFrame').attr('src', url);
+            var frame = document.getElementById('reportFrame');
+            if (frame) {
+                frame.onload = function () {
+                    $('#reportLoader').hide();
+                };
+                frame.src = url;
+            }
 
-            $('#reportFrame').on('load', function () {
+            setTimeout(function () {
                 $('#reportLoader').hide();
-                $('#reportFrame').show();
-            });
+            }, 3000);
+        }
+
+        function printReportFrame() {
+            var frame = document.getElementById('reportFrame');
+            if (frame && frame.contentWindow) {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            } else {
+                alert("Please view the report first before printing.");
+            }
         }
     </script>
 }
