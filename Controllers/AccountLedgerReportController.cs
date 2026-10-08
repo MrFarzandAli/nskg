@@ -139,47 +139,44 @@ namespace Nskg.Controllers
                     }
                     else
                     {
-                        var activeCompanies = _context.Companies.Where(c => !c.IsDeleted).Select(c => c.Id).ToList();
-                        if (activeCompanies.Count > 0)
+                        // Process all companies in a single T-SQL batch to avoid temp table loss and roundtrip latency
+                        string allProcSql = @"
+                            IF OBJECT_ID('tempdb..##AllAccSession') IS NOT NULL DROP TABLE ##AllAccSession;
+                            SELECT TOP 0 * INTO ##AllAccSession FROM ACCUMULATED;
+
+                            DECLARE @CurCompId INT;
+                            DECLARE comp_cursor CURSOR LOCAL FAST_FORWARD FOR
+                                SELECT Id FROM Companies WHERE IsDeleted = 0 ORDER BY Id;
+
+                            OPEN comp_cursor;
+                            FETCH NEXT FROM comp_cursor INTO @CurCompId;
+
+                            WHILE @@FETCH_STATUS = 0
+                            BEGIN
+                                EXEC dbo.PROCESSDETAIL @CompanyId = @CurCompId, @TDATE = @TDate, @ACCODE = @Accode;
+                                INSERT INTO ##AllAccSession SELECT * FROM ACCUMULATED;
+                                FETCH NEXT FROM comp_cursor INTO @CurCompId;
+                            END
+
+                            CLOSE comp_cursor;
+                            DEALLOCATE comp_cursor;
+
+                            DELETE FROM ACCUMULATED;
+                            INSERT INTO ACCUMULATED SELECT * FROM ##AllAccSession;
+                            IF OBJECT_ID('tempdb..##AllAccSession') IS NOT NULL DROP TABLE ##AllAccSession;";
+
+                        using (SqlCommand cmdAll = new SqlCommand(allProcSql, con))
                         {
-                            using (SqlCommand cmdSetup = new SqlCommand(@"
-                                IF OBJECT_ID('tempdb..#AllAcc') IS NOT NULL DROP TABLE #AllAcc;
-                                SELECT TOP 0 * INTO #AllAcc FROM ACCUMULATED;", con))
-                            {
-                                cmdSetup.ExecuteNonQuery();
-                            }
-
-                            foreach (var cId in activeCompanies)
-                            {
-                                using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL", con))
-                                {
-                                    cmdProc.CommandType = CommandType.StoredProcedure;
-                                    cmdProc.CommandTimeout = 180;
-                                    cmdProc.Parameters.AddWithValue("@CompanyId", cId);
-                                    cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
-                                    cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                                    cmdProc.ExecuteNonQuery();
-                                }
-
-                                using (SqlCommand cmdCopy = new SqlCommand("INSERT INTO #AllAcc SELECT * FROM ACCUMULATED;", con))
-                                {
-                                    cmdCopy.ExecuteNonQuery();
-                                }
-                            }
-
-                            using (SqlCommand cmdMerge = new SqlCommand(@"
-                                DELETE FROM ACCUMULATED;
-                                INSERT INTO ACCUMULATED SELECT * FROM #AllAcc;
-                                DROP TABLE #AllAcc;", con))
-                            {
-                                cmdMerge.ExecuteNonQuery();
-                            }
+                            cmdAll.CommandTimeout = 180;
+                            cmdAll.Parameters.AddWithValue("@TDate", toDate.Date);
+                            cmdAll.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
+                            cmdAll.ExecuteNonQuery();
                         }
                     }
                 }
-                catch
+                catch (Exception exProc)
                 {
-                    // Fallback if procedure encounters warning
+                    Console.WriteLine("Warning: PROCESSDETAIL execution in AccountLedger: " + exProc.Message);
                 }
 
                 // 2. Fetch Account Name & Company Name
@@ -194,7 +191,7 @@ namespace Nskg.Controllers
                 }
 
                 string companyName = "West Wharf-New Shadab Karachi Goods Transports";
-                string shortCompanyName = "W.W";
+                string shortCompanyName = "W.H";
                 string cocode = "";
                 if (companyId > 0)
                 {
@@ -213,7 +210,7 @@ namespace Nskg.Controllers
                         }
                     }
 
-                    if (cocode == "01" || companyId == 1006) shortCompanyName = "W.W";
+                    if (cocode == "01" || companyId == 1006) shortCompanyName = "W.H";
                     else if (cocode == "02" || companyId == 1007) shortCompanyName = "M.P";
                     else if (cocode == "03" || companyId == 1008) shortCompanyName = "N.K";
                     else if (cocode == "04" || companyId == 1009) shortCompanyName = "R.W";
@@ -224,7 +221,7 @@ namespace Nskg.Controllers
                     shortCompanyName = "LINKED";
                 }
 
-                // 3. Query Opening Balance and Transactions with Running Balance and robust Vehicle/Station resolution
+                // 3. Query Opening Balance and Transactions with Running Balance (Optimized using OUTER APPLY & Indexes)
                 string query = @"
                     DECLARE @AnnualOpeningBal DECIMAL(18,2) = 0;
 
@@ -243,7 +240,93 @@ namespace Nskg.Controllers
                     FROM ACCUMULATED
                     WHERE VODATE < @FromDate;
 
-                    ;WITH RawData AS
+                    ;WITH FilteredAcc AS
+                    (
+                        SELECT 
+                            a.VODATE,
+                            a.VONO,
+                            a.VOTYPE,
+                            a.BILLTINO,
+                            a.BILNO,
+                            a.VEHICLENO,
+                            a.STATION,
+                            a.INAME,
+                            a.QTY,
+                            a.COCODE,
+                            a.NARRATION,
+                            a.DRAMT,
+                            a.CRAMT
+                        FROM ACCUMULATED a
+                        WHERE a.VODATE >= @FromDate AND a.VODATE <= @ToDate
+                    ),
+                    EnrichedAcc AS
+                    (
+                        SELECT 
+                            1 AS SortOrder,
+                            CAST(a.VODATE AS DATE) AS DocDate,
+                            ISNULL(a.VONO, '') AS DocNo,
+                            COALESCE(
+                                NULLIF(RTRIM(LTRIM(a.VOTYPE)), ''),
+                                CASE 
+                                    WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN 'BL'
+                                    WHEN a.VONO LIKE '%CL%' THEN 'CL'
+                                    ELSE ''
+                                END
+                            ) AS Votype,
+                            COALESCE(
+                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
+                                CASE WHEN ish.BillTiNo IS NOT NULL AND ish.BillTiNo <> 0 THEN CAST(CAST(ish.BillTiNo AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
+                                NULL
+                            ) AS BillTiNo,
+                            COALESCE(
+                                CASE WHEN a.BILNO IS NOT NULL AND a.BILNO <> 0 THEN CAST(CAST(a.BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
+                                CASE WHEN ish.BilNo IS NOT NULL AND ish.BilNo <> 0 THEN CAST(CAST(ish.BilNo AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
+                                NULL
+                            ) AS BilNo,
+                            COALESCE(
+                                NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''),
+                                NULLIF(RTRIM(LTRIM(ish.VehicleNo)), ''),
+                                CASE WHEN a.VOTYPE = 'CL' AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND a.NARRATION NOT LIKE '%-%-%' THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
+                                CASE WHEN a.VOTYPE IN ('CR', 'CP', 'BR', 'BP', 'JV') AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND (a.NARRATION LIKE '%[0-9]%' OR a.NARRATION LIKE '%-%') THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
+                                ''
+                            ) AS VehicleNo,
+                            COALESCE(
+                                NULLIF(RTRIM(LTRIM(a.STATION)), ''),
+                                ''
+                            ) AS Station,
+                            ISNULL(a.INAME, ISNULL(a.NARRATION, '')) AS IName,
+                            COALESCE(
+                                NULLIF(a.QTY, 0),
+                                NULLIF(ish.Qty, 0),
+                                NULL
+                            ) AS Qty,
+                            CASE 
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('01', '1006', '1') THEN 'W.H'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('02', '1007', '2') THEN 'M.P'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('03', '1008', '3') THEN 'N.K'
+                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('04', '1009', '4') THEN 'R.W'
+                                WHEN ish.CompanyId = 1006 OR ish.Cocode = '01' THEN 'W.H'
+                                WHEN ish.CompanyId = 1007 OR ish.Cocode = '02' THEN 'M.P'
+                                WHEN ish.CompanyId = 1008 OR ish.Cocode = '03' THEN 'N.K'
+                                WHEN ish.CompanyId = 1009 OR ish.Cocode = '04' THEN 'R.W'
+                                WHEN @CompanyId = 1006 OR @CompanyId = 1 THEN 'W.H'
+                                WHEN @CompanyId = 1007 OR @CompanyId = 2 THEN 'M.P'
+                                WHEN @CompanyId = 1008 OR @CompanyId = 3 THEN 'N.K'
+                                WHEN @CompanyId = 1009 OR @CompanyId = 4 THEN 'R.W'
+                                ELSE 'W.H'
+                            END AS Initials,
+                            ISNULL(a.DRAMT, 0) AS Debit,
+                            ISNULL(a.CRAMT, 0) AS Credit
+                        FROM FilteredAcc a
+                        OUTER APPLY (
+                            SELECT TOP 1 ish.BillTiNo, ish.BilNo, ish.VehicleNo, ish.Qty, ish.CompanyId, ish.Cocode
+                            FROM IssHead ish 
+                            WHERE (ish.DocNo = a.VONO OR (a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 AND ish.BillTiNo = a.BILLTINO))
+                              AND ISNULL(ish.IsDeleted, 0) = 0
+                            ORDER BY ish.Id DESC
+                        ) ish
+                    ),
+                    RawData AS
                     (
                         -- Opening Balance Row
                         SELECT 
@@ -265,143 +348,26 @@ namespace Nskg.Controllers
 
                         UNION ALL
 
-                        -- Transactions between FromDate and ToDate
                         SELECT 
-                            1 AS SortOrder,
-                            CAST(a.VODATE AS DATE) AS DocDate,
-                            ISNULL(a.VONO, '') AS DocNo,
-                            COALESCE(
-                                NULLIF(RTRIM(LTRIM(a.VOTYPE)), ''),
-                                (SELECT TOP 1 NULLIF(RTRIM(LTRIM(vd.Votype)), '') FROM VoDet vd WHERE vd.Vono = a.VONO),
-                                (SELECT TOP 1 NULLIF(RTRIM(LTRIM(vh.Votype)), '') FROM VoHead vh WHERE vh.Vono = a.VONO),
-                                CASE 
-                                    WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN 'BL'
-                                    WHEN a.VONO LIKE '%CL%' THEN 'CL'
-                                    ELSE ''
-                                END
-                            ) AS Votype,
-                            COALESCE(
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
-                                (SELECT TOP 1 CAST(CAST(ish.BillTiNo AS BIGINT) AS VARCHAR(50)) FROM IssHead ish WHERE ish.DocNo = a.VONO AND ish.BillTiNo IS NOT NULL AND ish.BillTiNo <> 0 AND ISNULL(ish.IsDeleted, 0) = 0),
-                                (SELECT TOP 1 CAST(CAST(vd.Billtino AS BIGINT) AS VARCHAR(50)) FROM VoDet vd WHERE vd.Vono = a.VONO AND vd.Billtino IS NOT NULL AND TRY_CAST(vd.Billtino AS BIGINT) > 0 AND ISNULL(vd.IsDeleted, 0) = 0),
-                                NULL
-                            ) AS BillTiNo,
-                            COALESCE(
-                                CASE WHEN a.BILNO IS NOT NULL AND a.BILNO <> 0 THEN CAST(CAST(a.BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (SELECT TOP 1 CAST(CAST(ish.BilNo AS BIGINT) AS VARCHAR(50)) FROM IssHead ish WHERE ish.BillTiNo = a.BILLTINO AND ish.BilNo IS NOT NULL AND ish.BilNo <> 0 AND ISNULL(ish.IsDeleted, 0) = 0) ELSE NULL END,
-                                (SELECT TOP 1 CAST(CAST(ish.BilNo AS BIGINT) AS VARCHAR(50)) FROM IssHead ish WHERE ish.DocNo = a.VONO AND ish.BilNo IS NOT NULL AND ish.BilNo <> 0 AND ISNULL(ish.IsDeleted, 0) = 0),
-                                (SELECT TOP 1 CAST(CAST(vd.Bilno AS BIGINT) AS VARCHAR(50)) FROM VoDet vd WHERE vd.Vono = a.VONO AND vd.Bilno IS NOT NULL AND TRY_CAST(vd.Bilno AS BIGINT) > 0 AND ISNULL(vd.IsDeleted, 0) = 0),
-                                NULL
-                            ) AS BilNo,
-                            COALESCE(
-                                NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''),
-                                -- From VoDet.Vehicleno
-                                (SELECT TOP 1 NULLIF(RTRIM(LTRIM(vd.Vehicleno)), '') FROM VoDet vd WHERE vd.Vono = a.VONO AND NULLIF(RTRIM(LTRIM(vd.Vehicleno)), '') IS NOT NULL),
-                                -- From ChallanDet matching BillTiNo and BilNo
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (
-                                    SELECT TOP 1 NULLIF(RTRIM(LTRIM(cd.VehicleNo)), '') 
-                                    FROM ChallanDet cd 
-                                    WHERE cd.BillTiNo = a.BILLTINO 
-                                      AND (a.BILNO IS NULL OR a.BILNO = 0 OR cd.BilNo = a.BILNO)
-                                      AND NULLIF(RTRIM(LTRIM(cd.VehicleNo)), '') IS NOT NULL
-                                ) ELSE NULL END,
-                                -- From ChallanHead matching ChallanDet BillTiNo
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (
-                                    SELECT TOP 1 NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') 
-                                    FROM ChallanDet cd 
-                                    INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id 
-                                    WHERE cd.BillTiNo = a.BILLTINO 
-                                      AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL
-                                      AND ISNULL(ch.IsDeleted, 0) = 0
-                                ) ELSE NULL END,
-                                -- From CommHead matching BillTiNo
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (
-                                    SELECT TOP 1 NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') 
-                                    FROM CommDetail cmd 
-                                    INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id 
-                                    WHERE cmd.BillTiNo = a.BILLTINO 
-                                      AND NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') IS NOT NULL
-                                      AND ISNULL(cm.IsDeleted, 0) = 0
-                                ) ELSE NULL END,
-                                -- From IssHead matching BillTiNo
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (
-                                    SELECT TOP 1 NULLIF(RTRIM(LTRIM(iss.VehicleNo)), '') 
-                                    FROM IssHead iss 
-                                    WHERE iss.BillTiNo = a.BILLTINO 
-                                      AND NULLIF(RTRIM(LTRIM(iss.VehicleNo)), '') IS NOT NULL
-                                      AND ISNULL(iss.IsDeleted, 0) = 0
-                                ) ELSE NULL END,
-                                -- If Challan / Narration has vehicle
-                                CASE WHEN a.VOTYPE = 'CL' AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND a.NARRATION NOT LIKE '%-%-%' THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
-                                CASE WHEN a.VOTYPE IN ('CR', 'CP', 'BR', 'BP', 'JV') AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND (a.NARRATION LIKE '%[0-9]%' OR a.NARRATION LIKE '%-%') THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
-                                ''
-                            ) AS VehicleNo,
-                            COALESCE(
-                                NULLIF(RTRIM(LTRIM(a.STATION)), ''),
-                                ''
-                            ) AS Station,
-                            ISNULL(a.INAME, ISNULL(a.NARRATION, '')) AS IName,
-                            COALESCE(
-                                NULLIF(a.QTY, 0),
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (SELECT TOP 1 ish.Qty FROM IssHead ish WHERE ish.BillTiNo = a.BILLTINO AND ish.Qty IS NOT NULL AND ish.Qty <> 0 AND ISNULL(ish.IsDeleted, 0) = 0) ELSE NULL END,
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN (SELECT SUM(id.Qty) FROM IssDetail id INNER JOIN IssHead ish ON id.IssHeadId = ish.Id WHERE ish.BillTiNo = a.BILLTINO AND ISNULL(id.IsDeleted, 0) = 0) ELSE NULL END,
-                                (SELECT TOP 1 ish.Qty FROM IssHead ish WHERE ish.DocNo = a.VONO AND ish.Qty IS NOT NULL AND ish.Qty <> 0 AND ISNULL(ish.IsDeleted, 0) = 0),
-                                (SELECT SUM(id.Qty) FROM IssDetail id INNER JOIN IssHead ish ON id.IssHeadId = ish.Id WHERE ish.DocNo = a.VONO AND ISNULL(id.IsDeleted, 0) = 0),
-                                (SELECT TOP 1 vd.Qty FROM VoDet vd WHERE vd.Vono = a.VONO AND vd.Qty IS NOT NULL AND vd.Qty <> 0 AND ISNULL(vd.IsDeleted, 0) = 0),
-                                NULL
-                            ) AS Qty,
-                            CASE 
-                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('01', '1006', '1') THEN 'W.W'
-                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('02', '1007', '2') THEN 'M.P'
-                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('03', '1008', '3') THEN 'N.K'
-                                WHEN RTRIM(LTRIM(ISNULL(a.COCODE, ''))) IN ('04', '1009', '4') THEN 'R.W'
-                                WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN 
-                                    CASE (SELECT TOP 1 ish.CompanyId FROM IssHead ish WHERE ish.BillTiNo = a.BILLTINO AND ISNULL(ish.IsDeleted, 0) = 0)
-                                        WHEN 1006 THEN 'W.W'
-                                        WHEN 1007 THEN 'M.P'
-                                        WHEN 1008 THEN 'N.K'
-                                        WHEN 1009 THEN 'R.W'
-                                        ELSE (
-                                            CASE (SELECT TOP 1 ish.Cocode FROM IssHead ish WHERE ish.BillTiNo = a.BILLTINO AND ISNULL(ish.IsDeleted, 0) = 0)
-                                                WHEN '01' THEN 'W.W'
-                                                WHEN '02' THEN 'M.P'
-                                                WHEN '03' THEN 'N.K'
-                                                WHEN '04' THEN 'R.W'
-                                                ELSE 'W.W'
-                                            END
-                                        )
-                                    END
-                                WHEN a.VONO IS NOT NULL AND a.VONO <> '' THEN
-                                    CASE (SELECT TOP 1 vh.CompanyId FROM VoHead vh WHERE vh.Vono = a.VONO AND ISNULL(vh.IsDeleted, 0) = 0)
-                                        WHEN 1006 THEN 'W.W'
-                                        WHEN 1007 THEN 'M.P'
-                                        WHEN 1008 THEN 'N.K'
-                                        WHEN 1009 THEN 'R.W'
-                                        ELSE (
-                                            CASE (SELECT TOP 1 vd.Cocode FROM VoDet vd WHERE vd.Vono = a.VONO AND ISNULL(vd.IsDeleted, 0) = 0)
-                                                WHEN '01' THEN 'W.W'
-                                                WHEN '02' THEN 'M.P'
-                                                WHEN '03' THEN 'N.K'
-                                                WHEN '04' THEN 'R.W'
-                                                ELSE 'W.W'
-                                            END
-                                        )
-                                    END
-                                WHEN @CompanyId = 1006 OR @CompanyId = 1 THEN 'W.W'
-                                WHEN @CompanyId = 1007 OR @CompanyId = 2 THEN 'M.P'
-                                WHEN @CompanyId = 1008 OR @CompanyId = 3 THEN 'N.K'
-                                WHEN @CompanyId = 1009 OR @CompanyId = 4 THEN 'R.W'
-                                ELSE 'W.W'
-                            END AS Initials,
-                            ISNULL(a.DRAMT, 0) AS Debit,
-                            ISNULL(a.CRAMT, 0) AS Credit,
-                            @OpeningBal + SUM(ISNULL(a.DRAMT, 0) - ISNULL(a.CRAMT, 0)) OVER (
-                                ORDER BY a.VODATE, a.VONO, (SELECT NULL)
+                            SortOrder,
+                            DocDate,
+                            DocNo,
+                            Votype,
+                            BillTiNo,
+                            BilNo,
+                            VehicleNo,
+                            Station,
+                            IName,
+                            Qty,
+                            Initials,
+                            Debit,
+                            Credit,
+                            @OpeningBal + SUM(Debit - Credit) OVER (
+                                ORDER BY DocDate, DocNo, (SELECT NULL)
                                 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                             ) AS Balance,
-                            ROW_NUMBER() OVER (ORDER BY a.VODATE, a.VONO) AS RowNum
-                        FROM ACCUMULATED a
-                        WHERE a.VODATE >= @FromDate AND a.VODATE <= @ToDate
+                            ROW_NUMBER() OVER (ORDER BY DocDate, DocNo) AS RowNum
+                        FROM EnrichedAcc
                     )
                     SELECT 
                         SortOrder,
