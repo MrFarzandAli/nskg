@@ -343,6 +343,90 @@
 				border-color: #ff9b44 !important;
 				box-shadow: 0 0 0 0.2rem rgba(255, 155, 68, 0.2) !important;
 			}
+
+			/* ================================================================
+			   COMPACT TRANSACTION & OPERATION DATA ENTRY LAYOUT STANDARD
+			   Zero full-page scroll: Master + Grid + Totals fit in single screen
+			   ================================================================ */
+			.page-wrapper .content.compact-content-layout {
+				padding: 10px 18px !important;
+			}
+			.compact-content-layout .page-header {
+				margin-bottom: 6px !important;
+			}
+			.form-dense .card {
+				margin-bottom: 6px !important;
+			}
+			.form-dense .card-header {
+				padding: 4px 10px !important;
+			}
+			.form-dense .card-body {
+				padding: 8px 12px !important;
+			}
+			.form-dense .form-label {
+				font-size: 11px !important;
+				margin-bottom: 2px !important;
+				font-weight: 600 !important;
+				color: #475569 !important;
+			}
+			.form-dense .form-control-sm,
+			.form-dense .form-select-sm {
+				font-size: 12px !important;
+				height: 28px !important;
+				padding: 2px 6px !important;
+			}
+			.form-dense .select2-container .select2-selection--single {
+				height: 28px !important;
+				min-height: 28px !important;
+				font-size: 12px !important;
+				padding: 1px 6px !important;
+			}
+			.form-dense .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+				font-size: 12px !important;
+				line-height: 24px !important;
+			}
+
+			/* Special Small Laptop & Scaled Display Adaptive Rules (Height <= 768px, e.g. 1366x768 or 1080p @ 125%/150%) */
+			@@media (max-height: 768px) {
+				.page-wrapper .content.compact-content-layout {
+					padding: 6px 12px !important;
+				}
+				.compact-content-layout .page-header {
+					margin-bottom: 4px !important;
+				}
+				.form-dense .card {
+					margin-bottom: 4px !important;
+				}
+				.form-dense .card-header {
+					padding: 3px 8px !important;
+				}
+				.form-dense .card-body {
+					padding: 5px 8px !important;
+				}
+				.form-dense .table-responsive {
+					max-height: 160px !important;
+				}
+				.form-dense .form-label {
+					font-size: 10.5px !important;
+					margin-bottom: 1px !important;
+				}
+				.form-dense .form-control-sm,
+				.form-dense .form-select-sm,
+				.form-dense .select2-container .select2-selection--single {
+					height: 25px !important;
+					min-height: 25px !important;
+					font-size: 11px !important;
+					padding: 1px 4px !important;
+				}
+				.form-dense .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+					font-size: 11px !important;
+					line-height: 22px !important;
+				}
+				.form-dense table th, .form-dense table td {
+					padding: 2px 4px !important;
+					font-size: 11px !important;
+				}
+			}
 		</style>
 
 		@await RenderSectionAsync("Styles", required: false)
@@ -1174,7 +1258,11 @@
 			<div class="page-wrapper">
 			
 				<!-- Page Content -->
-				<div class="content container-fluid">
+				@{
+					var compactControllers = new[] { "Voucher", "Bilty", "ToPayBilty", "Challan", "CommBook" };
+					bool isCompactPage = compactControllers.Contains(currentController, StringComparer.OrdinalIgnoreCase);
+				}
+				<div class="content container-fluid @(isCompactPage ? "compact-content-layout" : "")">
 														
 					@RenderBody()
 
@@ -1507,6 +1595,128 @@
 
 		<!-- Select2 JS -->
 		<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+		<script>
+			// Global Select2 Matcher & Sorter:
+			// 1. Prefix match (starts with query text) appears FIRST.
+			// 2. Word boundary match (word starts with query text) appears SECOND.
+			// 3. Substring / contains match appears THIRD.
+			(function ($) {
+				if (!$ || !$.fn || !$.fn.select2) return;
+
+				var _select2ItemCounter = 0;
+
+				function customSelect2Matcher(params, data) {
+					if (!params.term || $.trim(params.term) === '') {
+						return data;
+					}
+
+					if (typeof data.text === 'undefined') {
+						return null;
+					}
+
+					var term = $.trim(params.term).toLowerCase();
+					var text = (data.text || '').toLowerCase();
+
+					// Handle optgroup children
+					if (data.children && data.children.length > 0) {
+						var match = $.extend(true, {}, data);
+						match.children = [];
+						for (var c = 0; c < data.children.length; c++) {
+							var childMatch = customSelect2Matcher(params, data.children[c]);
+							if (childMatch != null) {
+								match.children.push(childMatch);
+							}
+						}
+						if (match.children.length > 0) {
+							return match;
+						}
+						return null;
+					}
+
+					var idx = text.indexOf(term);
+					if (idx === -1) {
+						return null;
+					}
+
+					// Scoring:
+					// 1 = Entire text starts with search term
+					// 2 = A word within text starts with search term
+					// 3 = Contains search term anywhere else
+					var score = 3;
+					if (idx === 0) {
+						score = 1;
+					} else {
+						var escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+						var wordRegex = new RegExp('(?:^|[\\s\\-_/(),.:;\\[\\]])' + escapedTerm, 'i');
+						if (wordRegex.test(data.text)) {
+							score = 2;
+						}
+					}
+
+					var modifiedData = $.extend({}, data, true);
+					modifiedData._score = score;
+					modifiedData._matchIndex = idx;
+					modifiedData._origOrder = data._origOrder || (++_select2ItemCounter);
+					return modifiedData;
+				}
+
+				function customSelect2Sorter(results) {
+					if (!results || !results.length) return results;
+
+					function sortItems(arr) {
+						arr.sort(function (a, b) {
+							var scoreA = (a._score !== undefined) ? a._score : 999;
+							var scoreB = (b._score !== undefined) ? b._score : 999;
+							if (scoreA !== scoreB) {
+								return scoreA - scoreB;
+							}
+							var idxA = (a._matchIndex !== undefined) ? a._matchIndex : 999;
+							var idxB = (b._matchIndex !== undefined) ? b._matchIndex : 999;
+							if (idxA !== idxB) {
+								return idxA - idxB;
+							}
+							var orderA = (a._origOrder !== undefined) ? a._origOrder : 0;
+							var orderB = (b._origOrder !== undefined) ? b._origOrder : 0;
+							return orderA - orderB;
+						});
+
+						for (var i = 0; i < arr.length; i++) {
+							if (arr[i].children && arr[i].children.length) {
+								sortItems(arr[i].children);
+							}
+						}
+						return arr;
+					}
+
+					return sortItems(results);
+				}
+
+				$.fn.select2.defaults.set('matcher', customSelect2Matcher);
+				$.fn.select2.defaults.set('sorter', customSelect2Sorter);
+
+				// Automatically preserve original tabindex on Select2 elements
+				var origSelect2 = $.fn.select2;
+				$.fn.select2 = function () {
+					this.each(function () {
+						var t = $(this).attr('tabindex');
+						if (t && parseInt(t) > 0 && !$(this).attr('data-orig-tabindex')) {
+							$(this).attr('data-orig-tabindex', t).data('tabindex', parseInt(t));
+						}
+					});
+					var res = origSelect2.apply(this, arguments);
+					this.each(function () {
+						var origTab = $(this).attr('data-orig-tabindex') || $(this).data('tabindex') || $(this).attr('tabindex');
+						if (origTab && parseInt(origTab) > 0) {
+							var inst = $(this).data('select2');
+							if (inst && inst.$container) {
+								inst.$container.find('.select2-selection').attr('data-orig-tabindex', origTab).data('tabindex', parseInt(origTab));
+							}
+						}
+					});
+					return res;
+				};
+			})(jQuery);
+		</script>
 
 
 																																			<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -1845,7 +2055,9 @@
 						}
 
 						// Check common next targets after master fields:
-						var $firstItem = $('#tbodyItems .qty:first:visible, #tbodyItems input:first:visible');
+						var $firstItem = $('#tbodyItems .qty:first:visible');
+						if (!$firstItem.length) $firstItem = $('#tbodyItems input:not([readonly]):visible').first();
+						if (!$firstItem.length) $firstItem = $('#tbodyItems input:first:visible');
 						if ($firstItem.length) return AppNav.focusElement($firstItem);
 
 						var $addBilty = $('#addBiltyBtn:visible, #btnAddChallan:visible');
@@ -1858,7 +2070,7 @@
 						if ($nextExp.length) {
 							return AppNav.focusElement($nextExp);
 						}
-						var $save = $('#btnSave:visible, #btnSaveComm:visible, #btnUpdate:visible').first();
+						var $save = $('#btnSave:visible, #btnSaveBottom:visible, #btnSaveComm:visible, #btnUpdate:visible, #btnUpdateBottom:visible, button[type=submit]:visible').first();
 						if ($save.length) return AppNav.focusElement($save);
 					}
 				}
@@ -1917,14 +2129,52 @@
 			cacheTabindexes();
 			$(document).ajaxComplete(function () { cacheTabindexes(); });
 
-			// 1. ArrowUp / ArrowDown on Select2 container opens the dropdown list
+			// 1. ArrowDown / ArrowUp opens the dropdown list on any Select2 field or native select
 			$(document).on('keydown', '.select2-selection', function (e) {
+				var $container = $(this).closest('.select2-container');
+				if ($container.hasClass('select2-container--open')) return;
+
 				if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-					var $container = $(this).closest('.select2-container');
-					if (!$container.hasClass('select2-container--open')) {
+					e.preventDefault();
+					var $select = AppNav.getSelectFromSelection($(this));
+					AppNav.openSelect2($select);
+					return;
+				}
+
+				// Space key: open dropdown cleanly
+				if (e.key === ' ') {
+					e.preventDefault();
+					var $select = AppNav.getSelectFromSelection($(this));
+					AppNav.openSelect2($select);
+					return;
+				}
+
+				// 🚀 Type to search while closed:
+				// If any printable single character is typed without opening first, open and immediately search!
+				if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey && e.key !== 'Enter') {
+					var $select = AppNav.getSelectFromSelection($(this));
+					if ($select.length) {
+						var typedChar = e.key;
 						e.preventDefault();
-						var $select = AppNav.getSelectFromSelection($(this));
+						e.stopPropagation();
+
+						var triggerSearchWithChar = function () {
+							var $search = $('.select2-container--open .select2-search__field, .select2-dropdown .select2-search__field');
+							if ($search.length) {
+								$search.focus().val(typedChar).trigger('input').trigger('keyup');
+								var len = $search.val().length;
+								if ($search[0].setSelectionRange) {
+									$search[0].setSelectionRange(len, len);
+								}
+							}
+						};
+
+						$select.one('select2:open', function () {
+							setTimeout(triggerSearchWithChar, 10);
+						});
+
 						AppNav.openSelect2($select);
+						setTimeout(triggerSearchWithChar, 40);
 					}
 				}
 			});
@@ -1938,19 +2188,43 @@
 				}
 			});
 
+			// Auto-focus search field whenever any Select2 opens
+			$(document).on('select2:open', function () {
+				setTimeout(function () {
+					var $search = $('.select2-container--open .select2-search__field');
+					if ($search.length && !$search.is(':focus')) {
+						$search.focus();
+					}
+				}, 10);
+			});
+
 			// 2. Select2: When an item is selected from dropdown, advance immediately to next field!
 			$(document).on('select2:select', 'select', function (e) {
 				var $sel = $(this);
+				$sel.data('nav-advancing', true);
 				setTimeout(function () {
 					AppNav.moveToNext($sel);
-				}, 100);
+					setTimeout(function () {
+						$sel.removeData('nav-advancing');
+					}, 200);
+				}, 60);
+			});
+
+			$(document).on('select2:close', 'select', function (e) {
+				var $sel = $(this);
+				if ($sel.data('nav-advancing')) {
+					setTimeout(function () {
+						var $s2 = $sel.data('select2') ? $sel.data('select2').$container : null;
+						if ($s2 && $s2.find('.select2-selection').is(':focus')) {
+							AppNav.moveToNext($sel);
+						}
+					}, 20);
+				}
 			});
 
 			// 3. Enter key handling:
 			// - On Select2 selection container:
-			//   If closed:
-			//     - If has value -> advance to NEXT field!
-			//     - If empty / unselected -> 1st Enter opens the dropdown list!
+			//   Enter directly advances to the NEXT field!
 			$(document).on('keydown', '.select2-selection', function (e) {
 				if (e.key === 'Enter') {
 					var $container = $(this).closest('.select2-container');
@@ -1961,15 +2235,207 @@
 
 					e.preventDefault();
 					var $select = AppNav.getSelectFromSelection($(this));
-
 					var val = $select.val();
-					if (!val || val === '' || val === '0') {
-						// 1st Enter: Opens the dropdown list if empty
-						AppNav.openSelect2($select);
-					} else {
-						// Already has value -> advance to NEXT field!
-						AppNav.moveToNext($select.length ? $select : $(this));
+
+					// SPECIAL CASE: Inside Voucher detail table (#tbl)
+					var $tblRow = $select.closest('#tbl tbody tr');
+					if ($tblRow.length) {
+						var hasAcc = (val && val !== '' && val !== '0' && val !== 'Select Account');
+						if (!hasAcc) {
+							// Account is NOT selected in this detail row
+							var $allRows = $('#tbl tbody tr').not('#noDataRow');
+							if ($allRows.length > 1) {
+								// Remove this trailing empty row and go to Update / Create button
+								$tblRow.remove();
+								if (typeof calc === 'function') calc();
+								var $saveBtn = $('#btnSave, #btnSaveBottom, #btnUpdate, #btnUpdateBottom, button[type="submit"]').filter(':visible').first();
+								if ($saveBtn.length) {
+									$saveBtn.prop('disabled', false).removeClass('disabled');
+									return AppNav.focusElement($saveBtn);
+								}
+							}
+						}
 					}
+
+					// Advance directly to NEXT field!
+					AppNav.moveToNext($select.length ? $select : $(this));
+				}
+			});
+
+			// Also handle when inside Select2 search field and Enter pressed without selecting account
+			$(document).on('keydown', '.select2-search__field', function (e) {
+				if (e.key === 'Enter') {
+					var $search = $(this);
+					var $select = $('select.select2-hidden-accessible').filter(function() {
+						return $(this).data('select2') && $(this).data('select2').$container.hasClass('select2-container--open');
+					});
+					if ($select.length) {
+						var $highlighted = $('.select2-results__option--highlighted');
+						if ((!$highlighted.length || $highlighted.hasClass('select2-results__message')) && !$search.val()) {
+							var $tblRow = $select.closest('#tbl tbody tr');
+							if ($tblRow.length) {
+								var $allRows = $('#tbl tbody tr').not('#noDataRow');
+								if ($allRows.length > 1) {
+									e.preventDefault();
+									$select.select2('close');
+									$tblRow.remove();
+									if (typeof calc === 'function') calc();
+									var $saveBtn = $('#btnSave, #btnSaveBottom, #btnUpdate, #btnUpdateBottom, button[type="submit"]').filter(':visible').first();
+									if ($saveBtn.length) {
+										$saveBtn.prop('disabled', false).removeClass('disabled');
+										return AppNav.focusElement($saveBtn);
+									}
+								}
+							} else {
+								// In standard form dropdown: close and move to next
+								e.preventDefault();
+								$select.select2('close');
+								AppNav.moveToNext($select);
+							}
+						}
+					}
+				}
+			});
+
+			// ============================================================
+			// BILTY ITEMS & TO PAY BILTY ITEMS GRID KEYBOARD NAVIGATION
+			// (Arrow keys navigate cells/rows/cols; Enter moves Qty -> Weight -> New row)
+			// ============================================================
+			$(document).on('keydown', '#tblItems tbody input', function (e) {
+				var $input = $(this);
+				var $tr = $input.closest('tr');
+				var $allRows = $('#tblItems tbody tr').not('#noDataRow');
+				var rowIndex = $allRows.index($tr);
+
+				// 1. Enter Key Navigation inside grid
+				if (e.key === 'Enter') {
+					e.preventDefault();
+					e.stopImmediatePropagation();
+
+					if ($input.hasClass('qty')) {
+						var val = $input.val();
+						// If Qty is empty, move to Freight / Expense section
+						if (!val || $.trim(val) === '') {
+							return AppNav.focusElement($('#Cartage1'));
+						}
+						// Move to Weight (qtyperpack) in same row
+						var $weight = $tr.find('.qtyperpack');
+						if ($weight.length) {
+							return AppNav.focusElement($weight);
+						}
+						return;
+					}
+
+					if ($input.hasClass('qtyperpack')) {
+						var wVal = $input.val();
+						var qVal = $tr.find('.qty').val();
+						// If both Weight and Qty are empty or user presses Enter without value, go to Freight
+						if ((!wVal || $.trim(wVal) === '') && (!qVal || $.trim(qVal) === '')) {
+							return AppNav.focusElement($('#Cartage1'));
+						}
+						// If on the last row, add new row and focus its Qty
+						if (rowIndex === $allRows.length - 1) {
+							if (typeof addRow === 'function') {
+								addRow();
+								setTimeout(function () {
+									var $newQty = $('#tblItems tbody tr:last-child .qty');
+									AppNav.focusElement($newQty);
+								}, 30);
+							}
+						} else {
+							// Move to next row's Qty
+							var $nextQty = $allRows.eq(rowIndex + 1).find('.qty');
+							AppNav.focusElement($nextQty);
+						}
+						return;
+					}
+					return;
+				}
+
+				// 2. Arrow Left & Right Navigation
+				if (e.key === 'ArrowRight') {
+					if ($input.hasClass('iname')) {
+						e.preventDefault();
+						return AppNav.focusElement($tr.find('.qty'));
+					}
+					if ($input.hasClass('qty')) {
+						e.preventDefault();
+						return AppNav.focusElement($tr.find('.qtyperpack'));
+					}
+				}
+
+				if (e.key === 'ArrowLeft') {
+					if ($input.hasClass('qtyperpack')) {
+						e.preventDefault();
+						return AppNav.focusElement($tr.find('.qty'));
+					}
+					if ($input.hasClass('qty')) {
+						var $iname = $tr.find('.iname, input[name*="IName"]');
+						if ($iname.length && !$iname.is('[readonly]')) {
+							e.preventDefault();
+							return AppNav.focusElement($iname);
+						}
+					}
+				}
+
+				// 3. Arrow Down Navigation (navigate down rows or add new row)
+				if (e.key === 'ArrowDown') {
+					e.preventDefault();
+					var isQty = $input.hasClass('qty');
+					if (rowIndex < $allRows.length - 1) {
+						var $targetRow = $allRows.eq(rowIndex + 1);
+						var $target = isQty ? $targetRow.find('.qty') : $targetRow.find('.qtyperpack');
+						return AppNav.focusElement($target);
+					} else {
+						// On the last row:
+						var qVal = $tr.find('.qty').val();
+						var wVal = $tr.find('.qtyperpack').val();
+						if ((qVal && $.trim(qVal) !== '') || (wVal && $.trim(wVal) !== '')) {
+							if (typeof addRow === 'function') {
+								addRow();
+								setTimeout(function () {
+									var $targetRow = $('#tblItems tbody tr:last-child');
+									var $target = isQty ? $targetRow.find('.qty') : $targetRow.find('.qtyperpack');
+									AppNav.focusElement($target);
+								}, 30);
+							}
+						} else {
+							// Last row is empty, navigate to Expense section
+							return AppNav.focusElement($('#Cartage1'));
+						}
+					}
+				}
+
+				// 4. Arrow Up Navigation (navigate up rows or back to Remarks)
+				if (e.key === 'ArrowUp') {
+					e.preventDefault();
+					var isQty = $input.hasClass('qty');
+					if (rowIndex > 0) {
+						var $targetRow = $allRows.eq(rowIndex - 1);
+						var $target = isQty ? $targetRow.find('.qty') : $targetRow.find('.qtyperpack');
+						return AppNav.focusElement($target);
+					} else {
+						// On first row: move back up to Remarks field!
+						return AppNav.focusElement($('#Remarks'));
+					}
+				}
+			});
+
+			// Master Remarks to Bilty Items grid connector
+			$(document).on('keydown', '#Remarks', function (e) {
+				if (e.key === 'ArrowDown') {
+					e.preventDefault();
+					var $firstQty = $('#tblItems tbody tr:first .qty');
+					if ($firstQty.length) return AppNav.focusElement($firstQty);
+				}
+			});
+
+			// Expense section to Bilty Items grid connector
+			$(document).on('keydown', '#Cartage1', function (e) {
+				if (e.key === 'ArrowUp') {
+					e.preventDefault();
+					var $lastQty = $('#tblItems tbody tr:last-child .qty');
+					if ($lastQty.length) return AppNav.focusElement($lastQty);
 				}
 			});
 
@@ -1978,6 +2444,11 @@
 				if (e.key === 'Enter') {
 					// Ignore if dropdown popup search field or dropdown is open
 					if ($(this).hasClass('select2-search__field') || $('.select2-container--open').length > 0) {
+						return;
+					}
+
+					// Ignore grid inputs which are already handled specifically
+					if ($(this).closest('#tblItems, #tbl').length > 0) {
 						return;
 					}
 

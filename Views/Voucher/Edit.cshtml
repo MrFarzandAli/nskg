@@ -1141,50 +1141,55 @@
 @using Nskg.Models.ViewModels
 @model VoucherVM
 
-<form method="post">
+<form method="post" class="form-dense">
     <input type="hidden" asp-for="Head.Id" />
     <input type="hidden" asp-for="Head.Votype" />
 
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
-            <h3 class="mb-0">
-                <i class="fa fa-edit text-primary me-1"></i>
+            <h4 class="mb-0 fw-bold text-navy">
+                <i class="fa fa-edit text-primary me-2"></i>
                 Edit @(ViewBag.Votype ?? Model?.Head?.Votype ?? "Voucher")
-            </h3>
-            <small class="text-muted">
+            </h4>
+            <small class="text-muted" style="font-size: 11px;">
                 <i class="fa fa-info-circle me-1"></i>
                 Update accounting voucher entries
             </small>
         </div>
         <div>
-            <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addRow()">
+            <button type="button" id="btnAddRow" class="btn btn-outline-primary btn-sm custom-btn me-2" onclick="addRow()">
                 <i class="fa fa-plus me-1"></i> Add Row
             </button>
-            <button type="submit" class="btn btn-success btn-sm">
+            <button type="submit" id="btnUpdate" class="btn btn-success btn-sm custom-btn shadow-sm">
                 <i class="fa fa-save me-1"></i> Update
             </button>
         </div>
     </div>
 
     <!-- MASTER -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-body">
-            <div class="row g-3">
+    <div class="card custom-card border-0 shadow-sm mb-2">
+        <div class="card-header bg-white border-bottom py-1 px-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
+                <i class="fa fa-sliders text-primary me-1"></i> General Details
+            </h6>
+        </div>
+        <div class="card-body py-2 px-3">
+            <div class="row g-2">
                 <div class="col-md-2">
-                    <label class="form-label small text-muted">Voucher No</label>
+                    <label class="form-label small text-muted fw-semibold mb-0">Voucher No</label>
                     <input asp-for="Head.Vono" class="form-control form-control-sm" readonly />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small text-muted">Transaction Date</label>
+                    <label class="form-label small text-muted fw-semibold mb-0">Trans Date</label>
                     <input asp-for="Head.Vodate" type="date" value="@(Model?.Head?.Vodate?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small text-muted">Entry Date</label>
+                    <label class="form-label small text-muted fw-semibold mb-0">Entry Date</label>
                     <input asp-for="Head.EntryDate" type="date" value="@(Model?.Head?.EntryDate?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" readonly />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small text-muted">Account</label>
+                    <label class="form-label small text-muted fw-semibold mb-0">Account</label>
                     <select asp-for="Head.gl3Id" class="form-select form-select-sm select2">
                         <option value="">Select Account</option>
                         @if (ViewBag.HeaderAccounts != null)
@@ -1198,7 +1203,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small text-muted">Pay / Receive</label>
+                    <label class="form-label small text-muted fw-semibold mb-0">Pay / Receive</label>
                     <select asp-for="Head.Partycode" class="form-select form-select-sm select2">
                         <option value="">-- Select Party Account --</option>
                         @if (ViewBag.PartyAccounts != null)
@@ -1213,15 +1218,15 @@
                     </select>
                 </div>
                 <div class="col-md-5">
-                    <label class="form-label small text-muted">Payee / Receiver</label>
+                    <label class="form-label small text-muted fw-semibold mb-0">Payee / Receiver</label>
                     <input asp-for="Head.PersonName" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small text-muted">Reference No</label>
+                    <label class="form-label small text-muted fw-semibold mb-0">Reference No</label>
                     <input asp-for="Head.Invno" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small text-muted">Narration</label>
+                    <label class="form-label small text-muted fw-semibold mb-0">Narration</label>
                     <input asp-for="Head.Narration" class="form-control form-control-sm" />
                 </div>
             </div>
@@ -1229,32 +1234,53 @@
     </div>
 
     <!-- DETAILS -->
-    <div class="card mt-3 border-0 shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center bg-white">
-            <h5 class="mb-0">Voucher Details</h5>
-            <span class="badge bg-light text-dark">Edit Mode</span>
+    <div class="card custom-card border-0 shadow-sm mb-2">
+        <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom py-1 px-3">
+            <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
+                <i class="fa fa-list text-primary me-1"></i> Voucher Details
+            </h6>
+            <span class="badge bg-light text-dark fs-7 px-2 py-1">Edit Mode</span>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
                 <table class="table table-hover table-bordered align-middle mb-0" id="tbl">
-                    <thead class="table-light text-center">
+                    <thead class="table-light text-center" style="position: sticky; top: 0; z-index: 2;">
                         <tr>
-                            <th>Account</th>
-                            <th>Bilti No</th>
-                            <th>Bill No</th>
-                            <th class="text-success">Debit</th>
-                            <th class="text-danger">Credit</th>
-                            @if (ViewBag.IsBankReceipt == true || ViewBag.IsBankPayment == true || ViewBag.IsFull == true)
-                            {
-                                <th>Cheque No</th>
-                                <th>Cheque Date</th>
-                            }
+                            <th style="width: 22%; min-width: 200px;">
+                                <i class="fa fa-university text-primary me-1"></i>
+                                Account
+                            </th>
+                            <th style="width: 8%; min-width: 85px;">
+                                <i class="fa fa-tag text-primary me-1"></i>
+                                Bilti No
+                            </th>
+                            <th style="width: 8%; min-width: 85px;">
+                                <i class="fa fa-file-text text-primary me-1"></i>
+                                Bill No
+                            </th>
+                            <th class="text-success" style="width: 10%; min-width: 95px;">
+                                <i class="fa fa-arrow-down me-1"></i>
+                                Debit
+                            </th>
+                            <th class="text-danger" style="width: 10%; min-width: 95px;">
+                                <i class="fa fa-arrow-up me-1"></i>
+                                Credit
+                            </th>
                             @if (ViewBag.IsCashReceipt == true || ViewBag.IsCashPayment == true || ViewBag.IsFull == true)
                             {
-                                <th>Tax</th>
+                                <th style="width: 7%; min-width: 75px;">
+                                    <i class="fa fa-percent text-primary me-1"></i>
+                                    Tax
+                                </th>
                             }
-                            <th>Narration</th>
-                            <th>Action</th>
+                            <th style="width: 37%; min-width: 350px;">
+                                <i class="fa fa-comment text-primary me-1"></i>
+                                Narration
+                            </th>
+                            <th style="width: 5%; min-width: 50px;">
+                                <i class="fa fa-cog text-primary me-1"></i>
+                                Action
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="tbody">
@@ -1300,11 +1326,6 @@
                                             <input type="hidden" name="Details[@idx].Cramt" value="@d.Cramt" />
                                         }
                                     </td>
-                                    @if (ViewBag.IsBankReceipt == true || ViewBag.IsBankPayment == true || ViewBag.IsFull == true)
-                                    {
-                                        <td><input name="Details[@idx].Chqno" value="@d.Chqno" class="form-control" /></td>
-                                        <td><input name="Details[@idx].ChqDate" type="date" value="@(d.ChqDate?.ToString("yyyy-MM-dd"))" class="form-control" /></td>
-                                    }
                                     @if (ViewBag.IsCashReceipt == true || ViewBag.IsCashPayment == true || ViewBag.IsFull == true)
                                     {
                                         <td><input name="Details[@idx].Ptax" value="@d.Ptax" class="form-control" /></td>
@@ -1331,24 +1352,24 @@
     </div>
 
     <!-- SUMMARY -->
-    <div class="card mt-3 border-0 shadow-sm">
-        <div class="card-body">
-            <div class="row text-center">
+    <div class="card border-0 shadow-sm mb-1 bg-white">
+        <div class="card-body py-1 px-3">
+            <div class="row text-center align-items-center">
                 <div class="col-md-3">
-                    <p class="mb-1 text-muted small">Total Entries</p>
-                    <h5 id="entries" class="fw-bold">0</h5>
+                    <span class="text-muted small me-2"><i class="fa fa-list me-1"></i> Entries:</span>
+                    <strong id="entries" class="fw-bold fs-6">0</strong>
                 </div>
                 <div class="col-md-3">
-                    <p class="mb-1 text-muted small">Debit</p>
-                    <h5 id="dr" class="text-success fw-bold">0</h5>
+                    <span class="text-muted small me-2"><i class="fa fa-arrow-down text-success me-1"></i> Debit:</span>
+                    <strong id="dr" class="text-success fw-bold fs-6">0</strong>
                 </div>
                 <div class="col-md-3">
-                    <p class="mb-1 text-muted small">Credit</p>
-                    <h5 id="cr" class="text-danger fw-bold">0</h5>
+                    <span class="text-muted small me-2"><i class="fa fa-arrow-up text-danger me-1"></i> Credit:</span>
+                    <strong id="cr" class="text-danger fw-bold fs-6">0</strong>
                 </div>
                 <div class="col-md-3">
-                    <p class="mb-1 text-muted small">Difference</p>
-                    <h5 id="df" class="text-primary fw-bold">0</h5>
+                    <span class="text-muted small me-2"><i class="fa fa-balance-scale me-1"></i> Difference:</span>
+                    <strong id="df" class="text-primary fw-bold fs-6">0</strong>
                 </div>
             </div>
         </div>
@@ -1369,6 +1390,11 @@
         let disableDebit = (isCashReceipt || isBankReceipt);
         let disableCredit = (isCashPayment || isBankPayment);
 
+        function escapeHtml(text) {
+            if (!text) return "";
+            return String(text).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
         function addRow() {
             let debitCol = `
                 <td>
@@ -1388,16 +1414,23 @@
                 <td><input name="Details[${i}].Ptax" class="form-control"/></td>
             ` : "";
 
-            let chequeCols = (isBankReceipt || isBankPayment || isFull) ? `
-                <td><input name="Details[${i}].Chqno" class="form-control"/></td>
-                <td><input name="Details[${i}].ChqDate" type="date" class="form-control"/></td>
-            ` : "";
+            // Default Narration from previous row, or from Master Narration
+            let defaultNarration = "";
+            const prevNarrationInput = document.querySelector("#tbl tbody tr:not(#noDataRow):last-child input[name*='Narration']");
+            if (prevNarrationInput && prevNarrationInput.value) {
+                defaultNarration = prevNarrationInput.value;
+            } else {
+                const headNarr = document.querySelector("input[name='Head.Narration'], #Head_Narration");
+                if (headNarr && headNarr.value) {
+                    defaultNarration = headNarr.value;
+                }
+            }
 
             let row = `
                 <tr>
                     <td>
                         <select name="Details[${i}].gl3Id" class="form-control select2">
-                            <option>Select Account</option>
+                            <option value="">Select Account</option>
                             @foreach (var acc in ViewBag.Accounts)
                             {
                                     <option value="@acc.Value">@acc.Text</option>
@@ -1409,9 +1442,8 @@
                     <td><input name="Details[${i}].Bilno" class="form-control"/></td>
                     ${debitCol}
                     ${creditCol}
-                    ${chequeCols}
                     ${taxCol}
-                    <td><input name="Details[${i}].Narration" class="form-control"/></td>
+                    <td><input name="Details[${i}].Narration" value="${escapeHtml(defaultNarration)}" class="form-control"/></td>
                     <td>
                         <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
                             <i class="fa fa-trash"></i>
@@ -1430,16 +1462,22 @@
         }
 
         function calc() {
-            let dr = 0, cr = 0;
+            let dr = 0, cr = 0, entries = 0;
             const rows = document.querySelectorAll("#tbl tbody tr:not(#noDataRow)");
-            let entries = 0;
 
             rows.forEach(tr => {
                 let dInput = tr.querySelector("[name*='Dramt']:not([type='hidden'])");
                 let cInput = tr.querySelector("[name*='Cramt']:not([type='hidden'])");
                 
-                let d = dInput ? +(dInput.value || 0) : 0;
-                let c = cInput ? +(cInput.value || 0) : 0;
+                let d = parseFloat(dInput?.value || 0);
+                let c = parseFloat(cInput?.value || 0);
+
+                if (d > 0 && c > 0) {
+                    alert("Row cannot have both Debit and Credit");
+                    if (dInput) dInput.value = "";
+                    if (cInput) cInput.value = "";
+                    return;
+                }
 
                 if (d > 0 || c > 0) entries++;
 
@@ -1451,8 +1489,31 @@
 
             document.getElementById("dr").innerText = dr.toFixed(2);
             document.getElementById("cr").innerText = cr.toFixed(2);
-            document.getElementById("df").innerText = diff.toFixed(2);
+            document.getElementById("df").innerText = (type === "JV" ? diff : 0).toFixed(2);
             document.getElementById("entries").innerText = entries;
+
+            const submitBtns = document.querySelectorAll("button[type='submit']");
+            let isValid = false;
+            if (type === "JV") {
+                isValid = (entries > 0 && diff === 0 && (dr > 0 || cr > 0));
+            } else if (type === "CP" || type === "BP") {
+                isValid = (entries > 0 && dr > 0);
+            } else if (type === "CR" || type === "BR") {
+                isValid = (entries > 0 && cr > 0);
+            } else {
+                isValid = (entries > 0 && (dr > 0 || cr > 0));
+            }
+
+            submitBtns.forEach(btn => {
+                btn.disabled = !isValid;
+                if (type === "JV") {
+                    btn.classList.toggle("btn-danger", !isValid && entries > 0 && diff !== 0);
+                    btn.classList.toggle("btn-success", isValid);
+                } else {
+                    btn.classList.remove("btn-danger");
+                    btn.classList.add("btn-success");
+                }
+            });
         }
 
         function removeRow(btn) {
@@ -1467,6 +1528,190 @@
             }
             calc();
         }
+
+        // ========================================================
+        // 🚀 EMPTY ACCOUNT ENTER -> JUMP TO SAVE / UPDATE BUTTON
+        // ========================================================
+        function checkAndJumpToSaveOnEmptyRow($target) {
+            var $tr = $target.closest('tr');
+            if (!$tr.length || $tr.attr('id') === 'noDataRow') return false;
+
+            var $acc = $tr.find('select[name*="gl3Id"]');
+            var val = $acc.val();
+            var hasAccount = (val && val !== '' && val !== '0' && val !== 'Select Account');
+
+            if (!hasAccount) {
+                var $allRows = $('#tbl tbody tr:not(#noDataRow)');
+                if ($allRows.length > 1) {
+                    try { $acc.select2('close'); } catch(e) {}
+                    $('.select2-hidden-accessible').select2('close');
+                    $tr.remove();
+                    calc();
+                    var $saveBtn = $('#btnUpdate, #btnUpdateBottom, #btnSave, #btnSaveBottom, button[type="submit"]').filter(':visible').first();
+                    if ($saveBtn.length) {
+                        $saveBtn.prop('disabled', false).removeClass('disabled');
+                        $saveBtn.focus();
+                        if (typeof highlightField === 'function') highlightField($saveBtn);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        $(document).on('keydown', '#tbl .select2-selection', function(e) {
+            if (e.key === 'Enter') {
+                if (checkAndJumpToSaveOnEmptyRow($(this))) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+        });
+
+        $(document).on('keydown', '.select2-search__field', function(e) {
+            if (e.key === 'Enter') {
+                var $search = $(this);
+                if (!$search.val()) {
+                    var $select = $('select.select2-hidden-accessible').filter(function() {
+                        return $(this).data('select2') && $(this).data('select2').$container.hasClass('select2-container--open');
+                    });
+                    if ($select.length && $select.closest('#tbl').length) {
+                        if (checkAndJumpToSaveOnEmptyRow($select)) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                        }
+                    }
+                }
+            }
+        });
+
+        $(document).on('keydown', '#tbl tbody tr input', function(e) {
+            if (e.key === 'Enter') {
+                var $tr = $(this).closest('tr');
+                var $acc = $tr.find('select[name*="gl3Id"]');
+                var val = $acc.val();
+                if ((!val || val === '' || val === '0' || val === 'Select Account') && $('#tbl tbody tr:not(#noDataRow)').length > 1) {
+                    if (checkAndJumpToSaveOnEmptyRow($(this))) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                }
+            }
+        });
+
+        // ========================================================
+        // 🎯 EXCEL-LIKE ARROW KEY NAVIGATION ACROSS ROWS & COLUMNS
+        // ========================================================
+        $(document).on('focus', '#tbl input:not([type=hidden])', function() {
+            var el = this;
+            setTimeout(function() {
+                try { el.select(); } catch(e) {}
+            }, 10);
+        });
+
+        function getRowCells($tr) {
+            return $tr.find('.select2-selection, input:not([type=hidden]):not([disabled])').filter(':visible');
+        }
+
+        $(document).on('keydown', '#tbl input:not([type=hidden]), #tbl .select2-selection', function(e) {
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                return;
+            }
+
+            // Don't intercept arrow navigation if select2 options dropdown is open
+            if ($('.select2-container--open').length > 0) {
+                return;
+            }
+
+            var $current = $(this);
+
+            // If on a list field (.select2-selection), ArrowDown or ArrowUp opens the dropdown!
+            if ($current.hasClass('select2-selection') && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                e.preventDefault();
+                var $sel = AppNav.getSelectFromSelection($current);
+                AppNav.openSelect2($sel);
+                return;
+            }
+
+            var $tr = $current.closest('tr');
+            if (!$tr.length || $tr.attr('id') === 'noDataRow') return;
+
+            var $cells = getRowCells($tr);
+            var colIdx = $cells.index($current);
+            if (colIdx === -1) colIdx = 0;
+
+            var $allRows = $('#tbl tbody tr:not(#noDataRow)');
+            var rowIdx = $allRows.index($tr);
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (rowIdx < $allRows.length - 1) {
+                    var $nextRow = $allRows.eq(rowIdx + 1);
+                    var $nextCells = getRowCells($nextRow);
+                    var targetIdx = Math.min(colIdx, $nextCells.length - 1);
+                    if (targetIdx >= 0) {
+                        var $target = $nextCells.eq(targetIdx);
+                        $target.focus();
+                        if ($target.is('input')) try { $target.select(); } catch(err) {}
+                    }
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (rowIdx > 0) {
+                    var $prevRow = $allRows.eq(rowIdx - 1);
+                    var $prevCells = getRowCells($prevRow);
+                    var targetIdx = Math.min(colIdx, $prevCells.length - 1);
+                    if (targetIdx >= 0) {
+                        var $target = $prevCells.eq(targetIdx);
+                        $target.focus();
+                        if ($target.is('input')) try { $target.select(); } catch(err) {}
+                    }
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowRight') {
+                var canRight = false;
+                if ($current.hasClass('select2-selection')) {
+                    canRight = true;
+                } else if ($current.is('input')) {
+                    var el = $current[0];
+                    if (el.selectionStart !== el.selectionEnd || el.selectionEnd === el.value.length) {
+                        canRight = true;
+                    }
+                }
+                if (canRight && colIdx < $cells.length - 1) {
+                    e.preventDefault();
+                    var $nextCell = $cells.eq(colIdx + 1);
+                    $nextCell.focus();
+                    if ($nextCell.is('input')) try { $nextCell.select(); } catch(err) {}
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowLeft') {
+                var canLeft = false;
+                if ($current.is('input')) {
+                    var el = $current[0];
+                    if (el.selectionStart !== el.selectionEnd || el.selectionStart === 0) {
+                        canLeft = true;
+                    }
+                }
+                if (canLeft && colIdx > 0) {
+                    e.preventDefault();
+                    var $prevCell = $cells.eq(colIdx - 1);
+                    $prevCell.focus();
+                    if ($prevCell.is('input')) try { $prevCell.select(); } catch(err) {}
+                }
+                return;
+            }
+        });
 
         $(document).ready(function () {
             $('.select2').select2();

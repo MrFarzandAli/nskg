@@ -593,7 +593,7 @@ namespace Nskg.Controllers
 
             int compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
             if (compId <= 0) compId = 1006;
-            LoadDropdowns(compId);
+            LoadDropdowns(compId, id);
 
             // Ensure Station is in dropdown
             var stationsList = ViewBag.Stations as List<SelectListItem> ?? new List<SelectListItem>();
@@ -1115,7 +1115,7 @@ namespace Nskg.Controllers
             }
         }
 
-        private void LoadDropdowns(int? companyId = null)
+        private void LoadDropdowns(int? companyId = null, int? commBookId = null)
         {
             try
             {
@@ -1272,37 +1272,218 @@ namespace Nskg.Controllers
                 ViewBag.PartyExps = PartyExpAccounts;
 
 
-                //Load bilty
-                ViewBag.ChallanList = _context.ChallanHead
-    .Where(x => x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn))
-    .Select(x => new
-    {
-        x.Id,
-        x.DocNo,
-        x.DocDate,
-        x.ChalNo,
-        x.VehicleNo,
-        x.Transporter,
-        x.Driver,
-        x.StationCode,
-        x.Station,
-        x.TotPaid,
-        x.NetAmt,
-        x.TotToPaid,
-        x.TotBillTi,
-        x.DeliveryAmt,
-        x.LocalAmt,
-        x.TotPartyEx,
-        x.TotLifter2,
-        x.TotOtherEx
+                // Load challans (both unassigned and those belonging to the current CommBook if in Edit mode)
+                var challanQuery = _context.ChallanHead.AsQueryable();
+                if (compId > 0)
+                {
+                    challanQuery = challanQuery.Where(x => x.CompanyId == compId || x.CompanyId == 0 || x.CompanyId == 1006);
+                }
 
-    })
-    .ToList();
+                if (commBookId.HasValue && commBookId.Value > 0)
+                {
+                    challanQuery = challanQuery.Where(x => (x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn)) || x.commBookId == commBookId.Value);
+                }
+                else
+                {
+                    challanQuery = challanQuery.Where(x => x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn));
+                }
+
+                ViewBag.ChallanList = challanQuery
+                    .OrderByDescending(x => x.DocDate)
+                    .ThenByDescending(x => x.Id)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.DocNo,
+                        x.DocDate,
+                        x.ChalNo,
+                        x.VehicleNo,
+                        x.Transporter,
+                        x.Driver,
+                        x.StationCode,
+                        x.Station,
+                        x.TotPaid,
+                        x.NetAmt,
+                        x.TotToPaid,
+                        x.TotBillTi,
+                        x.DeliveryAmt,
+                        x.LocalAmt,
+                        x.TotPartyEx,
+                        x.TotLifter2,
+                        x.TotOtherEx,
+                        x.commBookId,
+                        x.DescYn
+                    })
+                    .ToList();
             }
             catch (Exception ex)
             {
                 _audit.LogAsync("Error", "LoadDropdowns", "0", ex.Message).Wait();
                 throw;
+            }
+        }
+
+        [HttpGet]
+        public IActionResult SearchChallans(
+            string? chalNo,
+            string? docDate,
+            string? vehicleNo,
+            string? transporter,
+            string? driver,
+            string? station,
+            string? paid,
+            string? toPaid,
+            string? billti,
+            string? delivery,
+            string? localAmt,
+            string? netAmt)
+        {
+            try
+            {
+                int compId = User.GetCompanyId();
+                var query = _context.ChallanHead.AsQueryable();
+                if (compId > 0)
+                {
+                    query = query.Where(x => x.CompanyId == compId || x.CompanyId == 0 || x.CompanyId == 1006);
+                }
+
+                bool hasFilter = false;
+
+                if (!string.IsNullOrWhiteSpace(chalNo))
+                {
+                    var val = chalNo.Trim().ToLower();
+                    query = query.Where(x => (x.ChalNo != null && x.ChalNo.ToString().Contains(val)) ||
+                                             (x.DocNo != null && x.DocNo.ToLower().Contains(val)));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(docDate))
+                {
+                    var val = docDate.Trim();
+                    if (DateTime.TryParse(val, out var parsedDate))
+                    {
+                        var targetDate = parsedDate.Date;
+                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.Date == targetDate);
+                        hasFilter = true;
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.ToString().Contains(val));
+                        hasFilter = true;
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(vehicleNo))
+                {
+                    var val = vehicleNo.Trim().ToLower();
+                    query = query.Where(x => x.VehicleNo != null && x.VehicleNo.ToLower().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(transporter))
+                {
+                    var val = transporter.Trim().ToLower();
+                    query = query.Where(x => x.Transporter != null && x.Transporter.ToLower().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(driver))
+                {
+                    var val = driver.Trim().ToLower();
+                    query = query.Where(x => x.Driver != null && x.Driver.ToLower().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(station))
+                {
+                    var val = station.Trim().ToLower();
+                    query = query.Where(x => x.Station != null && x.Station.ToLower().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(paid))
+                {
+                    var val = paid.Trim();
+                    query = query.Where(x => x.TotPaid != null && x.TotPaid.ToString().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(toPaid))
+                {
+                    var val = toPaid.Trim();
+                    query = query.Where(x => x.TotToPaid != null && x.TotToPaid.ToString().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(billti))
+                {
+                    var val = billti.Trim();
+                    query = query.Where(x => x.TotBillTi != null && x.TotBillTi.ToString().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(delivery))
+                {
+                    var val = delivery.Trim();
+                    query = query.Where(x => x.DeliveryAmt != null && x.DeliveryAmt.ToString().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(localAmt))
+                {
+                    var val = localAmt.Trim();
+                    query = query.Where(x => x.LocalAmt != null && x.LocalAmt.ToString().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(netAmt))
+                {
+                    var val = netAmt.Trim();
+                    query = query.Where(x => x.NetAmt != null && x.NetAmt.ToString().Contains(val));
+                    hasFilter = true;
+                }
+
+                if (!hasFilter)
+                {
+                    query = query.Where(x => x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn));
+                }
+
+                var results = query
+                    .OrderByDescending(x => x.DocDate)
+                    .ThenByDescending(x => x.Id)
+                    .Take(100)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        docNo = x.DocNo ?? "",
+                        chalNo = !string.IsNullOrEmpty(x.DocNo) ? x.DocNo : (x.ChalNo.HasValue ? x.ChalNo.Value.ToString() : ""),
+                        docDate = x.DocDate.HasValue ? x.DocDate.Value.ToString("dd/MM/yyyy") : "",
+                        docDateRaw = x.DocDate.HasValue ? x.DocDate.Value.ToString("yyyy-MM-dd") : "",
+                        vehicleNo = x.VehicleNo ?? "",
+                        transporter = x.Transporter ?? "",
+                        driver = x.Driver ?? "",
+                        stationCode = x.StationCode ?? "",
+                        station = x.Station ?? "",
+                        totPaid = x.TotPaid ?? 0,
+                        totToPaid = x.TotToPaid ?? 0,
+                        totBillTi = x.TotBillTi ?? 0,
+                        deliveryAmt = x.DeliveryAmt ?? 0,
+                        localAmt = x.LocalAmt ?? 0,
+                        netAmt = x.NetAmt ?? 0,
+                        totPartyEx = x.TotPartyEx ?? 0,
+                        totLifter2 = x.TotLifter2 ?? 0,
+                        totOtherEx = x.TotOtherEx ?? 0,
+                        descYn = x.DescYn ?? "",
+                        commBookId = x.commBookId,
+                        isInCommBook = (x.commBookId != null && x.commBookId > 0) || x.DescYn == "Y"
+                    })
+                    .ToList();
+
+                return Json(new { success = true, data = results });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
             }
         }
         private string GenerateDocNo()
@@ -1312,10 +1493,14 @@ namespace Nskg.Controllers
                     x.Id == User.GetFinancialYearId());
 
             if (fy == null)
-                throw new Exception("Active financial year not found.");
+            {
+                fy = _context.FinancialYears.FirstOrDefault(x => !x.IsClosed && !x.IsDeleted)
+                     ?? _context.FinancialYears.FirstOrDefault(x => !x.IsDeleted)
+                     ?? _context.FinancialYears.FirstOrDefault();
+            }
 
             string monthPart = DateTime.Now.ToString("MM");
-            string yearPart = fy.StartDate.ToString("yy");
+            string yearPart = fy != null ? fy.StartDate.ToString("yy") : DateTime.Now.ToString("yy");
 
             string code = monthPart + yearPart;   // e.g. 0426
 

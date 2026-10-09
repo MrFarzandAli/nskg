@@ -1088,7 +1088,7 @@ namespace Nskg.Controllers
                 var userCompanyId = User.GetCompanyId();
                 var threeDaysAgo = DateTime.Today.AddDays(-3);
                 ViewBag.BiltyList = _context.IssHead
-                    .Where(x => ((x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) || (currentChallanId.HasValue && x.ChallanId == currentChallanId.Value)) && !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId))
+                    .Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) && (x.ChallanId == null || x.ChallanId == 0) && !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId || x.CompanyId == 0))
                     .Select(x => new
                     {
                         x.Id,
@@ -1145,7 +1145,7 @@ namespace Nskg.Controllers
                 if (userCompanyId <= 0) userCompanyId = 1006;
 
                 var query = _context.IssHead.AsNoTracking()
-                    .Where(x => !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId));
+                    .Where(x => !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId || x.CompanyId == 0));
 
                 bool hasFilter = false;
 
@@ -1205,16 +1205,17 @@ namespace Nskg.Controllers
                     }
                 }
 
-                // If no specific column search is entered, only return active/pending bilties (DescYN != 'Y')
+                // If no specific column search is entered, only return active/pending unassigned bilties (DescYN != 'Y' and ChallanId is null)
                 if (!hasFilter)
                 {
-                    query = query.Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) || (currentChallanId.HasValue && x.ChallanId == currentChallanId.Value));
+                    query = query.Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) && (x.ChallanId == null || x.ChallanId == 0));
                     if (!string.IsNullOrEmpty(biltyType) && biltyType != "All")
                     {
                         if (biltyType == "ToPay") query = query.Where(x => x.PType == "ToPay");
                         else if (biltyType == "Paid") query = query.Where(x => x.PType == "Paid" || string.IsNullOrEmpty(x.PType));
                     }
                 }
+                // When hasFilter == true, user is actively searching: return all matching bilties (including already-selected ones)
 
                 var results = query
                     .OrderByDescending(x => x.DocDate)

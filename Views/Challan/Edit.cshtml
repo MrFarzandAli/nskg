@@ -118,16 +118,16 @@
     <input type="hidden" asp-for="Head.Id" />
     <input type="hidden" asp-for="Head.DocNo" />
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="d-flex align-items-center gap-3">
             <div>
-                <h3 class="mb-0 fw-bold text-navy">
+                <h4 class="mb-0 fw-bold text-navy">
                     <i class="fa fa-pencil-square-o text-primary me-2"></i>
                     Edit Challan
-                </h3>
-                <small class="text-muted"><i class="fa fa-info-circle me-1"></i> Edit Transport Challan</small>
+                </h4>
+                <small class="text-muted" style="font-size: 11px;"><i class="fa fa-info-circle me-1"></i> Edit Transport Challan</small>
             </div>
-            <span class="badge bg-primary fs-6 px-3 py-2 shadow-sm"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
+            <span class="badge bg-primary fs-7 px-3 py-1 shadow-sm"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-1">
@@ -182,49 +182,49 @@
     </div>
 
     <!-- MASTER -->
-    <div class="card custom-card shadow-sm border-0 mb-3">
-        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-semibold text-navy">
-                <i class="fa fa-sliders text-primary me-2"></i> General Details
+    <div class="card custom-card shadow-sm border-0 mb-2">
+        <div class="card-header bg-white border-bottom py-1 px-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
+                <i class="fa fa-sliders text-primary me-1"></i> General Details
             </h6>
         </div>
-        <div class="card-body">
-            <div class="row g-3">
+        <div class="card-body py-2 px-3">
+            <div class="row g-2">
 
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-hashtag text-primary me-1"></i> Challan No</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-hashtag text-primary me-1"></i> Challan No</label>
                     <input asp-for="Head.ChalNo" id="ChalNo" class="form-control form-control-sm" tabindex="1" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-calendar text-primary me-1"></i> Date</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-calendar text-primary me-1"></i> Date</label>
                     <input asp-for="Head.DocDate" type="date" value="@(Model?.Head?.DocDate.HasValue == true ? Model.Head.DocDate.Value.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" tabindex="2" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-4">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-map-marker text-primary me-1"></i> Station</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-map-marker text-primary me-1"></i> Station</label>
                     <select asp-for="Head.StationId" id="Head_StationId" class="form-select form-select-sm select2" tabindex="3"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text", Model != null && Model.Head != null && Model.Head.StationId > 0 ? Model.Head.StationId.ToString() : ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-4">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-truck text-primary me-1"></i> Transporter</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-truck text-primary me-1"></i> Transporter</label>
                     <select asp-for="Head.TransId" id="Head_TransId" class="form-select form-select-sm select2" tabindex="4"
                             asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text", Model != null && Model.Head != null && Model.Head.TransId > 0 ? Model.Head.TransId.ToString() : ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-car text-primary me-1"></i> Vehicle No</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-car text-primary me-1"></i> Vehicle No</label>
                     <input asp-for="Head.VehicleNo" class="form-control form-control-sm" tabindex="5" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-user text-primary me-1"></i> Party Name</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-user text-primary me-1"></i> Party Name</label>
                     <input asp-for="Head.Driver" class="form-control form-control-sm" tabindex="6" />
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-comment text-primary me-1"></i> Remarks</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-comment text-primary me-1"></i> Remarks</label>
                     <input asp-for="Head.Narration" class="form-control form-control-sm" tabindex="7" />
                 </div>
 
@@ -233,28 +233,27 @@
     </div>
 
     <!-- DETAIL -->
-    <div class="card custom-card shadow-sm border-0 mb-3">
-        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-semibold text-navy">
-                <i class="fa fa-list text-primary me-2"></i>
-                Bilty Details
+    <div class="card custom-card shadow-sm border-0 mb-2">
+        <div class="card-header bg-white border-bottom py-1 px-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
+                <i class="fa fa-list text-primary me-1"></i> Bilty Details
             </h6>
         </div>
 
-        <div class="card-body p-1">
+        <div class="card-body p-0">
 
-            <div class="table-responsive">
+            <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
                 <table class="table table-bordered table-hover mb-0" id="tblItems">
 
-                    <thead class="table-light text-center">
+                    <thead class="table-light text-center" style="position: sticky; top: 0; z-index: 2;">
                         <tr>
                             <th><i class="fa fa-barcode text-primary me-1"></i> Bilty No</th>
                             <th><i class="fa fa-user text-primary me-1"></i> Party Name</th>
                             <th><i class="fa fa-share text-primary me-1"></i> Send To</th>
-                            <th width="100"><i class="fa fa-cubes text-primary me-1"></i> Qty</th>
-                            <th width="120"><i class="fa fa-money text-primary me-1"></i> Bilty Amt</th>
-                            <th width="120"><i class="fa fa-credit-card text-primary me-1"></i> Paid Amt</th>
-                            <th width="80"><i class="fa fa-cog text-primary me-1"></i> Action</th>
+                            <th width="90"><i class="fa fa-cubes text-primary me-1"></i> Qty</th>
+                            <th width="110"><i class="fa fa-money text-primary me-1"></i> Bilty Amt</th>
+                            <th width="110"><i class="fa fa-credit-card text-primary me-1"></i> Paid Amt</th>
+                            <th width="65"><i class="fa fa-cog text-primary me-1"></i></th>
                         </tr>
                     </thead>
 
@@ -327,71 +326,71 @@
     </div>
 
     <!-- LOWER SECTION: EXPENSES (LEFT ~70%) & PARTIES (RIGHT ~30%) -->
-    <div class="row g-3 mb-3">
+    <div class="row g-2 mb-2">
         <!-- LEFT COLUMN: EXPENSES & CALCULATION (~70%) -->
         <div class="col-12 col-lg-8">
-            <div class="card shadow-sm border-0 h-100">
+            <div class="card shadow-sm border-0 h-100 mb-0">
                 <div class="card-header bg-white py-1 px-3">
-                    <h6 class="mb-0 fw-bold text-secondary small">
+                    <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
                         <i class="fa fa-calculator me-1 text-primary"></i> Expenses & Calculations
                     </h6>
                 </div>
-                <div class="card-body p-3">
+                <div class="card-body py-2 px-3">
                     <input type="hidden" asp-for="Head.PartyEx2" id="Head_PartyEx2" />
 
-                    <!-- 1. B#/ Row (Box 1 in image: B#/ Party omitted, B#/ Local & B#/ Other Ex kept) -->
-                    <div class="p-2 mb-2 border rounded bg-light">
-                        <div class="row g-2 align-items-center">
+                    <!-- 1. B#/ Row -->
+                    <div class="p-1 mb-1 border rounded bg-light">
+                        <div class="row g-1 align-items-center">
                             <div class="col-6 col-md-4">
-                                <label class="form-label small fw-semibold mb-1">B#/ Local</label>
+                                <label class="form-label small fw-semibold mb-0">B#/ Local</label>
                                 <input asp-for="Head.LocalAmt2" id="Head_LocalAmt2" class="form-control form-control-sm text-end" tabindex="111" />
                             </div>
                             <div class="col-6 col-md-4">
-                                <label class="form-label small fw-semibold mb-1">B#/ Other Ex</label>
+                                <label class="form-label small fw-semibold mb-0">B#/ Other Ex</label>
                                 <input asp-for="Head.OtherEx2" id="Head_OtherEx2" class="form-control form-control-sm text-end" tabindex="112" />
                             </div>
                         </div>
                     </div>
 
-                    <!-- 2. Local Amount, Other Expense, Total Billti AMT (Box 2 in image) -->
-                    <div class="p-2 mb-2 border rounded bg-light">
-                        <div class="row g-2 align-items-center">
+                    <!-- 2. Local Amount, Other Expense, Total Billti AMT -->
+                    <div class="p-1 mb-1 border rounded bg-light">
+                        <div class="row g-1 align-items-center">
                             <div class="col-6 col-md-4">
-                                <label class="form-label small fw-semibold mb-1">Local Amount</label>
+                                <label class="form-label small fw-semibold mb-0">Local Amount</label>
                                 <input asp-for="Head.LocalAmt" id="Head_LocalAmt" class="form-control form-control-sm text-end" tabindex="113" />
                             </div>
                             <div class="col-6 col-md-4">
-                                <label class="form-label small fw-semibold mb-1">Other Expense</label>
+                                <label class="form-label small fw-semibold mb-0">Other Expense</label>
                                 <input asp-for="Head.TotOtherEx" id="Head_TotOtherEx" class="form-control form-control-sm text-end" tabindex="114" />
                             </div>
                             <div class="col-12 col-md-4">
-                                <label class="form-label small fw-semibold mb-1">Total Billti AMT</label>
+                                <label class="form-label small fw-semibold mb-0">Total Billti AMT</label>
                                 <input asp-for="Head.TotBillTi" id="Head_TotBillTi" readonly class="form-control form-control-sm bg-light text-end" />
                             </div>
                         </div>
                     </div>
 
-                    <!-- 3. Calculations Row: To Pay, Delivery Amount, Billti AMT, Lifter, Net Amount (Box 3 in image) -->
-                    <div class="p-2 border rounded bg-light">
-                        <div class="row g-2 align-items-center">
+                    <!-- 3. Calculations Row: To Pay, Delivery Amount, Billti AMT, Lifter, Net Amount -->
+                    <div class="p-1 border rounded bg-light">
+                        <div class="row g-1 align-items-center">
                             <div class="col-6 col-md">
-                                <label class="form-label small fw-semibold mb-1">To Pay</label>
+                                <label class="form-label small fw-semibold mb-0">To Pay</label>
                                 <input asp-for="Head.TotToPaid" id="Head_TotToPaid" class="form-control form-control-sm text-end" tabindex="115" />
                             </div>
                             <div class="col-6 col-md">
-                                <label class="form-label small fw-semibold mb-1">Delivery Amount</label>
+                                <label class="form-label small fw-semibold mb-0">Delivery Amount</label>
                                 <input asp-for="Head.DeliveryAmt" id="Head_DeliveryAmt" class="form-control form-control-sm text-end" tabindex="116" />
                             </div>
                             <div class="col-6 col-md">
-                                <label class="form-label small fw-semibold mb-1">Billti AMT</label>
+                                <label class="form-label small fw-semibold mb-0">Billti AMT</label>
                                 <input asp-for="Head.BillTiAmt" id="Head_BillTiAmt" class="form-control form-control-sm text-end" tabindex="117" />
                             </div>
                             <div class="col-6 col-md">
-                                <label class="form-label small fw-semibold mb-1">Lifter</label>
+                                <label class="form-label small fw-semibold mb-0">Lifter</label>
                                 <input asp-for="Head.TotLifter2" id="Head_TotLifter2" class="form-control form-control-sm text-end" tabindex="118" />
                             </div>
                             <div class="col-12 col-md">
-                                <label class="form-label small fw-bold text-primary mb-1">Net Amount</label>
+                                <label class="form-label small fw-bold text-primary mb-0">Net Amount</label>
                                 <input asp-for="Head.NetAmt" id="Head_NetAmt" readonly class="form-control form-control-sm fw-bold text-primary bg-light border-primary text-end" />
                             </div>
                         </div>
@@ -402,26 +401,26 @@
 
         <!-- RIGHT COLUMN: PARTIES (VERTICAL STACK ~30%) -->
         <div class="col-12 col-lg-4">
-            <div class="card shadow-sm border-0 h-100">
+            <div class="card shadow-sm border-0 h-100 mb-0">
                 <div class="card-header bg-white py-1 px-3">
-                    <h6 class="mb-0 fw-bold text-secondary small">
+                    <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
                         <i class="fa fa-users me-1 text-primary"></i> Party Details
                     </h6>
                 </div>
-                <div class="card-body p-2">
-                    <div class="mb-2">
-                        <label class="form-label mb-1 text-muted" style="font-size:0.75rem; font-weight:600;">B#/ Party Station</label>
+                <div class="card-body py-1 px-2">
+                    <div class="mb-1">
+                        <label class="form-label mb-0 text-muted" style="font-size:0.75rem; font-weight:600;">B#/ Party Station</label>
                         <select asp-for="Head.PartyStationCode" id="PartyStationCode" class="form-select form-select-sm select2" tabindex="100"
-                                asp-items="@(new SelectList(ViewBag.PartyStations, "Value", "Text"))"></select>
+                                asp-items="@(new SelectList(ViewBag.PartyStations, "Value", "Text", Model?.Head?.PartyStationCode))"></select>
                     </div>
 
                     <!-- PARTY 1 -->
-                    <div class="p-2 mb-2 border rounded bg-light">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="p-1 mb-1 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-0">
                             <span class="text-primary fw-bold" style="font-size:0.75rem;">B#/ Party 1</span>
                         </div>
                         <select asp-for="Head.PExpCode" id="PExpCode" class="form-select form-select-sm select2 mb-1" tabindex="101"
-                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
+                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text", Model?.Head?.PExpCode))"></select>
                         <div class="row g-1">
                             <div class="col-6">
                                 <input asp-for="Head.PExpAmt" id="Head_PExpAmt" class="form-control form-control-sm calc text-end" placeholder="Amount" style="font-size:0.8rem;" tabindex="102" />
@@ -433,12 +432,12 @@
                     </div>
 
                     <!-- PARTY 2 -->
-                    <div class="p-2 mb-2 border rounded bg-light">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="p-1 mb-1 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-0">
                             <span class="text-primary fw-bold" style="font-size:0.75rem;">B#/ Party 2</span>
                         </div>
                         <select asp-for="Head.PExpCode2" id="Head_PExpCode2" class="form-select form-select-sm select2 mb-1" tabindex="104"
-                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
+                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text", Model?.Head?.PExpCode2))"></select>
                         <div class="row g-1">
                             <div class="col-6">
                                 <input asp-for="Head.PExpAmt2" id="Head_PExpAmt2" class="form-control form-control-sm calc text-end" placeholder="Amount" style="font-size:0.8rem;" tabindex="105" />
@@ -450,12 +449,12 @@
                     </div>
 
                     <!-- PARTY 3 -->
-                    <div class="p-2 border rounded bg-light">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="p-1 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-0">
                             <span class="text-primary fw-bold" style="font-size:0.75rem;">B#/ Party 3</span>
                         </div>
                         <select asp-for="Head.PExpCode3" id="Head_PExpCode3" class="form-select form-select-sm select2 mb-1" tabindex="107"
-                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text"))"></select>
+                                asp-items="@(new SelectList(ViewBag.PartyExps, "Value", "Text", Model?.Head?.PExpCode3))"></select>
                         <div class="row g-1">
                             <div class="col-6">
                                 <input asp-for="Head.PExpAmt3" id="Head_PExpAmt3" class="form-control form-control-sm calc text-end" placeholder="Amount" style="font-size:0.8rem;" tabindex="108" />
@@ -523,12 +522,9 @@
                     <tbody>
                         @foreach (var bilty in ViewBag.BiltyList)
                         {
-                            var isOld = bilty.DocDate != null && ((DateTime)bilty.DocDate).Date <= DateTime.Today.AddDays(-3);
                             var isInChallanDb = (bilty.ChallanId != null && bilty.ChallanId > 0) || bilty.DescYN == "Y";
                             var challanInfo = !string.IsNullOrEmpty((string?)bilty.ChallanDocNo) ? (string)bilty.ChallanDocNo : "";
-                            var rowClass = isOld ? "table-warning fw-semibold" : "";
-                            <tr class="@rowClass"
-                                data-stationid="@bilty.StationId"
+                            <tr data-stationid="@bilty.StationId"
                                 data-fooder="@bilty.Fooder"
                                 data-inchallan="@(isInChallanDb ? "true" : "false")"
                                 data-challandocno="@challanInfo">
@@ -558,10 +554,6 @@
                                 </td>
                                 <td>
                                     @bilty.DocNo
-                                    @if (isOld)
-                                    {
-                                        <span class="badge bg-danger ms-1" title="Older than 3 days">3+ Days</span>
-                                    }
                                     @if (isInChallanDb)
                                     {
                                         <span class="badge bg-secondary ms-1 inchallan-badge" title="Already in Challan @challanInfo"><i class="fa fa-check me-1"></i>Selected @(!string.IsNullOrEmpty(challanInfo) ? $"({challanInfo})" : "")</span>
@@ -750,6 +742,13 @@
 
         // Sync and mark bilties that are already in the Challan as checked
         function syncModalSelectedBilties() {
+            var hasActiveSearch = false;
+            $('.col-search').each(function() {
+                if (($(this).val() || '').trim() !== '') {
+                    hasActiveSearch = true;
+                }
+            });
+
             var selectedBiltyIds = [];
             var selectedDocNos = [];
             var selectedBiltyNos = [];
@@ -765,7 +764,7 @@
 
             $("#biltyModal tbody tr").each(function() {
                 var $tr = $(this);
-                if ($tr.attr('id') === 'noBiltyMatchRow') return;
+                if ($tr.attr('id') === 'noBiltyMatchRow' || $tr.attr('id') === 'searchingRow') return;
                 var $chk = $tr.find(".bilty-check");
                 if (!$chk.length) return;
 
@@ -776,29 +775,36 @@
                 var challanDocNo = ($chk.data("challandocno") || "").toString().trim();
 
                 var isAlreadyInCurrentChallan = 
-                    (bid && selectedBiltyIds.indexOf(bid) !== -1) ||
-                    (dno && selectedDocNos.indexOf(dno) !== -1) ||
-                    (bno && selectedBiltyNos.indexOf(bno) !== -1);
+                    (bid && bid !== "0" && selectedBiltyIds.indexOf(bid) !== -1) ||
+                    (dno && dno !== "" && selectedDocNos.indexOf(dno) !== -1) ||
+                    (bno && bno !== "" && selectedBiltyNos.indexOf(bno) !== -1);
 
-                if (isAlreadyInCurrentChallan) {
-                    $chk.prop("checked", true);
-                    $tr.addClass("table-primary fw-semibold");
-                    $tr.find(".inchallan-badge").remove();
-                    if (!$tr.find(".already-selected-badge").length) {
-                        $tr.find("td").eq(1).append(' <span class="badge bg-primary already-selected-badge ms-1"><i class="fa fa-check me-1"></i>Selected</span>');
-                    }
-                } else if (isInChallanDb) {
-                    $chk.prop("checked", true);
-                    $tr.addClass("table-light text-muted");
-                    if (!$tr.find(".inchallan-badge").length && !$tr.find(".already-selected-badge").length) {
-                        var label = challanDocNo ? 'Selected (' + challanDocNo + ')' : 'Selected';
-                        $tr.find("td").eq(1).append(' <span class="badge bg-secondary inchallan-badge ms-1"><i class="fa fa-check me-1"></i>' + label + '</span>');
+                if (hasActiveSearch) {
+                    // When actively searching, always show the row even if already selected
+                    $tr.removeClass("already-in-grid").show();
+                    if (isAlreadyInCurrentChallan || isInChallanDb) {
+                        $chk.prop("disabled", true).prop("checked", true);
+                        $tr.addClass("table-light text-muted");
+                        if ($tr.find(".inchallan-badge").length === 0) {
+                            var label = challanDocNo ? `(${escapeHtml(challanDocNo)})` : (isAlreadyInCurrentChallan ? '(Current Challan)' : '');
+                            $tr.find("td:eq(1)").append(`<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected ${label}</span>`);
+                        }
+                    } else {
+                        $chk.prop("disabled", false).prop("checked", false);
+                        $tr.removeClass("table-light text-muted");
+                        $tr.find(".inchallan-badge, .already-selected-badge").remove();
                     }
                 } else {
-                    $chk.prop("checked", false);
-                    $tr.removeClass("table-primary table-light fw-semibold text-muted");
-                    $tr.find(".already-selected-badge").remove();
-                    $tr.find(".inchallan-badge").remove();
+                    // Default modal view (no search text entered): hide bilties already in current grid
+                    if (isAlreadyInCurrentChallan) {
+                        $chk.prop("checked", false).prop("disabled", false);
+                        $tr.addClass("already-in-grid").hide();
+                        $tr.find(".already-selected-badge, .inchallan-badge").remove();
+                    } else {
+                        $chk.prop("checked", false).prop("disabled", false);
+                        $tr.removeClass("already-in-grid table-primary table-light fw-semibold text-muted").show();
+                        $tr.find(".already-selected-badge, .inchallan-badge").remove();
+                    }
                 }
             });
         }
@@ -806,6 +812,7 @@
         function setBiltyFilterType(type) {
             currentBiltyFilterType = type;
             updateBiltyFilterButtons(type);
+            syncModalSelectedBilties();
             applyBiltyFilters();
         }
 
@@ -840,21 +847,16 @@
             var visibleCount = 0;
             $("#biltyModal tbody tr").each(function () {
                 var $tr = $(this);
-                if ($tr.attr('id') === 'noBiltyMatchRow') return;
+                if ($tr.attr('id') === 'noBiltyMatchRow' || $tr.attr('id') === 'searchingRow') return;
 
-                // 1. Station match: if active column search is entered, allow searching across all stations
-                var stationMatches = true;
-                if (!hasActiveSearch && stationId && stationId !== "0") {
-                    var rowStationId = $tr.data('stationid') || $tr.find('.bilty-check').data('stationid');
-                    var rowFooder = ($tr.data('fooder') || $tr.find('.bilty-check').data('fooder') || '').toString().toLowerCase().trim();
-                    if (rowStationId && rowStationId.toString() === stationId.toString()) {
-                        stationMatches = true;
-                    } else if (stationName && rowFooder && (rowFooder === stationName || rowFooder.indexOf(stationName) !== -1 || stationName.indexOf(rowFooder) !== -1)) {
-                        stationMatches = true;
-                    } else {
-                        stationMatches = false;
-                    }
+                // When no active search, never show bilties that are already added in the current challan grid
+                if (!hasActiveSearch && $tr.hasClass("already-in-grid")) {
+                    $tr.hide();
+                    return;
                 }
+
+                // 1. Unselected bilties should always be visible across stations unless user specifically searches station
+                var stationMatches = true;
 
                 // 2. Type match: if active column search is entered, allow searching across all bilty types
                 var typeMatches = true;
@@ -948,27 +950,51 @@
             $.get('/Challan/SearchBilties', params, function(res) {
                 $("#searchingRow").remove();
                 if (res && res.success && res.data && res.data.length > 0) {
+                    var selectedBiltyIds = [];
+                    var selectedDocNos = [];
+                    var selectedBiltyNos = [];
+                    $("#tbodyItems tr").not("#noDataRow").each(function() {
+                        var bid = ($(this).find(".bilty-id").val() || "").toString().trim();
+                        var dno = ($(this).find(".dc-no").val() || $(this).find('input[name*="DCNo"]').val() || "").toString().trim().toLowerCase();
+                        var bno = ($(this).find(".billti-no").val() || $(this).find('input[name*="BillTiNo"]').val() || "").toString().trim().toLowerCase();
+                        if (bid && bid !== "0") selectedBiltyIds.push(bid);
+                        if (dno) selectedDocNos.push(dno);
+                        if (bno) selectedBiltyNos.push(bno);
+                    });
+
                     var html = '';
                     res.data.forEach(function(bilty) {
-                        var isOldClass = bilty.isOld ? 'table-warning fw-semibold' : '';
-                        var challanBadge = bilty.isInChallan ? 
-                            `<span class="badge bg-secondary ms-1 inchallan-badge" title="Already in Challan ${escapeHtml(bilty.challanDocNo)}"><i class="fa fa-check me-1"></i>Selected ${bilty.challanDocNo ? '(' + escapeHtml(bilty.challanDocNo) + ')' : ''}</span>` : '';
-                        var oldBadge = bilty.isOld ? `<span class="badge bg-danger ms-1" title="Older than 3 days">3+ Days</span>` : '';
+                        var bidStr = (bilty.id || "").toString().trim();
+                        var dnoStr = (bilty.docNo || "").toString().trim().toLowerCase();
+                        var bnoStr = (bilty.billTiNo || "").toString().trim().toLowerCase();
+
+                        var isCurrentChallan = 
+                            (bidStr && selectedBiltyIds.indexOf(bidStr) !== -1) ||
+                            (dnoStr && selectedDocNos.indexOf(dnoStr) !== -1) ||
+                            (bnoStr && selectedBiltyNos.indexOf(bnoStr) !== -1);
+
+                        var isSelected = bilty.isInChallan || isCurrentChallan;
+                        var challanInfo = bilty.challanDocNo ? bilty.challanDocNo : (isCurrentChallan ? 'Current Challan' : '');
+                        var challanBadge = isSelected ? 
+                            `<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected ${escapeHtml(challanInfo)}"><i class="fa fa-check me-1"></i>Selected ${challanInfo ? '(' + escapeHtml(challanInfo) + ')' : ''}</span>` : '';
+                        var rowClass = isSelected ? 'table-light text-muted' : '';
+                        var chkDisabled = isSelected ? 'disabled checked' : '';
 
                         html += `
-                            <tr class="${isOldClass}"
+                            <tr class="${rowClass}"
                                 data-stationid="${bilty.stationId || ''}"
                                 data-fooder="${escapeHtml(bilty.fooder || '')}"
-                                data-inchallan="${bilty.isInChallan ? 'true' : 'false'}"
-                                data-challandocno="${escapeHtml(bilty.challanDocNo || '')}">
+                                data-inchallan="${isSelected ? 'true' : 'false'}"
+                                data-challandocno="${escapeHtml(challanInfo)}">
                                 <td>
                                     <input type="checkbox"
                                            class="bilty-check"
+                                           ${chkDisabled}
                                            data-id="${bilty.id}"
                                            data-stationid="${bilty.stationId || ''}"
                                            data-fooder="${escapeHtml(bilty.fooder || '')}"
-                                           data-inchallan="${bilty.isInChallan ? 'true' : 'false'}"
-                                           data-challandocno="${escapeHtml(bilty.challanDocNo || '')}"
+                                           data-inchallan="${isSelected ? 'true' : 'false'}"
+                                           data-challandocno="${escapeHtml(challanInfo)}"
                                            data-billtino="${escapeHtml(bilty.billTiNo || '')}"
                                            data-bilno="${escapeHtml(bilty.bilNo || '')}"
                                            data-docno="${escapeHtml(bilty.docNo || '')}"
@@ -987,7 +1013,6 @@
                                 </td>
                                 <td>
                                     ${escapeHtml(bilty.docNo)}
-                                    ${oldBadge}
                                     ${challanBadge}
                                 </td>
                                 <td>${escapeHtml(bilty.docDate)}</td>
@@ -1126,7 +1151,7 @@
                 if (bno) existingBiltyNos.push(bno);
             });
 
-            $(".bilty-check:checked").each(function() {
+            $(".bilty-check:checked:not(:disabled)").each(function() {
                 hasSelected = true;
                 const $checkbox = $(this);
                 const biltyId = ($checkbox.data("id") || "").toString().trim();
@@ -1259,6 +1284,10 @@
             // Recalculate totals
             calculateTotals();
 
+            // Re-sync and hide selected bilties from modal
+            syncModalSelectedBilties();
+            applyBiltyFilters();
+
             // Show success message
             toastr.success(`${selectedCount} Bilty(s) added successfully!`);
         }
@@ -1283,6 +1312,10 @@
             $(btn).closest("tr").remove();
             reindexRows();
             calculateTotals();
+
+            // Re-sync modal so removed bilty becomes available again
+            syncModalSelectedBilties();
+            applyBiltyFilters();
 
             // When no rows exist, automatically add an empty row
             if ($("#tbodyItems tr").not("#noDataRow").length === 0) {

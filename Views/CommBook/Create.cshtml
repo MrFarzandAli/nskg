@@ -98,21 +98,20 @@
     </style>
 }
 
-<form method="post" id="CommBookForm">
+<form method="post" id="CommBookForm" class="form-dense">
     @Html.AntiForgeryToken()
 
     <input type="hidden" asp-for="Head.DocNo" />
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex align-items-center gap-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
             <div>
-                <h3 class="mb-0 fw-bold text-navy">
-                    <i class="fa fa-book text-primary me-2"></i>
-                    Commission Book Entry
-                </h3>
-                <small class="text-muted"><i class="fa fa-info-circle me-1"></i> Commission Book / Trip Settlements</small>
+                <h4 class="mb-0 fw-bold text-navy" style="font-size: 1.15rem;">
+                    <i class="fa fa-book text-primary me-2"></i>Commission Book Entry
+                </h4>
+                <small class="text-muted" style="font-size: 0.75rem;"><i class="fa fa-info-circle me-1"></i>Trip Settlements</small>
             </div>
-            <span class="badge bg-primary fs-6 px-3 py-2 shadow-sm"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
+            <span class="badge bg-primary px-2 py-1 shadow-sm" style="font-size: 0.78rem;"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
         </div>
 
         <div>
@@ -134,67 +133,67 @@
     </div>
 
     <!-- MASTER -->
-    <div class="card custom-card shadow-sm border-0 mb-3">
-        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-semibold text-navy">
-                <i class="fa fa-sliders text-primary me-2"></i> General Details
+    <div class="card custom-card shadow-sm border-0 mb-2">
+        <div class="card-header bg-white border-bottom py-1 px-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
+                <i class="fa fa-sliders text-primary me-1"></i> General Details
             </h6>
         </div>
-        <div class="card-body">
-            <div class="row g-3">
+        <div class="card-body py-2 px-3">
+            <div class="row g-2">
                 <!-- Row 1: Comm No (2), Date (2), Vehicle No (2), Station (3), Station Amt (3) = 12 -->
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-hashtag text-primary me-1"></i> Comm No</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-hashtag text-primary me-1"></i> Comm No</label>
                     <input asp-for="Head.ChalNo" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-calendar text-primary me-1"></i> Date</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-calendar text-primary me-1"></i> Date</label>
                     <input asp-for="Head.DocDate" type="date" value="@(Model != null && Model.Head != null ? Model.Head.DocDate.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-2">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-car text-primary me-1"></i> Vehicle No</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-car text-primary me-1"></i> Vehicle No</label>
                     <input asp-for="Head.VehicleNo" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-map-marker text-primary me-1"></i> Station</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-map-marker text-primary me-1"></i> Station</label>
                     <select asp-for="Head.StationId" id="StationId" class="form-select form-select-sm select2"
                             asp-items="@(new SelectList(ViewBag.Stations, "Value", "Text", Model?.Head?.StationId?.ToString() ?? ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Station Amt</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-money text-primary me-1"></i> Station Amt</label>
                     <input asp-for="Head.StationAmt" class="form-control form-control-sm text-end" />
                 </div>
 
                 <!-- Row 2: Transporter (3), Transporter Amt (3), Advance (3), Advance Amt (3) = 12 -->
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-truck text-primary me-1"></i> Transporter</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-truck text-primary me-1"></i> Transporter</label>
                     <select asp-for="Head.TransId" id="TransId" class="form-select form-select-sm select2"
                             asp-items="@(new SelectList(ViewBag.Transporters, "Value", "Text", Model?.Head?.TransId?.ToString() ?? ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Transporter Amt</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-money text-primary me-1"></i> Transporter Amt</label>
                     <input asp-for="Head.TransporterAmt" class="form-control form-control-sm text-end" />
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-hand-holding-usd text-primary me-1"></i> Advance</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-hand-holding-usd text-primary me-1"></i> Advance</label>
                     <select asp-for="Head.AdvanceId" id="AdvanceId" class="form-select form-select-sm select2"
                             asp-items="@(new SelectList(ViewBag.Advances, "Value", "Text", Model?.Head?.AdvanceId?.ToString() ?? ""))"></select>
                 </div>
 
                 <div class="col-12 col-sm-6 col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-money text-primary me-1"></i> Advance Amt</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-money text-primary me-1"></i> Advance Amt</label>
                     <input asp-for="Head.AdvanceAmt" class="form-control form-control-sm text-end" />
                 </div>
 
                 <!-- Row 3: Remarks (12) -->
                 <div class="col-12">
-                    <label class="form-label small text-muted fw-semibold mb-1"><i class="fa fa-comment text-primary me-1"></i> Remarks</label>
+                    <label class="form-label small text-muted fw-semibold mb-0"><i class="fa fa-comment text-primary me-1"></i> Remarks</label>
                     <input asp-for="Head.Narration" id="Head_Narration" class="form-control form-control-sm" />
                 </div>
             </div>
@@ -202,18 +201,17 @@
     </div>
 
     <!-- DETAIL -->
-    <div class="card custom-card shadow-sm border-0 mb-3">
-        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-semibold text-navy">
-                <i class="fa fa-list text-primary me-2"></i>
-                Challan Details
+    <div class="card custom-card shadow-sm border-0 mb-2">
+        <div class="card-header bg-white border-bottom py-1 px-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
+                <i class="fa fa-list text-primary me-1"></i> Challan Details
             </h6>
         </div>
 
-        <div class="card-body p-1">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover mb-0" id="tblItems">
-                    <thead class="table-light text-center">
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 200px; overflow-y: auto; overflow-x: auto;">
+                <table class="table table-bordered table-sm table-hover mb-0" id="tblItems">
+                    <thead class="table-light text-center" style="position: sticky; top: 0; z-index: 2; background-color: #f8f9fa;">
                         <tr>
                             <th width="100"><i class="fa fa-hashtag text-primary me-1"></i> Challan No</th>
                             <th width="100"><i class="fa fa-map-marker text-primary me-1"></i> Station</th>
@@ -250,54 +248,54 @@
     </div>
 
     <!-- LOWER SECTION: EXPENSES (LEFT ~70%) & PARTY (RIGHT ~30%) -->
-    <div class="row g-3 mb-3">
+    <div class="row g-2 mb-2">
         <!-- LEFT COLUMN: FREIGHT, EXPENSES & NET (~70%) -->
         <div class="col-12 col-lg-8">
-            <div class="card shadow-sm border-0 h-100">
+            <div class="card shadow-sm border-0 h-100 mb-0">
                 <div class="card-header bg-white py-1 px-3">
-                    <h6 class="mb-0 fw-bold text-secondary small">
+                    <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
                         <i class="fa fa-calculator me-1 text-primary"></i> Expenses & Calculations
                     </h6>
                 </div>
-                <div class="card-body p-3">
+                <div class="card-body py-2 px-3">
                     <div class="row g-2">
                         <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Freight (Delivery)</label>
+                            <label class="form-label small fw-semibold mb-0">Freight (Delivery)</label>
                             <input asp-for="Head.DeliveryAmt" id="Head_DeliveryAmt" class="form-control form-control-sm text-end" />
                         </div>
 
                         <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Munshiana (Local)</label>                    
+                            <label class="form-label small fw-semibold mb-0">Munshiana (Local)</label>                    
                             <input asp-for="Head.LocalAmt" id="Head_LocalAmt" class="form-control form-control-sm text-end" />
                         </div>
 
                         <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Labour</label>
+                            <label class="form-label small fw-semibold mb-0">Labour</label>
                             <input asp-for="Head.Labour" id="Head_Labour" class="form-control form-control-sm text-end" />
                         </div>
 
                         <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Other Expense</label>
+                            <label class="form-label small fw-semibold mb-0">Other Expense</label>
                             <input asp-for="Head.OtherExAmt" id="Head_OtherExAmt" class="form-control form-control-sm text-end" />
                         </div>
 
                         <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Lifter Amount</label>
+                            <label class="form-label small fw-semibold mb-0">Lifter Amount</label>
                             <input asp-for="Head.Lifter2Amt" id="Head_Lifter2Amt" class="form-control form-control-sm text-end" />
                         </div>
 
                         <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold mb-1">Tax</label>
+                            <label class="form-label small fw-semibold mb-0">Tax</label>
                             <input asp-for="Head.Tax" id="Head_Tax" class="form-control form-control-sm text-end" />
                         </div>
 
                         <div class="col-6 col-md-3">
-                            <label class="form-label small fw-bold mb-1">Total Amt</label>
+                            <label class="form-label small fw-bold mb-0">Total Amt</label>
                             <input asp-for="Head.TotAmt" id="Head_TotAmt" class="form-control form-control-sm bg-light fw-bold text-end" readonly />
                         </div>
 
                         <div class="col-6 col-md-3">
-                            <label class="form-label small fw-bold text-primary mb-1">Net Amt</label>
+                            <label class="form-label small fw-bold text-primary mb-0">Net Amt</label>
                             <input asp-for="Head.NetAmt" id="Head_NetAmt" class="form-control form-control-sm bg-light text-primary border-primary fw-bold text-end" readonly />
                         </div>
                     </div>
@@ -307,15 +305,15 @@
 
         <!-- RIGHT COLUMN: PARTY EXPENSE (~30%) -->
         <div class="col-12 col-lg-4">
-            <div class="card shadow-sm border-0 h-100">
+            <div class="card shadow-sm border-0 h-100 mb-0">
                 <div class="card-header bg-white py-1 px-3">
-                    <h6 class="mb-0 fw-bold text-secondary small">
+                    <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
                         <i class="fa fa-users me-1 text-primary"></i> Party Details
                     </h6>
                 </div>
-                <div class="card-body p-2">
-                    <div class="p-2 border rounded bg-light">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="card-body py-2 px-3">
+                    <div class="p-1 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-0">
                             <span class="text-primary fw-bold" style="font-size:0.75rem;">Party Expense</span>
                         </div>
                         <input asp-for="Head.PartyExAmt" id="Head_PartyExAmt" class="form-control form-control-sm text-end" placeholder="Amount" style="font-size:0.8rem;" />
@@ -329,84 +327,126 @@
 
 <!-- Bilty Modal -->
 <div class="modal fade" id="biltyModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Select Challan</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 96vw; width: 96vw; margin: 15px auto;">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-light py-2 px-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="modal-title fw-bold text-navy mb-0" style="font-size: 1.1rem;">
+                    <i class="fa fa-truck-loading text-primary me-2"></i>Select Challan
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <div class="mb-2">
-                    <button type="button" class="btn btn-sm btn-primary" onclick="selectAllBilties()">Select All</button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="deselectAllBilties()">Deselect All</button>
+            <div class="modal-body p-2" style="max-height: 75vh; overflow-y: auto; overflow-x: hidden;">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 p-2 bg-light rounded border">
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-primary px-3 shadow-sm" onclick="selectAllBilties()">
+                            <i class="fa fa-check-square me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" onclick="deselectAllBilties()">
+                            <i class="fa fa-square me-1"></i>Deselect All
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small fw-semibold" id="biltyMatchCount"></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearChallanFilters()" title="Reset all search filters">
+                            <i class="fa fa-refresh me-1"></i>Reset / Clear Filters
+                        </button>
+                    </div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm">
-                        <thead>
-                            <tr>
-                                <th>Select</th>
-                                <th>Challan No</th>
-                                <th>Date</th>
-                                <th>Vehicle</th>
-                                <th>Transporter</th>
-                                <th>Driver</th>
-                                <th>Station</th>
-                                <th>Paid</th>
-                                <th>To Paid</th>
-                                <th>Billti</th>
-                                <th>Delivery</th>
-                                <th>Local Amount</th>
-                                <th>Net Amount</th>
+                <div class="table-responsive" style="overflow-x: hidden;">
+                    <table class="table table-bordered table-sm table-hover align-middle mb-0" id="biltyModalTable" style="font-size: 0.78rem; width: 100%;">
+                        <thead class="table-light">
+                            <tr class="text-center align-middle" style="background-color: #f1f4f9;">
+                                <th style="width: 38px;">Select</th>
+                                <th style="width: 95px;">Challan No</th>
+                                <th style="width: 85px;">Date</th>
+                                <th style="width: 85px;">Vehicle</th>
+                                <th style="min-width: 130px;">Transporter</th>
+                                <th style="min-width: 130px;">Driver</th>
+                                <th style="min-width: 110px;">Station</th>
+                                <th style="width: 70px;" class="text-end">Paid</th>
+                                <th style="width: 70px;" class="text-end">To Paid</th>
+                                <th style="width: 70px;" class="text-end">Billti</th>
+                                <th style="width: 70px;" class="text-end">Delivery</th>
+                                <th style="width: 70px;" class="text-end">Local</th>
+                                <th style="width: 75px;" class="text-end">Net Amt</th>
+                            </tr>
+                            <tr class="bg-white filter-row align-middle">
+                                <th class="text-center text-muted p-1"><i class="fa fa-search small"></i></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="1" placeholder="Challan #" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="2" placeholder="Date" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="3" placeholder="Vehicle" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="4" placeholder="Transporter" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="5" placeholder="Driver / Party" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="6" placeholder="Station" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search text-end" data-col="7" placeholder="Paid" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search text-end" data-col="8" placeholder="To Paid" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search text-end" data-col="9" placeholder="Billti" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search text-end" data-col="10" placeholder="Delivery" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search text-end" data-col="11" placeholder="Local" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search text-end" data-col="12" placeholder="Net" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var chalno in ViewBag.ChallanList)
+                            @if (ViewBag.ChallanList != null)
                             {
-                                <tr>
-                                    <td>
-                                        <input type="checkbox"
-                                               class="bilty-check"
-                                               data-id="@chalno.Id"
-                                               data-docno="@chalno.DocNo"
-                                               data-chalno="@chalno.ChalNo"
-                                               data-vehicleno="@chalno.VehicleNo"
-                                               data-transporter="@chalno.Transporter"
-                                               data-driver="@chalno.Driver"
-                                               data-stationcode="@chalno.StationCode"
-                                               data-station="@chalno.Station"
-                                               data-totpaid="@chalno.TotPaid"
-                                               data-tottopaid="@chalno.TotToPaid"
-                                               data-totbillti="@chalno.TotBillTi"
-                                               data-deliveryamt="@chalno.DeliveryAmt"
-                                               data-localamt="@chalno.LocalAmt"
-                                               data-netamt="@chalno.NetAmt"
-                                               data-totpartyex="@chalno.TotPartyEx"
-                                               data-totlifter2="@chalno.TotLifter2"
-                                               data-tototherex="@chalno.TotOtherEx" />
-                                    </td>
-                                    <td>@chalno.ChalNo</td>
-                                    <td>@chalno.DocDate</td>
-                                    <td>@chalno.VehicleNo</td>
-                                    <td>@chalno.Transporter</td>
-                                    <td>@chalno.Driver</td>
-                                    <td>@chalno.Station</td>
-                                    <td>@chalno.TotPaid</td>
-                                    <td>@chalno.TotToPaid</td>
-                                    <td>@chalno.TotBillTi</td>
-                                    <td>@chalno.DeliveryAmt</td>
-                                    <td>@chalno.LocalAmt</td>
-                                    <td>@chalno.NetAmt</td>
-                                </tr>
+                                foreach (var chalno in ViewBag.ChallanList)
+                                {
+                                    var displayChalNo = !string.IsNullOrEmpty((string?)chalno.DocNo) ? (string)chalno.DocNo : (chalno.ChalNo != null ? chalno.ChalNo.ToString() : "");
+                                    var dateStr = chalno.DocDate != null ? ((DateTime)chalno.DocDate).ToString("dd/MM/yyyy") : "";
+                                    var isAssigned = (chalno.commBookId != null && chalno.commBookId > 0) || chalno.DescYn == "Y";
+                                    <tr data-id="@chalno.Id" data-docno="@chalno.DocNo" data-chalno="@displayChalNo" data-isassigned="@(isAssigned ? "true" : "false")">
+                                        <td class="text-center p-1">
+                                            <input type="checkbox"
+                                                   class="bilty-check form-check-input mt-0"
+                                                   data-id="@chalno.Id"
+                                                   data-docno="@chalno.DocNo"
+                                                   data-chalno="@displayChalNo"
+                                                   data-vehicleno="@chalno.VehicleNo"
+                                                   data-transporter="@chalno.Transporter"
+                                                   data-driver="@chalno.Driver"
+                                                   data-stationcode="@chalno.StationCode"
+                                                   data-station="@chalno.Station"
+                                                   data-totpaid="@(chalno.TotPaid ?? 0)"
+                                                   data-tottopaid="@(chalno.TotToPaid ?? 0)"
+                                                   data-totbillti="@(chalno.TotBillTi ?? 0)"
+                                                   data-deliveryamt="@(chalno.DeliveryAmt ?? 0)"
+                                                   data-localamt="@(chalno.LocalAmt ?? 0)"
+                                                   data-netamt="@(chalno.NetAmt ?? 0)"
+                                                   data-totpartyex="@(chalno.TotPartyEx ?? 0)"
+                                                   data-totlifter2="@(chalno.TotLifter2 ?? 0)"
+                                                   data-tototherex="@(chalno.TotOtherEx ?? 0)"
+                                                   data-isassigned="@(isAssigned ? "true" : "false")" />
+                                        </td>
+                                        <td class="p-1 fw-semibold text-primary">
+                                            @displayChalNo
+                                        </td>
+                                        <td class="p-1 text-nowrap">@dateStr</td>
+                                        <td class="p-1 text-nowrap">@chalno.VehicleNo</td>
+                                        <td class="p-1 text-truncate" style="max-width: 150px;" title="@chalno.Transporter">@chalno.Transporter</td>
+                                        <td class="p-1 text-truncate" style="max-width: 150px;" title="@chalno.Driver">@chalno.Driver</td>
+                                        <td class="p-1 text-truncate" style="max-width: 120px;" title="@chalno.Station">@chalno.Station</td>
+                                        <td class="p-1 text-end">@(((decimal)(chalno.TotPaid ?? 0)).ToString("0.00"))</td>
+                                        <td class="p-1 text-end">@(((decimal)(chalno.TotToPaid ?? 0)).ToString("0.00"))</td>
+                                        <td class="p-1 text-end">@(((decimal)(chalno.TotBillTi ?? 0)).ToString("0.00"))</td>
+                                        <td class="p-1 text-end">@(((decimal)(chalno.DeliveryAmt ?? 0)).ToString("0.00"))</td>
+                                        <td class="p-1 text-end">@(((decimal)(chalno.LocalAmt ?? 0)).ToString("0.00"))</td>
+                                        <td class="p-1 text-end fw-semibold">@(((decimal)(chalno.NetAmt ?? 0)).ToString("0.00"))</td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" id="btnAddSelected" class="btn btn-primary" onclick="addSelectedBilties()">
-                    Add Selected
-                </button>
+            <div class="modal-footer py-2 px-3 bg-light border-top d-flex justify-content-between align-items-center">
+                <span class="text-muted small"><i class="fa fa-info-circle me-1"></i>Search across any column to find specific challans.</span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="btnAddSelected" class="btn btn-primary btn-sm px-3 shadow-sm" onclick="addSelectedBilties()">
+                        <i class="fa fa-plus-circle me-1"></i>Add Selected
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -600,11 +640,299 @@
             calculateTotals();
         }
 
+        var initialModalTableHtml = '';
+        var challanSearchTimer = null;
+
+        function syncModalSelectedChallans() {
+            var hasActiveSearch = false;
+            $('.col-search').each(function () {
+                if (($(this).val() || '').trim() !== '') {
+                    hasActiveSearch = true;
+                }
+            });
+
+            var selectedChallanIds = [];
+            var selectedDocNos = [];
+            var selectedChalNos = [];
+
+            $("#tbodyItems tr").not("#noDataRow").each(function () {
+                var cid = ($(this).find(".challan-id").val() || "").toString().trim();
+                var dno = ($(this).find(".dc-no").val() || "").toString().trim().toLowerCase();
+                var cno = ($(this).find(".billti-no").val() || "").toString().trim().toLowerCase();
+                if (cid && cid !== "0") selectedChallanIds.push(cid);
+                if (dno) selectedDocNos.push(dno);
+                if (cno) selectedChalNos.push(cno);
+            });
+
+            $("#biltyModalTable tbody tr").each(function () {
+                var $tr = $(this);
+                if ($tr.attr('id') === 'noChallanMatchRow' || $tr.attr('id') === 'searchingRow') return;
+                var $chk = $tr.find(".bilty-check");
+                if (!$chk.length) return;
+
+                var cid = ($chk.data("id") || "").toString().trim();
+                var dno = ($chk.data("docno") || "").toString().trim().toLowerCase();
+                var cno = ($chk.data("chalno") || "").toString().trim().toLowerCase();
+                var isAssignedDb = ($chk.data("isassigned") === true || $chk.data("isassigned") === "true");
+
+                var isAlreadyInCurrentGrid = 
+                    (cid && cid !== "0" && selectedChallanIds.indexOf(cid) !== -1) ||
+                    (dno && dno !== "" && selectedDocNos.indexOf(dno) !== -1) ||
+                    (cno && cno !== "" && selectedChalNos.indexOf(cno) !== -1);
+
+                if (hasActiveSearch) {
+                    // Actively searching: Always show matching row, mark as Selected if already added
+                    $tr.removeClass("already-in-grid").show();
+                    if (isAlreadyInCurrentGrid || isAssignedDb) {
+                        $chk.prop("disabled", true).prop("checked", true);
+                        $tr.addClass("table-light text-muted");
+                        if ($tr.find(".inchallan-badge").length === 0) {
+                            var label = isAlreadyInCurrentGrid ? '(Current CommBook)' : '(Assigned)';
+                            $tr.find("td:eq(1)").append(`<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected ${label}</span>`);
+                        }
+                    } else {
+                        $chk.prop("disabled", false).prop("checked", false);
+                        $tr.removeClass("table-light text-muted");
+                        $tr.find(".inchallan-badge").remove();
+                    }
+                } else {
+                    // Default state (no search text): Hide challans already added to current grid
+                    if (isAlreadyInCurrentGrid) {
+                        $chk.prop("checked", false).prop("disabled", false);
+                        $tr.addClass("already-in-grid").hide();
+                        $tr.find(".inchallan-badge").remove();
+                    } else {
+                        $chk.prop("checked", false).prop("disabled", false);
+                        $tr.removeClass("already-in-grid table-light text-muted").show();
+                        $tr.find(".inchallan-badge").remove();
+                    }
+                }
+            });
+        }
+
+        // Apply filters: per-column client-side search
+        function applyChallanFilters() {
+            var searches = {};
+            $('.col-search').each(function () {
+                var col = $(this).data('col');
+                var val = ($(this).val() || '').toLowerCase().trim();
+                if (val) searches[col] = val;
+            });
+
+            var hasActiveSearch = Object.keys(searches).length > 0;
+            var visibleCount = 0;
+
+            $("#biltyModalTable tbody tr").each(function () {
+                var $tr = $(this);
+                if ($tr.attr('id') === 'noChallanMatchRow' || $tr.attr('id') === 'searchingRow') return;
+
+                // When no active search, hide challans already in current grid
+                if (!hasActiveSearch && $tr.hasClass("already-in-grid")) {
+                    $tr.hide();
+                    return;
+                }
+
+                var searchMatches = true;
+                for (var col in searches) {
+                    var cellText = $tr.find('td').eq(col).text().toLowerCase().trim();
+                    if (cellText.indexOf(searches[col]) === -1) {
+                        searchMatches = false;
+                        break;
+                    }
+                }
+
+                if (searchMatches) {
+                    $tr.show();
+                    visibleCount++;
+                } else {
+                    $tr.hide();
+                }
+            });
+
+            $('#noChallanMatchRow').remove();
+            if (visibleCount === 0) {
+                $("#biltyModalTable tbody").append(`
+                    <tr id="noChallanMatchRow">
+                        <td colspan="13" class="text-center text-muted py-3">
+                            <i class="fa fa-info-circle me-1 text-warning"></i> No challans found matching the search criteria.
+                        </td>
+                    </tr>
+                `);
+            }
+
+            if (hasActiveSearch) {
+                $('#biltyMatchCount').text(visibleCount + ' matching challans');
+            } else {
+                $('#biltyMatchCount').text('');
+            }
+        }
+
+        function handleChallanSearch() {
+            clearTimeout(challanSearchTimer);
+            challanSearchTimer = setTimeout(function () {
+                var chalNo = $('.col-search[data-col="1"]').val() || '';
+                var docDate = $('.col-search[data-col="2"]').val() || '';
+                var vehicleNo = $('.col-search[data-col="3"]').val() || '';
+                var transporter = $('.col-search[data-col="4"]').val() || '';
+                var driver = $('.col-search[data-col="5"]').val() || '';
+                var station = $('.col-search[data-col="6"]').val() || '';
+                var paid = $('.col-search[data-col="7"]').val() || '';
+                var toPaid = $('.col-search[data-col="8"]').val() || '';
+                var billti = $('.col-search[data-col="9"]').val() || '';
+                var delivery = $('.col-search[data-col="10"]').val() || '';
+                var localAmt = $('.col-search[data-col="11"]').val() || '';
+                var netAmt = $('.col-search[data-col="12"]').val() || '';
+
+                var hasSearch = (chalNo.trim() !== '') || (docDate.trim() !== '') || (vehicleNo.trim() !== '') ||
+                                (transporter.trim() !== '') || (driver.trim() !== '') || (station.trim() !== '') ||
+                                (paid.trim() !== '') || (toPaid.trim() !== '') || (billti.trim() !== '') ||
+                                (delivery.trim() !== '') || (localAmt.trim() !== '') || (netAmt.trim() !== '');
+
+                if (hasSearch) {
+                    performServerChallanSearch({
+                        chalNo: chalNo,
+                        docDate: docDate,
+                        vehicleNo: vehicleNo,
+                        transporter: transporter,
+                        driver: driver,
+                        station: station,
+                        paid: paid,
+                        toPaid: toPaid,
+                        billti: billti,
+                        delivery: delivery,
+                        localAmt: localAmt,
+                        netAmt: netAmt
+                    });
+                } else {
+                    if (initialModalTableHtml) {
+                        $("#biltyModalTable tbody").html(initialModalTableHtml);
+                    }
+                    syncModalSelectedChallans();
+                    applyChallanFilters();
+                }
+            }, 350);
+        }
+
+        function performServerChallanSearch(params) {
+            $("#noChallanMatchRow").remove();
+            $("#biltyModalTable tbody").html(`
+                <tr id="searchingRow">
+                    <td colspan="13" class="text-center text-primary py-3">
+                        <i class="fa fa-spinner fa-spin me-2"></i> Searching challans in database...
+                    </td>
+                </tr>
+            `);
+
+            $.get('/CommBook/SearchChallans', params, function (res) {
+                $("#searchingRow").remove();
+                if (res && res.success && res.data && res.data.length > 0) {
+                    var selectedChallanIds = [];
+                    var selectedDocNos = [];
+                    var selectedChalNos = [];
+
+                    $("#tbodyItems tr").not("#noDataRow").each(function () {
+                        var cid = ($(this).find(".challan-id").val() || "").toString().trim();
+                        var dno = ($(this).find(".dc-no").val() || "").toString().trim().toLowerCase();
+                        var cno = ($(this).find(".billti-no").val() || "").toString().trim().toLowerCase();
+                        if (cid && cid !== "0") selectedChallanIds.push(cid);
+                        if (dno) selectedDocNos.push(dno);
+                        if (cno) selectedChalNos.push(cno);
+                    });
+
+                    var rowsHtml = '';
+                    res.data.forEach(function (c) {
+                        var cid = (c.id || "").toString().trim();
+                        var dno = (c.docNo || "").toString().trim().toLowerCase();
+                        var cno = (c.chalNo || "").toString().trim().toLowerCase();
+                        var isAlreadyInGrid = (cid && cid !== "0" && selectedChallanIds.indexOf(cid) !== -1) ||
+                                              (dno && dno !== "" && selectedDocNos.indexOf(dno) !== -1) ||
+                                              (cno && cno !== "" && selectedChalNos.indexOf(cno) !== -1);
+                        var isAssigned = c.isInCommBook || isAlreadyInGrid;
+                        var displayNo = c.chalNo || c.docNo || '';
+                        var isMuted = isAssigned;
+
+                        rowsHtml += `
+                            <tr data-id="${c.id}" data-docno="${escapeHtml(c.docNo)}" data-chalno="${escapeHtml(displayNo)}" class="${isMuted ? 'table-light text-muted' : ''}">
+                                <td class="text-center p-1">
+                                    <input type="checkbox"
+                                           class="bilty-check form-check-input mt-0"
+                                           ${isMuted ? 'checked disabled' : ''}
+                                           data-id="${c.id}"
+                                           data-docno="${escapeHtml(c.docNo)}"
+                                           data-chalno="${escapeHtml(displayNo)}"
+                                           data-vehicleno="${escapeHtml(c.vehicleNo)}"
+                                           data-transporter="${escapeHtml(c.transporter)}"
+                                           data-driver="${escapeHtml(c.driver)}"
+                                           data-stationcode="${escapeHtml(c.stationCode)}"
+                                           data-station="${escapeHtml(c.station)}"
+                                           data-totpaid="${c.totPaid || 0}"
+                                           data-tottopaid="${c.totToPaid || 0}"
+                                           data-totbillti="${c.totBillTi || 0}"
+                                           data-deliveryamt="${c.deliveryAmt || 0}"
+                                           data-localamt="${c.localAmt || 0}"
+                                           data-netamt="${c.netAmt || 0}"
+                                           data-totpartyex="${c.totPartyEx || 0}"
+                                           data-totlifter2="${c.totLifter2 || 0}"
+                                           data-tototherex="${c.totOtherEx || 0}"
+                                           data-isassigned="${isAssigned ? 'true' : 'false'}" />
+                                </td>
+                                <td class="p-1 fw-semibold text-primary">
+                                    ${escapeHtml(displayNo)}
+                                    ${isAssigned ? `<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected</span>` : ''}
+                                </td>
+                                <td class="p-1 text-nowrap">${escapeHtml(c.docDate)}</td>
+                                <td class="p-1 text-nowrap">${escapeHtml(c.vehicleNo)}</td>
+                                <td class="p-1 text-truncate" style="max-width: 150px;" title="${escapeHtml(c.transporter)}">${escapeHtml(c.transporter)}</td>
+                                <td class="p-1 text-truncate" style="max-width: 150px;" title="${escapeHtml(c.driver)}">${escapeHtml(c.driver)}</td>
+                                <td class="p-1 text-truncate" style="max-width: 120px;" title="${escapeHtml(c.station)}">${escapeHtml(c.station)}</td>
+                                <td class="p-1 text-end">${parseFloat(c.totPaid || 0).toFixed(2)}</td>
+                                <td class="p-1 text-end">${parseFloat(c.totToPaid || 0).toFixed(2)}</td>
+                                <td class="p-1 text-end">${parseFloat(c.totBillTi || 0).toFixed(2)}</td>
+                                <td class="p-1 text-end">${parseFloat(c.deliveryAmt || 0).toFixed(2)}</td>
+                                <td class="p-1 text-end">${parseFloat(c.localAmt || 0).toFixed(2)}</td>
+                                <td class="p-1 text-end fw-semibold">${parseFloat(c.netAmt || 0).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    $("#biltyModalTable tbody").html(rowsHtml);
+                    $('#biltyMatchCount').text(res.data.length + ' matching challans');
+                } else {
+                    $("#biltyModalTable tbody").html(`
+                        <tr id="noChallanMatchRow">
+                            <td colspan="13" class="text-center text-muted py-3">
+                                <i class="fa fa-info-circle me-1 text-warning"></i> No challans found matching the search criteria.
+                            </td>
+                        </tr>
+                    `);
+                    $('#biltyMatchCount').text('0 matching challans');
+                }
+            }).fail(function () {
+                $("#searchingRow").remove();
+                if (initialModalTableHtml) {
+                    $("#biltyModalTable tbody").html(initialModalTableHtml);
+                }
+                syncModalSelectedChallans();
+                applyChallanFilters();
+            });
+        }
+
+        function clearChallanFilters() {
+            $('.col-search').val('');
+            if (initialModalTableHtml) {
+                $("#biltyModalTable tbody").html(initialModalTableHtml);
+            }
+            syncModalSelectedChallans();
+            applyChallanFilters();
+        }
+
         // Function to remove row
         function removeRow(btn) {
             $(btn).closest("tr").remove();
             reindexRows();
             calculateTotals();
+            syncModalSelectedChallans();
+            applyChallanFilters();
 
             if ($("#tbodyItems tr").length === 0) {
                 showNoDataMessage();
@@ -626,18 +954,17 @@
             `);
         }
 
-        // Select/Deselect all functions
+        // Select/Deselect all functions (only visible and enabled)
         function selectAllBilties() {
-            $(".bilty-check").prop("checked", true);
+            $(".bilty-check:visible:not(:disabled)").prop("checked", true);
         }
 
         function deselectAllBilties() {
-            $(".bilty-check").prop("checked", false);
+            $(".bilty-check:visible:not(:disabled)").prop("checked", false);
         }
 
         // Function to add selected bilties from modal
         function addSelectedBilties() {
-            // Remove no data row if exists
             const noDataRow = document.getElementById("noDataRow");
             if (noDataRow) noDataRow.remove();
 
@@ -645,7 +972,7 @@
             let hasSelected = false;
             let selectedCount = 0;
 
-            $(".bilty-check:checked").each(function () {
+            $(".bilty-check:checked:not(:disabled)").each(function () {
                 hasSelected = true;
                 const currentIndex = getNextRowIndex();
                 const $checkbox = $(this);
@@ -774,8 +1101,11 @@
             $(".bilty-check").prop("checked", false);
 
             // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('biltyModal'));
-            if (modal) modal.hide();
+            const modalEl = document.getElementById('biltyModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                if (modal) modal.hide();
+            }
 
             // Reindex all rows to ensure sequential order
             reindexRows();
@@ -783,12 +1113,15 @@
             // Recalculate totals
             calculateTotals();
 
+            // Re-sync modal so added challans are hidden
+            syncModalSelectedChallans();
+            applyChallanFilters();
+
             // After rows are added and modal closed, focus Party Expense field
             setTimeout(function() {
                 var $partyExp = $('#Head_PartyExAmt');
                 if ($partyExp.length) {
                     $partyExp.focus();
-                    // highlightField may not be defined at this point in some scopes, but it is defined above
                     try { highlightField($partyExp); } catch (e) {}
                 }
             }, 150);
@@ -1047,6 +1380,28 @@
 
             // calculate initial totals
             calculateTotals();
+
+            initialModalTableHtml = $("#biltyModalTable tbody").html();
+
+            $(document).on('input', '.col-search', function () {
+                syncModalSelectedChallans();
+                applyChallanFilters();
+                handleChallanSearch();
+            });
+
+            // sync modal on show to hide already added challans
+            $('#biltyModal').on('show.bs.modal', function () {
+                syncModalSelectedChallans();
+                applyChallanFilters();
+            });
+
+            $('#biltyModal').on('shown.bs.modal', function () {
+                var firstInput = $('.col-search:first');
+                if (firstInput.length) firstInput.focus();
+            });
+
+            syncModalSelectedChallans();
+            applyChallanFilters();
         });
 
         // Attach to form submit
@@ -1065,5 +1420,8 @@
         window.validateBeforeSubmit = validateBeforeSubmit;
         window.selectAllBilties = selectAllBilties;
         window.deselectAllBilties = deselectAllBilties;
+        window.clearChallanFilters = clearChallanFilters;
+        window.applyChallanFilters = applyChallanFilters;
+        window.syncModalSelectedChallans = syncModalSelectedChallans;
     </script>
 }

@@ -87,28 +87,28 @@
 </form> 
  *@ 
 
- <form method="post">
+ <form method="post" class="form-dense">
     <input asp-for="Head.Votype" class="form-control form-control-sm" hidden />
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
 
         <div>
-            <h3 class="mb-0 fw-bold text-navy">
+            <h4 class="mb-0 fw-bold text-navy">
                 <i class="fa fa-file-text-o text-primary me-2"></i>
                 @(ViewBag.Votype ?? Model?.Head?.Votype ?? "Voucher Entry")
-            </h3>
-            <small class="text-muted">
+            </h4>
+            <small class="text-muted" style="font-size: 11px;">
                 <i class="fa fa-info-circle me-1"></i>
                 Create and manage accounting voucher
             </small>
         </div>
 
         <div>
-            <button type="button" class="btn btn-outline-primary btn-sm custom-btn me-2" onclick="addRow()">
+            <button type="button" id="btnAddRow" class="btn btn-outline-primary btn-sm custom-btn me-2" onclick="addRow()">
                 <i class="fa fa-plus me-1"></i> Add Row
             </button>
 
-            <button type="submit" class="btn btn-success btn-sm custom-btn shadow-sm">
+            <button type="submit" id="btnSave" class="btn btn-success btn-sm custom-btn shadow-sm">
                 <i class="fa fa-save me-1"></i> Save Voucher
             </button>
         </div>
@@ -116,39 +116,39 @@
     </div>
 
     <!-- MASTER -->
-    <div class="card custom-card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-semibold text-navy">
-                <i class="fa fa-sliders text-primary me-2"></i> General Details
+    <div class="card custom-card border-0 shadow-sm mb-2">
+        <div class="card-header bg-white border-bottom py-1 px-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
+                <i class="fa fa-sliders text-primary me-1"></i> General Details
             </h6>
         </div>
-        <div class="card-body">
+        <div class="card-body py-2 px-3">
 
-            <div class="row g-3">
+            <div class="row g-2">
 
                 <div class="col-md-2">
-                    <label class="form-label small text-muted fw-semibold mb-1">
+                    <label class="form-label small text-muted fw-semibold mb-0">
                         <i class="fa fa-hashtag text-primary me-1"></i> Voucher No
                     </label>
                     <input asp-for="Head.Vono" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small text-muted fw-semibold mb-1">
-                        <i class="fa fa-calendar text-primary me-1"></i> Transaction Date
+                    <label class="form-label small text-muted fw-semibold mb-0">
+                        <i class="fa fa-calendar text-primary me-1"></i> Trans Date
                     </label>
                     <input asp-for="Head.Vodate" type="date" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small text-muted fw-semibold mb-1">
+                    <label class="form-label small text-muted fw-semibold mb-0">
                         <i class="fa fa-clock-o text-primary me-1"></i> Entry Date
                     </label>
                     <input asp-for="Head.EntryDate" type="date" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1">
+                    <label class="form-label small text-muted fw-semibold mb-0">
                         <i class="fa fa-university text-primary me-1"></i> Account
                     </label>
                     <select asp-for="Head.gl3Id" class="form-select form-select-sm select2">
@@ -172,7 +172,7 @@
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1">
+                    <label class="form-label small text-muted fw-semibold mb-0">
                         <i class="fa fa-exchange text-primary me-1"></i> Pay / Receive
                     </label>
                     <select asp-for="Head.Partycode" class="form-select form-select-sm select2"
@@ -181,21 +181,21 @@
                 </div>
 
                 <div class="col-md-5">
-                    <label class="form-label small text-muted fw-semibold mb-1">
+                    <label class="form-label small text-muted fw-semibold mb-0">
                         <i class="fa fa-user text-primary me-1"></i> Payee / Receiver
                     </label>
                     <input asp-for="Head.PersonName" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-1">
+                    <label class="form-label small text-muted fw-semibold mb-0">
                         <i class="fa fa-list-ol text-primary me-1"></i> Reference No
                     </label>
                     <input asp-for="Head.Invno" class="form-control form-control-sm" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label small text-muted fw-semibold mb-1">
+                    <label class="form-label small text-muted fw-semibold mb-0">
                         <i class="fa fa-comment text-primary me-1"></i> Narration
                     </label>
                     <input asp-for="Head.Narration" class="form-control form-control-sm" />
@@ -207,15 +207,15 @@
     </div>
 
     <!-- DETAILS -->
-    <div class="card custom-card mt-3 border-0 shadow-sm">
+    <div class="card custom-card border-0 shadow-sm mb-2">
 
-        <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom py-2">
-            <h6 class="mb-0 fw-semibold text-navy">
-                <i class="fa fa-list text-primary me-2"></i>
+        <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom py-1 px-3">
+            <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
+                <i class="fa fa-list text-primary me-1"></i>
                 Voucher Details
             </h6>
 
-            <span class="badge bg-primary fs-6 px-3 py-1 shadow-sm">
+            <span class="badge bg-primary fs-7 px-2 py-1 shadow-sm">
                 <i class="fa fa-bolt me-1"></i>
                 Live Entry Mode
             </span>
@@ -223,65 +223,51 @@
 
         <div class="card-body p-0">
 
-            <div class="table-responsive">
+            <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
 
                 <table class="table table-hover table-bordered align-middle mb-0" id="tbl">
 
- 
-                    <thead class="table-light text-center">
+                    <thead class="table-light text-center" style="position: sticky; top: 0; z-index: 2;">
                         <tr>
-                            <th>
+                            <th style="width: 22%; min-width: 200px;">
                                 <i class="fa fa-university text-primary me-1"></i>
                                 Account
                             </th>
 
-                            <th>
+                            <th style="width: 8%; min-width: 85px;">
                                 <i class="fa fa-tag text-primary me-1"></i>
                                 Bilti No
                             </th>
 
-                            <th>
+                            <th style="width: 8%; min-width: 85px;">
                                 <i class="fa fa-file-text text-primary me-1"></i>
                                 Bill No
                             </th>
 
-                            <th class="text-success">
+                            <th class="text-success" style="width: 10%; min-width: 95px;">
                                 <i class="fa fa-arrow-down me-1"></i>
                                 Debit
                             </th>
 
-                            <th class="text-danger">
+                            <th class="text-danger" style="width: 10%; min-width: 95px;">
                                 <i class="fa fa-arrow-up me-1"></i>
                                 Credit
                             </th>
 
-                            @if (Model.Head.Votype == "BP" || Model.Head.Votype == "BR" || Model.Head.Votype == "JV")
-                            {
-                                <th>
-                                    <i class="fa fa-credit-card text-primary me-1"></i>
-                                    Cheque No
-                                </th>
-
-                                <th>
-                                    <i class="fa fa-calendar text-primary me-1"></i>
-                                    Cheque Date
-                                </th>
-                            }
-
                             @if (Model.Head.Votype == "CP" || Model.Head.Votype == "CR" || Model.Head.Votype == "JV")
                             {
-                                <th>
+                                <th style="width: 7%; min-width: 75px;">
                                     <i class="fa fa-percent text-primary me-1"></i>
                                     Tax
                                 </th>
                             }
 
-                            <th>
+                            <th style="width: 37%; min-width: 350px;">
                                 <i class="fa fa-comment text-primary me-1"></i>
                                 Narration
                             </th>
 
-                            <th>
+                            <th style="width: 5%; min-width: 50px;">
                                 <i class="fa fa-cog text-primary me-1"></i>
                                 Action
                             </th>
@@ -289,7 +275,7 @@
                     </thead>
                     <tbody id="tbody">
                         <tr id="noDataRow">
-                            <td colspan="20" class="text-center text-muted py-3">
+                            <td colspan="20" class="text-center text-muted py-2">
                                 <i class="fa fa-inbox me-1"></i> No Data Available
                             </td>
                         </tr>
@@ -303,34 +289,28 @@
     </div>
 
     <!-- SUMMARY -->
-    <div class="card mt-3 border-0 shadow-sm">
-        <div class="card-body">
+    <div class="card border-0 shadow-sm mb-1 bg-white">
+        <div class="card-body py-1 px-3">
 
-            <div class="row text-center">
-
+            <div class="row text-center align-items-center">
                 <div class="col-md-3">
-                    <p class="mb-1 text-muted small"><i class="fa fa-list me-1"></i> Total Entries</p>
-                    <h5 id="entries" class="fw-bold">0</h5>
+                    <span class="text-muted small me-2"><i class="fa fa-list me-1"></i> Entries:</span>
+                    <strong id="entries" class="fw-bold fs-6">0</strong>
                 </div>
-
                 <div class="col-md-3">
-                    <p class="mb-1 text-muted small"><i class="fa fa-arrow-down text-success me-1"></i> Debit</p>
-                    <h5 id="dr" class="text-success fw-bold">0</h5>
+                    <span class="text-muted small me-2"><i class="fa fa-arrow-down text-success me-1"></i> Debit:</span>
+                    <strong id="dr" class="text-success fw-bold fs-6">0</strong>
                 </div>
-
                 <div class="col-md-3">
-                    <p class="mb-1 text-muted small"><i class="fa fa-arrow-up text-danger me-1"></i> Credit</p>
-                    <h5 id="cr" class="text-danger fw-bold">0</h5>
+                    <span class="text-muted small me-2"><i class="fa fa-arrow-up text-danger me-1"></i> Credit:</span>
+                    <strong id="cr" class="text-danger fw-bold fs-6">0</strong>
                 </div>
-
                 <div class="col-md-3">
-                    <p class="mb-1 text-muted small"><i class="fa fa-balance-scale me-1"></i> Difference</p>
-                    <h5 id="df" class="text-primary fw-bold">0</h5>
+                    <span class="text-muted small me-2"><i class="fa fa-balance-scale me-1"></i> Difference:</span>
+                    <strong id="df" class="text-primary fw-bold fs-6">0</strong>
                 </div>
-
             </div>
 
-           
         </div>
     </div>
 
@@ -340,11 +320,13 @@
         let i = 0;
         const type = '@Model.Head.Votype';
 
-        const isFullType = ["CP", "CR", "JV"].includes(type);
-        const isChequeType = ["BP", "BR", "JV"].includes(type);
+        function escapeHtml(text) {
+            if (!text) return "";
+            return String(text).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
 
-        const showTax       = isFullType;
-        const showCheque    = isChequeType;
+        const isFullType = ["CP", "CR", "JV"].includes(type);
+        const showTax    = isFullType;
 
         // ✅ VOUCHER RULE ENGINE (NEW)
         const VoucherRules = {
@@ -373,12 +355,24 @@
             const noDataRow = document.getElementById("noDataRow");
             if (noDataRow) noDataRow.remove();
 
+            // Default Narration from previous row, or from Master Narration
+            let defaultNarration = "";
+            const prevNarrationInput = document.querySelector("#tbl tbody tr:not(#noDataRow):last-child input[name*='Narration']");
+            if (prevNarrationInput && prevNarrationInput.value) {
+                defaultNarration = prevNarrationInput.value;
+            } else {
+                const headNarr = document.querySelector("input[name='Head.Narration'], #Head_Narration");
+                if (headNarr && headNarr.value) {
+                    defaultNarration = headNarr.value;
+                }
+            }
+
             const row = document.createElement("tr");
 
             row.innerHTML = `
                 <td>
                     <select name="Details[${i}].gl3Id" class="form-control select2">
-                        <option>Select Account</option>
+                        <option value="">Select Account</option>
                         @foreach (var acc in ViewBag.Accounts)
                         {
                                 <option value="@acc.Value">@acc.Text</option>
@@ -392,13 +386,9 @@
                 <td><input name="Details[${i}].Dramt" oninput="calc()" class="form-control"/></td>
                 <td><input name="Details[${i}].Cramt" oninput="calc()" class="form-control"/></td>
 
-                ${showCheque ? `
-                <td><input name="Details[${i}].Chqno" class="form-control"/></td>
-                <td><input name="Details[${i}].ChqDate" type="date" class="form-control"/></td>` : ""}
-
                 ${showTax ? `<td><input name="Details[${i}].Ptax" class="form-control"/></td>` : ""}
 
-                <td><input name="Details[${i}].Narration" class="form-control"/></td>
+                <td><input name="Details[${i}].Narration" value="${escapeHtml(defaultNarration)}" class="form-control"/></td>
 
                 <td>
                     <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
@@ -449,19 +439,19 @@
             document.getElementById("df").innerText = (type === "JV" ? diff : 0).toFixed(2);
             document.getElementById("entries").innerText = entries;
 
-            const btn = document.querySelector("button[type='submit']");
-            if (btn) {
-                let isValid = false;
-                if (type === "JV") {
-                    isValid = (entries > 0 && diff === 0 && (dr > 0 || cr > 0));
-                } else if (type === "CP" || type === "BP") {
-                    isValid = (entries > 0 && dr > 0);
-                } else if (type === "CR" || type === "BR") {
-                    isValid = (entries > 0 && cr > 0);
-                } else {
-                    isValid = (entries > 0 && (dr > 0 || cr > 0));
-                }
+            const submitBtns = document.querySelectorAll("button[type='submit']");
+            let isValid = false;
+            if (type === "JV") {
+                isValid = (entries > 0 && diff === 0 && (dr > 0 || cr > 0));
+            } else if (type === "CP" || type === "BP") {
+                isValid = (entries > 0 && dr > 0);
+            } else if (type === "CR" || type === "BR") {
+                isValid = (entries > 0 && cr > 0);
+            } else {
+                isValid = (entries > 0 && (dr > 0 || cr > 0));
+            }
 
+            submitBtns.forEach(btn => {
                 btn.disabled = !isValid;
                 if (type === "JV") {
                     btn.classList.toggle("btn-danger", !isValid && entries > 0 && diff !== 0);
@@ -470,7 +460,7 @@
                     btn.classList.remove("btn-danger");
                     btn.classList.add("btn-success");
                 }
-            }
+            });
         }
 
         function removeRow(btn) {
@@ -490,6 +480,190 @@
 
             calc();
         }
+
+        // ========================================================
+        // 🚀 EMPTY ACCOUNT ENTER -> JUMP TO SAVE / UPDATE BUTTON
+        // ========================================================
+        function checkAndJumpToSaveOnEmptyRow($target) {
+            var $tr = $target.closest('tr');
+            if (!$tr.length || $tr.attr('id') === 'noDataRow') return false;
+
+            var $acc = $tr.find('select[name*="gl3Id"]');
+            var val = $acc.val();
+            var hasAccount = (val && val !== '' && val !== '0' && val !== 'Select Account');
+
+            if (!hasAccount) {
+                var $allRows = $('#tbl tbody tr:not(#noDataRow)');
+                if ($allRows.length > 1) {
+                    try { $acc.select2('close'); } catch(e) {}
+                    $('.select2-hidden-accessible').select2('close');
+                    $tr.remove();
+                    calc();
+                    var $saveBtn = $('#btnSave, #btnSaveBottom, #btnUpdate, #btnUpdateBottom, button[type="submit"]').filter(':visible').first();
+                    if ($saveBtn.length) {
+                        $saveBtn.prop('disabled', false).removeClass('disabled');
+                        $saveBtn.focus();
+                        if (typeof highlightField === 'function') highlightField($saveBtn);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        $(document).on('keydown', '#tbl .select2-selection', function(e) {
+            if (e.key === 'Enter') {
+                if (checkAndJumpToSaveOnEmptyRow($(this))) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+        });
+
+        $(document).on('keydown', '.select2-search__field', function(e) {
+            if (e.key === 'Enter') {
+                var $search = $(this);
+                if (!$search.val()) {
+                    var $select = $('select.select2-hidden-accessible').filter(function() {
+                        return $(this).data('select2') && $(this).data('select2').$container.hasClass('select2-container--open');
+                    });
+                    if ($select.length && $select.closest('#tbl').length) {
+                        if (checkAndJumpToSaveOnEmptyRow($select)) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                        }
+                    }
+                }
+            }
+        });
+
+        $(document).on('keydown', '#tbl tbody tr input', function(e) {
+            if (e.key === 'Enter') {
+                var $tr = $(this).closest('tr');
+                var $acc = $tr.find('select[name*="gl3Id"]');
+                var val = $acc.val();
+                if ((!val || val === '' || val === '0' || val === 'Select Account') && $('#tbl tbody tr:not(#noDataRow)').length > 1) {
+                    if (checkAndJumpToSaveOnEmptyRow($(this))) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                }
+            }
+        });
+
+        // ========================================================
+        // 🎯 EXCEL-LIKE ARROW KEY NAVIGATION ACROSS ROWS & COLUMNS
+        // ========================================================
+        $(document).on('focus', '#tbl input:not([type=hidden])', function() {
+            var el = this;
+            setTimeout(function() {
+                try { el.select(); } catch(e) {}
+            }, 10);
+        });
+
+        function getRowCells($tr) {
+            return $tr.find('.select2-selection, input:not([type=hidden]):not([disabled])').filter(':visible');
+        }
+
+        $(document).on('keydown', '#tbl input:not([type=hidden]), #tbl .select2-selection', function(e) {
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                return;
+            }
+
+            // Don't intercept arrow navigation if select2 options dropdown is open
+            if ($('.select2-container--open').length > 0) {
+                return;
+            }
+
+            var $current = $(this);
+
+            // If on a list field (.select2-selection), ArrowDown or ArrowUp opens the dropdown!
+            if ($current.hasClass('select2-selection') && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                e.preventDefault();
+                var $sel = AppNav.getSelectFromSelection($current);
+                AppNav.openSelect2($sel);
+                return;
+            }
+
+            var $tr = $current.closest('tr');
+            if (!$tr.length || $tr.attr('id') === 'noDataRow') return;
+
+            var $cells = getRowCells($tr);
+            var colIdx = $cells.index($current);
+            if (colIdx === -1) colIdx = 0;
+
+            var $allRows = $('#tbl tbody tr:not(#noDataRow)');
+            var rowIdx = $allRows.index($tr);
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (rowIdx < $allRows.length - 1) {
+                    var $nextRow = $allRows.eq(rowIdx + 1);
+                    var $nextCells = getRowCells($nextRow);
+                    var targetIdx = Math.min(colIdx, $nextCells.length - 1);
+                    if (targetIdx >= 0) {
+                        var $target = $nextCells.eq(targetIdx);
+                        $target.focus();
+                        if ($target.is('input')) try { $target.select(); } catch(err) {}
+                    }
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (rowIdx > 0) {
+                    var $prevRow = $allRows.eq(rowIdx - 1);
+                    var $prevCells = getRowCells($prevRow);
+                    var targetIdx = Math.min(colIdx, $prevCells.length - 1);
+                    if (targetIdx >= 0) {
+                        var $target = $prevCells.eq(targetIdx);
+                        $target.focus();
+                        if ($target.is('input')) try { $target.select(); } catch(err) {}
+                    }
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowRight') {
+                var canRight = false;
+                if ($current.hasClass('select2-selection')) {
+                    canRight = true;
+                } else if ($current.is('input')) {
+                    var el = $current[0];
+                    if (el.selectionStart !== el.selectionEnd || el.selectionEnd === el.value.length) {
+                        canRight = true;
+                    }
+                }
+                if (canRight && colIdx < $cells.length - 1) {
+                    e.preventDefault();
+                    var $nextCell = $cells.eq(colIdx + 1);
+                    $nextCell.focus();
+                    if ($nextCell.is('input')) try { $nextCell.select(); } catch(err) {}
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowLeft') {
+                var canLeft = false;
+                if ($current.is('input')) {
+                    var el = $current[0];
+                    if (el.selectionStart !== el.selectionEnd || el.selectionStart === 0) {
+                        canLeft = true;
+                    }
+                }
+                if (canLeft && colIdx > 0) {
+                    e.preventDefault();
+                    var $prevCell = $cells.eq(colIdx - 1);
+                    $prevCell.focus();
+                    if ($prevCell.is('input')) try { $prevCell.select(); } catch(err) {}
+                }
+                return;
+            }
+        });
 
         $(document).ready(function () {
             $(".select2").select2();
