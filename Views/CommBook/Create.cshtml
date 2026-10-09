@@ -95,6 +95,22 @@
             padding: 4px 6px !important;
             height: 28px !important;
         }
+
+        /* Ensure checkbox checkmark is always clearly visible when checked */
+        .bilty-check,
+        input[type="checkbox"].bilty-check,
+        .form-check-input.bilty-check {
+            -webkit-appearance: checkbox !important;
+            -moz-appearance: checkbox !important;
+            appearance: checkbox !important;
+            accent-color: #0d6efd !important;
+            width: 17px !important;
+            height: 17px !important;
+            cursor: pointer !important;
+            margin: 0 !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+        }
     </style>
 }
 
@@ -392,7 +408,7 @@
                             {
                                 foreach (var chalno in ViewBag.ChallanList)
                                 {
-                                    var displayChalNo = !string.IsNullOrEmpty((string?)chalno.DocNo) ? (string)chalno.DocNo : (chalno.ChalNo != null ? chalno.ChalNo.ToString() : "");
+                                    var displayChalNo = chalno.ChalNo != null ? chalno.ChalNo.ToString() : "";
                                     var dateStr = chalno.DocDate != null ? ((DateTime)chalno.DocDate).ToString("dd/MM/yyyy") : "";
                                     var isAssigned = (chalno.commBookId != null && chalno.commBookId > 0) || chalno.DescYn == "Y";
                                     <tr data-id="@chalno.Id" data-docno="@chalno.DocNo" data-chalno="@displayChalNo" data-isassigned="@(isAssigned ? "true" : "false")">
@@ -848,7 +864,7 @@
                                               (dno && dno !== "" && selectedDocNos.indexOf(dno) !== -1) ||
                                               (cno && cno !== "" && selectedChalNos.indexOf(cno) !== -1);
                         var isAssigned = c.isInCommBook || isAlreadyInGrid;
-                        var displayNo = c.chalNo || c.docNo || '';
+                        var displayNo = (c.chalNo !== null && c.chalNo !== undefined && c.chalNo !== '') ? c.chalNo : '';
                         var isMuted = isAssigned;
 
                         rowsHtml += `
@@ -1402,6 +1418,16 @@
 
             syncModalSelectedChallans();
             applyChallanFilters();
+
+            // Clicking checkbox cell also toggles checkbox for better usability
+            $(document).on('click', '#biltyModalTable tbody tr td:first-child', function(e) {
+                if (!$(e.target).is('.bilty-check')) {
+                    var $chk = $(this).find('.bilty-check');
+                    if ($chk.length && !$chk.is(':disabled')) {
+                        $chk.prop('checked', !$chk.prop('checked')).trigger('change');
+                    }
+                }
+            });
         });
 
         // Attach to form submit

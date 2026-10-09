@@ -1456,7 +1456,7 @@ namespace Nskg.Controllers
                     {
                         x.Id,
                         docNo = x.DocNo ?? "",
-                        chalNo = !string.IsNullOrEmpty(x.DocNo) ? x.DocNo : (x.ChalNo.HasValue ? x.ChalNo.Value.ToString() : ""),
+                        chalNo = x.ChalNo.HasValue ? x.ChalNo.Value.ToString() : "",
                         docDate = x.DocDate.HasValue ? x.DocDate.Value.ToString("dd/MM/yyyy") : "",
                         docDateRaw = x.DocDate.HasValue ? x.DocDate.Value.ToString("yyyy-MM-dd") : "",
                         vehicleNo = x.VehicleNo ?? "",

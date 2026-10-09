@@ -1088,7 +1088,9 @@ namespace Nskg.Controllers
                 var userCompanyId = User.GetCompanyId();
                 var threeDaysAgo = DateTime.Today.AddDays(-3);
                 ViewBag.BiltyList = _context.IssHead
-                    .Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) && (x.ChallanId == null || x.ChallanId == 0) && !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId || x.CompanyId == 0))
+                    .Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN) || (currentChallanId != null && x.ChallanId == currentChallanId)) 
+                                && (x.ChallanId == null || x.ChallanId == 0 || (currentChallanId != null && x.ChallanId == currentChallanId)) 
+                                && !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId || x.CompanyId == 0))
                     .Select(x => new
                     {
                         x.Id,
@@ -1116,7 +1118,16 @@ namespace Nskg.Controllers
                         ChallanDocNo = x.Challan != null ? x.Challan.DocNo : null
                     })
                     .AsEnumerable()
-                    .OrderBy(x => x.DocDate.HasValue && x.DocDate.Value.Date <= threeDaysAgo ? 0 : 1)
+                    .OrderBy(x => {
+                        bool isSelected = (x.ChallanId != null && x.ChallanId > 0) || x.DescYN == "Y";
+                        bool is3Plus = !isSelected && x.DocDate.HasValue && x.DocDate.Value.Date <= threeDaysAgo;
+                        return is3Plus ? 0 : (isSelected ? 2 : 1);
+                    })
+                    .ThenBy(x => {
+                        bool isSelected = (x.ChallanId != null && x.ChallanId > 0) || x.DescYN == "Y";
+                        bool is3Plus = !isSelected && x.DocDate.HasValue && x.DocDate.Value.Date <= threeDaysAgo;
+                        return is3Plus && x.DocDate.HasValue ? x.DocDate.Value : DateTime.MaxValue;
+                    })
                     .ThenByDescending(x => x.DocDate)
                     .ToList();
             }
@@ -1217,16 +1228,16 @@ namespace Nskg.Controllers
                 }
                 // When hasFilter == true, user is actively searching: return all matching bilties (including already-selected ones)
 
-                var results = query
-                    .OrderByDescending(x => x.DocDate)
-                    .ThenByDescending(x => x.Id)
-                    .Take(100)
+                var threeDaysAgo = DateTime.Today.AddDays(-3);
+                var rawResults = query
+                    .Take(200)
                     .Select(x => new
                     {
                         x.Id,
                         x.StationId,
                         x.Fooder,
                         x.DocNo,
+                        x.DocDate,
                         docDate = x.DocDate.HasValue ? x.DocDate.Value.ToString("dd/MM/yyyy") : "",
                         docDateRaw = x.DocDate.HasValue ? x.DocDate.Value.ToString("yyyy-MM-dd") : "",
                         billTiNo = x.BillTiNo.HasValue ? x.BillTiNo.Value.ToString() : "",
@@ -1245,12 +1256,52 @@ namespace Nskg.Controllers
                         descYN = x.DescYN ?? "",
                         x.ChallanId,
                         challanDocNo = x.Challan != null ? x.Challan.DocNo : "",
-                        isInChallan = (x.ChallanId != null && x.ChallanId > 0) || x.DescYN == "Y",
-                        isOld = x.DocDate.HasValue && x.DocDate.Value.Date <= DateTime.Today.AddDays(-3)
+                        isInChallan = (x.ChallanId != null && x.ChallanId > 0) || x.DescYN == "Y"
+                    })
+                    .AsEnumerable()
+                    .OrderBy(x => {
+                        bool isSelected = x.isInChallan;
+                        bool is3Plus = !isSelected && x.DocDate.HasValue && x.DocDate.Value.Date <= threeDaysAgo;
+                        return is3Plus ? 0 : (isSelected ? 2 : 1);
+                    })
+                    .ThenBy(x => {
+                        bool isSelected = x.isInChallan;
+                        bool is3Plus = !isSelected && x.DocDate.HasValue && x.DocDate.Value.Date <= threeDaysAgo;
+                        return is3Plus && x.DocDate.HasValue ? x.DocDate.Value : DateTime.MaxValue;
+                    })
+                    .ThenByDescending(x => x.DocDate)
+                    .Take(100)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.StationId,
+                        x.Fooder,
+                        x.DocNo,
+                        x.docDate,
+                        x.docDateRaw,
+                        daysOld = x.DocDate.HasValue ? (int)(DateTime.Today - x.DocDate.Value.Date).TotalDays : 0,
+                        x.billTiNo,
+                        x.bilNo,
+                        x.cusName,
+                        x.sendTo,
+                        x.qty,
+                        x.pType,
+                        x.netAmt,
+                        x.labour,
+                        x.cartage2,
+                        x.cartage3,
+                        x.partyEx,
+                        x.lifter2,
+                        x.otherEx,
+                        x.descYN,
+                        x.ChallanId,
+                        x.challanDocNo,
+                        x.isInChallan,
+                        isOld = !x.isInChallan && x.DocDate.HasValue && x.DocDate.Value.Date <= threeDaysAgo
                     })
                     .ToList();
 
-                return Json(new { success = true, data = results });
+                return Json(new { success = true, data = rawResults });
             }
             catch (Exception ex)
             {

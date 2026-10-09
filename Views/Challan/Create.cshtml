@@ -116,6 +116,27 @@
             color: #ffffff !important;
             box-shadow: 0 2px 5px rgba(25, 135, 84, 0.4) !important;
         }
+
+        /* 3+ Days Overdue Bilty Highlighting - Only unselected bilties */
+        .bilty-row-overdue {
+            background-color: #fff9e6 !important;
+            border-left: 5px solid #f59e0b !important;
+        }
+        .bilty-row-overdue:hover {
+            background-color: #fef3c7 !important;
+        }
+        .bilty-row-overdue td {
+            background-color: transparent !important;
+        }
+        .bilty-overdue-badge {
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            background-color: #f59e0b !important;
+            color: #1f2937 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
     </style>
 }
 
@@ -455,52 +476,88 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var bilty in ViewBag.BiltyList)
+                        @if (ViewBag.BiltyList != null)
                         {
-                            var isInChallanDb = (bilty.ChallanId != null && bilty.ChallanId > 0) || bilty.DescYN == "Y";
-                            var challanInfo = !string.IsNullOrEmpty((string?)bilty.ChallanDocNo) ? (string)bilty.ChallanDocNo : "";
-                            <tr data-stationid="@bilty.StationId"
-                                data-fooder="@bilty.Fooder"
-                                data-inchallan="@(isInChallanDb ? "true" : "false")"
-                                data-challandocno="@challanInfo">
-                                <td>
-                                    <input type="checkbox"
-                                           class="bilty-check"
-                                           data-id="@bilty.Id"
-                                           data-stationid="@bilty.StationId"
-                                           data-fooder="@bilty.Fooder"
-                                           data-inchallan="@(isInChallanDb ? "true" : "false")"
-                                           data-challandocno="@challanInfo"
-                                           data-billtino="@bilty.BillTiNo"
-                                           data-bilno="@bilty.BilNo"
-                                           data-docno="@bilty.DocNo"
-                                           data-docdate="@(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("yyyy-MM-dd") : "")"
-                                           data-cusname="@bilty.CusName"
-                                           data-sendto="@bilty.SendTo"
-                                           data-qty="@bilty.Qty"
-                                           data-ptype="@bilty.PType"
-                                           data-netamt="@bilty.NetAmt"
-                                           data-labour="@bilty.Labour"
-                                           data-cartage2="@bilty.Cartage2"
-                                           data-cartage3="@bilty.Cartage3"
-                                           data-partyex="@bilty.PartyEx"
-                                           data-lifter2="@bilty.Lifter2"
-                                           data-otherex="@bilty.OtherEx" />
-                                </td>
-                                <td>
-                                    @bilty.DocNo
-                                    @if (isInChallanDb)
-                                    {
-                                        <span class="badge bg-secondary ms-1 inchallan-badge" title="Already in Challan @challanInfo"><i class="fa fa-check me-1"></i>Selected @(!string.IsNullOrEmpty(challanInfo) ? $"({challanInfo})" : "")</span>
-                                    }
-                                </td>
-                                <td>@(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("dd/MM/yyyy") : "")</td>
-                                <td>@bilty.BillTiNo</td>
-                                <td>@bilty.CusName</td>
-                                <td>@bilty.SendTo</td>
-                                <td>@bilty.Qty</td>
-                                <td>@bilty.NetAmt</td>
-                            </tr>
+                            var threeDaysAgo = DateTime.Today.AddDays(-3);
+                            var biltyListRaw = (IEnumerable<dynamic>)ViewBag.BiltyList;
+                            var sortedBilties = biltyListRaw
+                                .OrderBy(b => {
+                                    bool isSelected = (b.ChallanId != null && b.ChallanId > 0) || b.DescYN == "Y";
+                                    bool is3Plus = !isSelected && b.DocDate != null && ((DateTime)b.DocDate).Date <= threeDaysAgo;
+                                    return is3Plus ? 0 : (isSelected ? 2 : 1);
+                                })
+                                .ThenBy(b => {
+                                    bool isSelected = (b.ChallanId != null && b.ChallanId > 0) || b.DescYN == "Y";
+                                    bool is3Plus = !isSelected && b.DocDate != null && ((DateTime)b.DocDate).Date <= threeDaysAgo;
+                                    return is3Plus && b.DocDate != null ? (DateTime)b.DocDate : DateTime.MaxValue;
+                                })
+                                .ThenByDescending(b => b.DocDate != null ? (DateTime)b.DocDate : DateTime.MinValue)
+                                .ToList();
+
+                            foreach (var bilty in sortedBilties)
+                            {
+                                var isInChallanDb = (bilty.ChallanId != null && bilty.ChallanId > 0) || bilty.DescYN == "Y";
+                                var challanInfo = !string.IsNullOrEmpty((string?)bilty.ChallanDocNo) ? (string)bilty.ChallanDocNo : "";
+                                var isOverdue = !isInChallanDb && bilty.DocDate != null && ((DateTime)bilty.DocDate).Date <= threeDaysAgo;
+                                var daysOld = bilty.DocDate != null ? (int)(DateTime.Today - ((DateTime)bilty.DocDate).Date).TotalDays : 0;
+                                <tr class="@(isOverdue ? "bilty-row-overdue" : "")"
+                                    data-stationid="@bilty.StationId"
+                                    data-fooder="@bilty.Fooder"
+                                    data-inchallan="@(isInChallanDb ? "true" : "false")"
+                                    data-is-old="@(isOverdue ? "true" : "false")"
+                                    data-days-old="@daysOld"
+                                    data-docdate-raw="@(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("yyyy-MM-dd") : "")"
+                                    data-challandocno="@challanInfo">
+                                    <td>
+                                        <input type="checkbox"
+                                               class="bilty-check"
+                                               data-id="@bilty.Id"
+                                               data-stationid="@bilty.StationId"
+                                               data-fooder="@bilty.Fooder"
+                                               data-inchallan="@(isInChallanDb ? "true" : "false")"
+                                               data-challandocno="@challanInfo"
+                                               data-billtino="@bilty.BillTiNo"
+                                               data-bilno="@bilty.BilNo"
+                                               data-docno="@bilty.DocNo"
+                                               data-docdate="@(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("yyyy-MM-dd") : "")"
+                                               data-cusname="@bilty.CusName"
+                                               data-sendto="@bilty.SendTo"
+                                               data-qty="@bilty.Qty"
+                                               data-ptype="@bilty.PType"
+                                               data-netamt="@bilty.NetAmt"
+                                               data-labour="@bilty.Labour"
+                                               data-cartage2="@bilty.Cartage2"
+                                               data-cartage3="@bilty.Cartage3"
+                                               data-partyex="@bilty.PartyEx"
+                                               data-lifter2="@bilty.Lifter2"
+                                               data-otherex="@bilty.OtherEx"
+                                               data-is-old="@(isOverdue ? "true" : "false")" />
+                                    </td>
+                                    <td>
+                                        @bilty.DocNo
+                                        @if (isInChallanDb)
+                                        {
+                                            <span class="badge bg-secondary ms-1 inchallan-badge" title="Already in Challan @challanInfo"><i class="fa fa-check me-1"></i>Selected @(!string.IsNullOrEmpty(challanInfo) ? $"({challanInfo})" : "")</span>
+                                        }
+                                        else if (isOverdue)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-1 bilty-overdue-badge" title="Bilty is @daysOld days old!"><i class="fa fa-clock-o me-1 text-danger"></i>@(daysOld)d Old</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("dd/MM/yyyy") : "")
+                                        @if (isOverdue)
+                                        {
+                                            <span class="text-danger fw-bold ms-1" title="Overdue (3+ days)">•</span>
+                                        }
+                                    </td>
+                                    <td>@bilty.BillTiNo</td>
+                                    <td>@bilty.CusName</td>
+                                    <td>@bilty.SendTo</td>
+                                    <td>@bilty.Qty</td>
+                                    <td>@bilty.NetAmt</td>
+                                </tr>
+                            }
                         }
                     </tbody>
                 </table>
@@ -562,6 +619,11 @@
             highlightField('#ChalNo');
             calculateTotals();
 
+            // Initial sort and sync of bilties in modal so overdue bilties are on top
+            syncModalSelectedBilties();
+            sortBiltyModalRows();
+            initialModalTableHtml = $("#biltyModalTable tbody").html();
+
             // Handle modal hidden event to focus on PExpCode
             $('#biltyModal').on('hidden.bs.modal', function() {
                 if (focusTarget) {
@@ -576,6 +638,7 @@
 
             $('#biltyModal').on('show.bs.modal', function() {
                 syncModalSelectedBilties();
+                sortBiltyModalRows();
                 applyBiltyFilters();
             });
 
@@ -682,6 +745,86 @@
             }
         }
 
+        // Helper to calculate days old for a bilty date
+        function getDaysOld(dateStr) {
+            if (!dateStr) return 0;
+            var d = null;
+            var str = dateStr.toString().trim();
+            if (str.indexOf('-') !== -1) {
+                var p = str.split('T')[0].split('-');
+                if (p.length === 3) {
+                    d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+                }
+            } else if (str.indexOf('/') !== -1) {
+                var p = str.split('/');
+                if (p.length === 3) {
+                    d = new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
+                }
+            }
+            if (!d || isNaN(d.getTime())) {
+                d = new Date(str);
+            }
+            if (!d || isNaN(d.getTime())) return 0;
+
+            var now = new Date();
+            var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            var compDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            var diffTime = today.getTime() - compDate.getTime();
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function isBilty3PlusDaysOld(dateStr) {
+            return getDaysOld(dateStr) >= 3;
+        }
+
+        // Sort modal rows: unselected 3+ days overdue first (oldest first), then regular unselected (newest first), then selected
+        function sortBiltyModalRows() {
+            var $tbody = $("#biltyModalTable tbody");
+            var $rows = $tbody.children("tr").not("#noBiltyMatchRow, #searchingRow").get();
+            if ($rows.length <= 1) return;
+
+            $rows.sort(function(a, b) {
+                var $a = $(a);
+                var $b = $(b);
+
+                var aIsSelected = $a.hasClass("already-in-grid") || ($a.find(".bilty-check").data("inchallan") === true || $a.find(".bilty-check").data("inchallan") === "true");
+                var bIsSelected = $b.hasClass("already-in-grid") || ($b.find(".bilty-check").data("inchallan") === true || $b.find(".bilty-check").data("inchallan") === "true");
+
+                var aDaysOld = parseInt($a.attr("data-days-old")) || 0;
+                var bDaysOld = parseInt($b.attr("data-days-old")) || 0;
+
+                var aIsOverdue = !aIsSelected && ($a.attr("data-is-old") === "true" || aDaysOld >= 3);
+                var bIsOverdue = !bIsSelected && ($b.attr("data-is-old") === "true" || bDaysOld >= 3);
+
+                var aRank = aIsOverdue ? 0 : (aIsSelected ? 2 : 1);
+                var bRank = bIsOverdue ? 0 : (bIsSelected ? 2 : 1);
+
+                if (aRank !== bRank) {
+                    return aRank - bRank;
+                }
+
+                if (aRank === 0) {
+                    if (bDaysOld !== aDaysOld) {
+                        return bDaysOld - aDaysOld; // Oldest date (highest days old) first!
+                    }
+                }
+
+                var aDate = $a.attr("data-docdate-raw") || "";
+                var bDate = $b.attr("data-docdate-raw") || "";
+                if (aDate && bDate && aDate !== bDate) {
+                    return bDate.localeCompare(aDate);
+                }
+
+                var aDocNo = ($a.find("td:eq(1)").text() || "").trim();
+                var bDocNo = ($b.find("td:eq(1)").text() || "").trim();
+                return bDocNo.localeCompare(aDocNo);
+            });
+
+            $.each($rows, function(index, row) {
+                $tbody.append(row);
+            });
+        }
+
         // Sync and mark bilties that are already in the Challan as checked
         function syncModalSelectedBilties() {
             var hasActiveSearch = false;
@@ -721,12 +864,26 @@
                     (dno && dno !== "" && selectedDocNos.indexOf(dno) !== -1) ||
                     (bno && bno !== "" && selectedBiltyNos.indexOf(bno) !== -1);
 
+                var isSelected = isAlreadyInCurrentChallan || isInChallanDb;
+
+                var rawDate = $tr.attr("data-docdate-raw") || ($chk.data("docdate") || "").toString().trim();
+                if (!rawDate) {
+                    rawDate = $tr.find("td:eq(2)").text().trim();
+                }
+                var daysOld = getDaysOld(rawDate);
+                var isOverdue = !isSelected && (daysOld >= 3);
+
+                $tr.attr("data-days-old", daysOld);
+                $tr.attr("data-is-old", isOverdue ? "true" : "false");
+                $chk.attr("data-is-old", isOverdue ? "true" : "false");
+
                 if (hasActiveSearch) {
                     // When actively searching, always show the row even if already selected
                     $tr.removeClass("already-in-grid").show();
-                    if (isAlreadyInCurrentChallan || isInChallanDb) {
+                    if (isSelected) {
                         $chk.prop("disabled", true).prop("checked", true);
-                        $tr.addClass("table-light text-muted");
+                        $tr.addClass("table-light text-muted").removeClass("bilty-row-overdue");
+                        $tr.find(".bilty-overdue-badge, .bilty-overdue-dot").remove();
                         if ($tr.find(".inchallan-badge").length === 0) {
                             var label = challanDocNo ? `(${escapeHtml(challanDocNo)})` : (isAlreadyInCurrentChallan ? '(Current Challan)' : '');
                             $tr.find("td:eq(1)").append(`<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected ${label}</span>`);
@@ -735,20 +892,55 @@
                         $chk.prop("disabled", false).prop("checked", false);
                         $tr.removeClass("table-light text-muted");
                         $tr.find(".inchallan-badge, .already-selected-badge").remove();
+                        if (isOverdue) {
+                            $tr.addClass("bilty-row-overdue");
+                            if ($tr.find(".bilty-overdue-badge").length === 0) {
+                                $tr.find("td:eq(1)").append(`<span class="badge bg-warning text-dark ms-1 bilty-overdue-badge" title="Bilty is ${daysOld} days old!"><i class="fa fa-clock-o me-1 text-danger"></i>${daysOld}d Old</span>`);
+                            }
+                            if ($tr.find(".bilty-overdue-dot").length === 0) {
+                                $tr.find("td:eq(2)").append(`<span class="text-danger fw-bold ms-1 bilty-overdue-dot" title="Overdue (3+ days)">•</span>`);
+                            }
+                        } else {
+                            $tr.removeClass("bilty-row-overdue");
+                            $tr.find(".bilty-overdue-badge, .bilty-overdue-dot").remove();
+                        }
                     }
                 } else {
                     // Default modal view (no search text entered): hide bilties already in current grid
                     if (isAlreadyInCurrentChallan) {
                         $chk.prop("checked", false).prop("disabled", false);
-                        $tr.addClass("already-in-grid").hide();
-                        $tr.find(".already-selected-badge, .inchallan-badge").remove();
+                        $tr.addClass("already-in-grid").hide().removeClass("bilty-row-overdue");
+                        $tr.find(".already-selected-badge, .inchallan-badge, .bilty-overdue-badge, .bilty-overdue-dot").remove();
+                    } else if (isInChallanDb) {
+                        $chk.prop("disabled", true).prop("checked", true);
+                        $tr.addClass("table-light text-muted").removeClass("bilty-row-overdue").show();
+                        $tr.find(".bilty-overdue-badge, .bilty-overdue-dot").remove();
+                        if ($tr.find(".inchallan-badge").length === 0) {
+                            var label = challanDocNo ? `(${escapeHtml(challanDocNo)})` : '';
+                            $tr.find("td:eq(1)").append(`<span class="badge bg-secondary ms-1 inchallan-badge" title="Already in Challan"><i class="fa fa-check me-1"></i>Selected ${label}</span>`);
+                        }
                     } else {
+                        // Unselected bilty: highlight if 3+ days old!
                         $chk.prop("checked", false).prop("disabled", false);
                         $tr.removeClass("already-in-grid table-primary table-light fw-semibold text-muted").show();
                         $tr.find(".already-selected-badge, .inchallan-badge").remove();
+                        if (isOverdue) {
+                            $tr.addClass("bilty-row-overdue");
+                            if ($tr.find(".bilty-overdue-badge").length === 0) {
+                                $tr.find("td:eq(1)").append(`<span class="badge bg-warning text-dark ms-1 bilty-overdue-badge" title="Bilty is ${daysOld} days old!"><i class="fa fa-clock-o me-1 text-danger"></i>${daysOld}d Old</span>`);
+                            }
+                            if ($tr.find(".bilty-overdue-dot").length === 0) {
+                                $tr.find("td:eq(2)").append(`<span class="text-danger fw-bold ms-1 bilty-overdue-dot" title="Overdue (3+ days)">•</span>`);
+                            }
+                        } else {
+                            $tr.removeClass("bilty-row-overdue");
+                            $tr.find(".bilty-overdue-badge, .bilty-overdue-dot").remove();
+                        }
                     }
                 }
             });
+
+            sortBiltyModalRows();
         }
 
         function setBiltyFilterType(type) {
@@ -921,14 +1113,26 @@
                         var challanInfo = bilty.challanDocNo ? bilty.challanDocNo : (isCurrentChallan ? 'Current Challan' : '');
                         var challanBadge = isSelected ? 
                             `<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected ${escapeHtml(challanInfo)}"><i class="fa fa-check me-1"></i>Selected ${challanInfo ? '(' + escapeHtml(challanInfo) + ')' : ''}</span>` : '';
-                        var rowClass = isSelected ? 'table-light text-muted' : '';
+                        
+                        var daysOld = bilty.daysOld !== undefined ? bilty.daysOld : getDaysOld(bilty.docDateRaw || bilty.docDate);
+                        var isOverdue = !isSelected && (bilty.isOld === true || daysOld >= 3);
+
+                        var rowClass = isSelected ? 'table-light text-muted' : (isOverdue ? 'bilty-row-overdue' : '');
                         var chkDisabled = isSelected ? 'disabled checked' : '';
+
+                        var overdueBadge = isOverdue ? 
+                            `<span class="badge bg-warning text-dark ms-1 bilty-overdue-badge" title="Bilty is ${daysOld} days old!"><i class="fa fa-clock-o me-1 text-danger"></i>${daysOld}d Old</span>` : '';
+                        var overdueDot = isOverdue ? 
+                            `<span class="text-danger fw-bold ms-1 bilty-overdue-dot" title="Overdue (3+ days)">•</span>` : '';
 
                         html += `
                             <tr class="${rowClass}"
                                 data-stationid="${bilty.stationId || ''}"
                                 data-fooder="${escapeHtml(bilty.fooder || '')}"
                                 data-inchallan="${isSelected ? 'true' : 'false'}"
+                                data-is-old="${isOverdue ? 'true' : 'false'}"
+                                data-days-old="${daysOld}"
+                                data-docdate-raw="${escapeHtml(bilty.docDateRaw || '')}"
                                 data-challandocno="${escapeHtml(challanInfo)}">
                                 <td>
                                     <input type="checkbox"
@@ -938,6 +1142,7 @@
                                            data-stationid="${bilty.stationId || ''}"
                                            data-fooder="${escapeHtml(bilty.fooder || '')}"
                                            data-inchallan="${isSelected ? 'true' : 'false'}"
+                                           data-is-old="${isOverdue ? 'true' : 'false'}"
                                            data-challandocno="${escapeHtml(challanInfo)}"
                                            data-billtino="${escapeHtml(bilty.billTiNo || '')}"
                                            data-bilno="${escapeHtml(bilty.bilNo || '')}"
@@ -958,8 +1163,12 @@
                                 <td>
                                     ${escapeHtml(bilty.docNo)}
                                     ${challanBadge}
+                                    ${overdueBadge}
                                 </td>
-                                <td>${escapeHtml(bilty.docDate)}</td>
+                                <td>
+                                    ${escapeHtml(bilty.docDate)}
+                                    ${overdueDot}
+                                </td>
                                 <td>${escapeHtml(bilty.billTiNo)}</td>
                                 <td>${escapeHtml(bilty.cusName)}</td>
                                 <td>${escapeHtml(bilty.sendTo)}</td>
@@ -970,6 +1179,7 @@
                     });
                     $("#biltyModalTable tbody").html(html);
                     syncModalSelectedBilties();
+                    sortBiltyModalRows();
                 } else {
                     $("#biltyModalTable tbody").html(`
                         <tr id="noBiltyMatchRow">

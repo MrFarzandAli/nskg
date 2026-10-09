@@ -207,7 +207,7 @@
     </div>
 
     <!-- DETAILS -->
-    <div class="card custom-card border-0 shadow-sm mb-2">
+    <div class="card custom-card border-0 shadow-sm voucher-grid-card">
 
         <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom py-1 px-3">
             <h6 class="mb-0 fw-semibold text-navy" style="font-size: 13px;">
@@ -223,7 +223,7 @@
 
         <div class="card-body p-0">
 
-            <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+            <div class="table-responsive voucher-table-container">
 
                 <table class="table table-hover table-bordered align-middle mb-0" id="tbl">
 
@@ -288,26 +288,26 @@
         </div>
     </div>
 
-    <!-- SUMMARY -->
-    <div class="card border-0 shadow-sm mb-1 bg-white">
-        <div class="card-body py-1 px-3">
+    <!-- SUMMARY / TOTALS BAR -->
+    <div class="card border-0 shadow-sm voucher-totals-bar">
+        <div class="card-body py-2 px-3">
 
-            <div class="row text-center align-items-center">
-                <div class="col-md-3">
-                    <span class="text-muted small me-2"><i class="fa fa-list me-1"></i> Entries:</span>
-                    <strong id="entries" class="fw-bold fs-6">0</strong>
+            <div class="row text-center align-items-center g-2">
+                <div class="col-3 border-end">
+                    <span class="text-muted small me-2"><i class="fa fa-list text-secondary me-1"></i> Entries:</span>
+                    <strong id="entries" class="fw-bold fs-6 text-dark">0</strong>
                 </div>
-                <div class="col-md-3">
+                <div class="col-3 border-end">
                     <span class="text-muted small me-2"><i class="fa fa-arrow-down text-success me-1"></i> Debit:</span>
-                    <strong id="dr" class="text-success fw-bold fs-6">0</strong>
+                    <strong id="dr" class="text-success fw-bold fs-6">0.00</strong>
                 </div>
-                <div class="col-md-3">
+                <div class="col-3 border-end">
                     <span class="text-muted small me-2"><i class="fa fa-arrow-up text-danger me-1"></i> Credit:</span>
-                    <strong id="cr" class="text-danger fw-bold fs-6">0</strong>
+                    <strong id="cr" class="text-danger fw-bold fs-6">0.00</strong>
                 </div>
-                <div class="col-md-3">
-                    <span class="text-muted small me-2"><i class="fa fa-balance-scale me-1"></i> Difference:</span>
-                    <strong id="df" class="text-primary fw-bold fs-6">0</strong>
+                <div class="col-3">
+                    <span class="text-muted small me-2"><i class="fa fa-balance-scale text-primary me-1"></i> Difference:</span>
+                    <strong id="df" class="text-primary fw-bold fs-6">0.00</strong>
                 </div>
             </div>
 
@@ -482,74 +482,210 @@
         }
 
         // ========================================================
-        // 🚀 EMPTY ACCOUNT ENTER -> JUMP TO SAVE / UPDATE BUTTON
+        // 🚀 ENTER KEY NAVIGATION FOR VOUCHER GRID (#tbl)
         // ========================================================
-        function checkAndJumpToSaveOnEmptyRow($target) {
-            var $tr = $target.closest('tr');
-            if (!$tr.length || $tr.attr('id') === 'noDataRow') return false;
 
+        // Prevent accidental form submission on Enter inside all form inputs
+        $(document).on('keydown', 'form.form-dense input, form.form-dense select', function(e) {
+            if (e.key === 'Enter') {
+                if (!$(e.target).is('#btnSave, #btnUpdate, button[type="submit"]')) {
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // 1. Enter on Master/Header Narration -> jumps to first Detail Row Account
+        $(document).on('keydown', 'input[name="Head.Narration"], #Head_Narration', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var $rows = $('#tbl tbody tr:not(#noDataRow)');
+                if ($rows.length === 0) {
+                    if (typeof addRow === 'function') addRow();
+                    $rows = $('#tbl tbody tr:not(#noDataRow)');
+                }
+                var $firstAcc = $rows.first().find('select[name*="gl3Id"]');
+                if ($firstAcc.length) {
+                    AppNav.focusElement($firstAcc);
+                    setTimeout(function() {
+                        AppNav.openSelect2($firstAcc);
+                    }, 40);
+                }
+            }
+        });
+
+        // Helper: Check if account in this row is selected
+        function isRowAccountSelected($tr) {
             var $acc = $tr.find('select[name*="gl3Id"]');
             var val = $acc.val();
-            var hasAccount = (val && val !== '' && val !== '0' && val !== 'Select Account');
+            return (val && val !== '' && val !== '0' && val !== 'Select Account');
+        }
 
-            if (!hasAccount) {
-                var $allRows = $('#tbl tbody tr:not(#noDataRow)');
-                if ($allRows.length > 1) {
-                    try { $acc.select2('close'); } catch(e) {}
-                    $('.select2-hidden-accessible').select2('close');
-                    $tr.remove();
-                    calc();
-                    var $saveBtn = $('#btnSave, #btnSaveBottom, #btnUpdate, #btnUpdateBottom, button[type="submit"]').filter(':visible').first();
-                    if ($saveBtn.length) {
-                        $saveBtn.prop('disabled', false).removeClass('disabled');
-                        $saveBtn.focus();
-                        if (typeof highlightField === 'function') highlightField($saveBtn);
-                        return true;
-                    }
-                }
+        // Helper: Jump to Save / Update button
+        function jumpToSaveButton() {
+            var $saveBtn = $('#btnSave, #btnUpdate, button[type="submit"]').filter(':visible').first();
+            if ($saveBtn.length) {
+                $saveBtn.prop('disabled', false).removeClass('disabled');
+                $saveBtn.focus();
+                if (typeof highlightField === 'function') highlightField($saveBtn);
+                return true;
             }
             return false;
         }
 
+        // 2. Enter on Account Selection in #tbl (when dropdown is closed)
         $(document).on('keydown', '#tbl .select2-selection', function(e) {
             if (e.key === 'Enter') {
-                if (checkAndJumpToSaveOnEmptyRow($(this))) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
+                var $container = $(this).closest('.select2-container');
+                if ($container.hasClass('select2-container--open')) {
+                    return; // let Select2 handle item selection
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                var $tr = $(this).closest('tr');
+                if (!$tr.length || $tr.attr('id') === 'noDataRow') return;
+
+                if (!isRowAccountSelected($tr)) {
+                    // NO account selected -> remove empty trailing row if other rows exist, and jump to Save
+                    var $allRows = $('#tbl tbody tr:not(#noDataRow)');
+                    if ($allRows.length > 1) {
+                        $tr.remove();
+                        calc();
+                    }
+                    jumpToSaveButton();
+                } else {
+                    // Account IS selected -> advance to Bilti No
+                    var $bilti = $tr.find('input[name*="Billtino"]:visible');
+                    if ($bilti.length) {
+                        AppNav.focusElement($bilti);
+                    } else {
+                        var $nextInput = $tr.find('input:not([type=hidden]):not([disabled]):visible').first();
+                        if ($nextInput.length) AppNav.focusElement($nextInput);
+                    }
                 }
             }
         });
 
+        // 3. When an account is selected in #tbl via Select2 dropdown
+        $(document).on('select2:select', '#tbl select[name*="gl3Id"]', function(e) {
+            var $tr = $(this).closest('tr');
+            setTimeout(function() {
+                var $bilti = $tr.find('input[name*="Billtino"]:visible');
+                if ($bilti.length) {
+                    AppNav.focusElement($bilti);
+                } else {
+                    var $nextInput = $tr.find('input:not([type=hidden]):not([disabled]):visible').first();
+                    if ($nextInput.length) AppNav.focusElement($nextInput);
+                }
+            }, 60);
+        });
+
+        // 4. Enter on Select2 search field when empty (user didn't choose an account)
         $(document).on('keydown', '.select2-search__field', function(e) {
             if (e.key === 'Enter') {
                 var $search = $(this);
-                if (!$search.val()) {
-                    var $select = $('select.select2-hidden-accessible').filter(function() {
-                        return $(this).data('select2') && $(this).data('select2').$container.hasClass('select2-container--open');
-                    });
-                    if ($select.length && $select.closest('#tbl').length) {
-                        if (checkAndJumpToSaveOnEmptyRow($select)) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return false;
+                var $openSelect = $('select.select2-hidden-accessible').filter(function() {
+                    return $(this).data('select2') && $(this).data('select2').$container.hasClass('select2-container--open');
+                });
+
+                if ($openSelect.length && $openSelect.closest('#tbl').length) {
+                    var $tr = $openSelect.closest('tr');
+                    var val = $openSelect.val();
+                    var hasAcc = (val && val !== '' && val !== '0' && val !== 'Select Account');
+
+                    if (!$search.val() && !hasAcc) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        try { $openSelect.select2('close'); } catch(err) {}
+
+                        var $allRows = $('#tbl tbody tr:not(#noDataRow)');
+                        if ($allRows.length > 1) {
+                            $tr.remove();
+                            calc();
                         }
+                        jumpToSaveButton();
                     }
                 }
             }
         });
 
-        $(document).on('keydown', '#tbl tbody tr input', function(e) {
+        // 5. Enter on detail grid inputs (Bilti No -> Bill No -> Amount -> Tax -> Narration -> New Row)
+        $(document).on('keydown', '#tbl tbody tr input:not([type=hidden])', function(e) {
             if (e.key === 'Enter') {
-                var $tr = $(this).closest('tr');
-                var $acc = $tr.find('select[name*="gl3Id"]');
-                var val = $acc.val();
-                if ((!val || val === '' || val === '0' || val === 'Select Account') && $('#tbl tbody tr:not(#noDataRow)').length > 1) {
-                    if (checkAndJumpToSaveOnEmptyRow($(this))) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
+                e.preventDefault();
+                e.stopPropagation();
+
+                var $input = $(this);
+                var $tr = $input.closest('tr');
+                if (!$tr.length || $tr.attr('id') === 'noDataRow') return;
+
+                // Case: Bilti No -> advance to Bill No
+                if ($input.is('input[name*="Billtino"]')) {
+                    var $bilno = $tr.find('input[name*="Bilno"]:visible');
+                    if ($bilno.length) return AppNav.focusElement($bilno);
+                }
+
+                // Case: Bill No -> advance to Debit or Credit (first enabled amount)
+                if ($input.is('input[name*="Bilno"]')) {
+                    var $amt = $tr.find('input[name*="Dramt"]:not([disabled]):visible, input[name*="Cramt"]:not([disabled]):visible').first();
+                    if ($amt.length) return AppNav.focusElement($amt);
+                    var $narr = $tr.find('input[name*="Narration"]:visible');
+                    if ($narr.length) return AppNav.focusElement($narr);
+                }
+
+                // Case: Debit Amount -> in JV, if Debit entered, jump past Credit to Tax/Narration; if 0, go to Credit; in CP/BP, go to Tax/Narration
+                if ($input.is('input[name*="Dramt"]')) {
+                    var dramtVal = parseFloat($input.val() || 0);
+                    var $credit = $tr.find('input[name*="Cramt"]:not([disabled]):visible');
+                    if ($credit.length && dramtVal <= 0) {
+                        return AppNav.focusElement($credit);
                     }
+                    var $ptax = $tr.find('input[name*="Ptax"]:visible');
+                    if ($ptax.length) return AppNav.focusElement($ptax);
+                    var $narr = $tr.find('input[name*="Narration"]:visible');
+                    if ($narr.length) return AppNav.focusElement($narr);
+                }
+
+                // Case: Credit Amount -> advance to Tax (if visible) or Narration
+                if ($input.is('input[name*="Cramt"]')) {
+                    var $ptax = $tr.find('input[name*="Ptax"]:visible');
+                    if ($ptax.length) return AppNav.focusElement($ptax);
+                    var $narr = $tr.find('input[name*="Narration"]:visible');
+                    if ($narr.length) return AppNav.focusElement($narr);
+                }
+
+                // Case: Tax -> advance to Narration
+                if ($input.is('input[name*="Ptax"]')) {
+                    var $narr = $tr.find('input[name*="Narration"]:visible');
+                    if ($narr.length) return AppNav.focusElement($narr);
+                }
+
+                // Case: Detail Narration -> ADD NEW ROW in grid with same narration of above row!
+                if ($input.is('input[name*="Narration"]')) {
+                    if (typeof addRow === 'function') {
+                        addRow();
+                        setTimeout(function() {
+                            var $lastRow = $('#tbl tbody tr:not(#noDataRow)').last();
+                            var $newAcc = $lastRow.find('select[name*="gl3Id"]');
+                            if ($newAcc.length) {
+                                AppNav.focusElement($newAcc);
+                                setTimeout(function() {
+                                    AppNav.openSelect2($newAcc);
+                                }, 40);
+                            }
+                        }, 50);
+                    }
+                    return;
+                }
+
+                // Fallback: move to next visible input in the row
+                var $allInputs = $tr.find('input:not([type=hidden]):not([disabled]):visible');
+                var idx = $allInputs.index($input);
+                if (idx >= 0 && idx < $allInputs.length - 1) {
+                    return AppNav.focusElement($allInputs.eq(idx + 1));
                 }
             }
         });
