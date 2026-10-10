@@ -1351,9 +1351,15 @@ namespace Nskg.Controllers
 
                 if (!string.IsNullOrWhiteSpace(chalNo))
                 {
-                    var val = chalNo.Trim().ToLower();
-                    query = query.Where(x => (x.ChalNo != null && x.ChalNo.ToString().Contains(val)) ||
-                                             (x.DocNo != null && x.DocNo.ToLower().Contains(val)));
+                    var val = chalNo.Trim();
+                    if (int.TryParse(val, out var cVal))
+                    {
+                        query = query.Where(x => x.ChalNo == cVal);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.ChalNo != null && x.ChalNo.ToString() == val);
+                    }
                     hasFilter = true;
                 }
 
@@ -1366,80 +1372,117 @@ namespace Nskg.Controllers
                         query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.Date == targetDate);
                         hasFilter = true;
                     }
-                    else
-                    {
-                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.ToString().Contains(val));
-                        hasFilter = true;
-                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(vehicleNo))
                 {
                     var val = vehicleNo.Trim().ToLower();
-                    query = query.Where(x => x.VehicleNo != null && x.VehicleNo.ToLower().Contains(val));
+                    query = query.Where(x => x.VehicleNo != null && (x.VehicleNo.ToLower() == val || x.VehicleNo.ToLower().StartsWith(val)));
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(transporter))
                 {
                     var val = transporter.Trim().ToLower();
-                    query = query.Where(x => x.Transporter != null && x.Transporter.ToLower().Contains(val));
+                    query = query.Where(x => x.Transporter != null && (x.Transporter.ToLower() == val || x.Transporter.ToLower().StartsWith(val)));
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(driver))
                 {
                     var val = driver.Trim().ToLower();
-                    query = query.Where(x => x.Driver != null && x.Driver.ToLower().Contains(val));
+                    query = query.Where(x => x.Driver != null && (x.Driver.ToLower() == val || x.Driver.ToLower().StartsWith(val)));
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(station))
                 {
                     var val = station.Trim().ToLower();
-                    query = query.Where(x => x.Station != null && x.Station.ToLower().Contains(val));
+                    query = query.Where(x => x.Station != null && (x.Station.ToLower() == val || x.Station.ToLower().StartsWith(val)));
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(paid))
                 {
                     var val = paid.Trim();
-                    query = query.Where(x => x.TotPaid != null && x.TotPaid.ToString().Contains(val));
+                    if (decimal.TryParse(val, out var pVal))
+                    {
+                        query = query.Where(x => x.TotPaid == pVal);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.TotPaid != null && x.TotPaid.ToString() == val);
+                    }
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(toPaid))
                 {
                     var val = toPaid.Trim();
-                    query = query.Where(x => x.TotToPaid != null && x.TotToPaid.ToString().Contains(val));
+                    if (decimal.TryParse(val, out var tpVal))
+                    {
+                        query = query.Where(x => x.TotToPaid == tpVal);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.TotToPaid != null && x.TotToPaid.ToString() == val);
+                    }
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(billti))
                 {
                     var val = billti.Trim();
-                    query = query.Where(x => x.TotBillTi != null && x.TotBillTi.ToString().Contains(val));
+                    if (decimal.TryParse(val, out var btVal))
+                    {
+                        query = query.Where(x => x.TotBillTi == btVal);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.TotBillTi != null && x.TotBillTi.ToString() == val);
+                    }
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(delivery))
                 {
                     var val = delivery.Trim();
-                    query = query.Where(x => x.DeliveryAmt != null && x.DeliveryAmt.ToString().Contains(val));
+                    if (decimal.TryParse(val, out var delVal))
+                    {
+                        query = query.Where(x => x.DeliveryAmt == delVal);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.DeliveryAmt != null && x.DeliveryAmt.ToString() == val);
+                    }
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(localAmt))
                 {
                     var val = localAmt.Trim();
-                    query = query.Where(x => x.LocalAmt != null && x.LocalAmt.ToString().Contains(val));
+                    if (decimal.TryParse(val, out var locVal))
+                    {
+                        query = query.Where(x => x.LocalAmt == locVal);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.LocalAmt != null && x.LocalAmt.ToString() == val);
+                    }
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(netAmt))
                 {
                     var val = netAmt.Trim();
-                    query = query.Where(x => x.NetAmt != null && x.NetAmt.ToString().Contains(val));
+                    if (decimal.TryParse(val, out var netVal))
+                    {
+                        query = query.Where(x => x.NetAmt == netVal);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.NetAmt != null && x.NetAmt.ToString() == val);
+                    }
                     hasFilter = true;
                 }
 

@@ -1163,28 +1163,35 @@ namespace Nskg.Controllers
                 if (!string.IsNullOrWhiteSpace(docNo))
                 {
                     var val = docNo.Trim().ToLower();
-                    query = query.Where(x => x.DocNo != null && x.DocNo.ToLower().Contains(val));
+                    query = query.Where(x => x.DocNo != null && (x.DocNo.ToLower() == val || x.DocNo.ToLower().StartsWith(val)));
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(biltyNo))
                 {
                     var val = biltyNo.Trim();
-                    query = query.Where(x => x.BillTiNo != null && x.BillTiNo.ToString().Contains(val));
+                    if (decimal.TryParse(val, out var bVal))
+                    {
+                        query = query.Where(x => x.BillTiNo == bVal);
+                    }
+                    else
+                    {
+                        query = query.Where(x => x.BillTiNo != null && x.BillTiNo.ToString() == val);
+                    }
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(party))
                 {
                     var val = party.Trim().ToLower();
-                    query = query.Where(x => x.CusName != null && x.CusName.ToLower().Contains(val));
+                    query = query.Where(x => x.CusName != null && (x.CusName.ToLower() == val || x.CusName.ToLower().StartsWith(val)));
                     hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(sendTo))
                 {
                     var val = sendTo.Trim().ToLower();
-                    query = query.Where(x => x.SendTo != null && x.SendTo.ToLower().Contains(val));
+                    query = query.Where(x => x.SendTo != null && (x.SendTo.ToLower() == val || x.SendTo.ToLower().StartsWith(val)));
                     hasFilter = true;
                 }
 
@@ -1207,11 +1214,6 @@ namespace Nskg.Controllers
                     {
                         var dt = dVal.Date;
                         query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.Date == dt);
-                        hasFilter = true;
-                    }
-                    else
-                    {
-                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.ToString().Contains(val));
                         hasFilter = true;
                     }
                 }

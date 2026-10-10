@@ -110,8 +110,9 @@ namespace Nskg.Helpers
                     <span style='margin-left: 10px; font-size: 11px; color: #6c757d;'>
                         Rows/Page:
                         <select id='rptPageSize' class='rpt-select' onchange='rptChangePageSize(this.value)'>
+                            <option value='30' selected>30</option>
                             <option value='50'>50</option>
-                            <option value='100' selected>100</option>
+                            <option value='100'>100</option>
                             <option value='200'>200</option>
                             <option value='500'>500</option>
                             <option value='-1'>All</option>
@@ -132,7 +133,7 @@ namespace Nskg.Helpers
             return @"
             <script>
                 var rptCurrentPage = 1;
-                var rptPageSize = 100;
+                var rptPageSize = 30;
                 var rptTotalRows = 0;
                 var rptTotalPages = 1;
                 var rptRows = [];

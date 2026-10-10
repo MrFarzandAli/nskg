@@ -522,6 +522,7 @@ namespace Nskg.Controllers
                 sb.Append("<th style='width:55px;'>Comm.no</th>");
                 sb.Append("<th style='width:90px;'>Vehicle No</th>");
                 sb.Append("<th>Station</th>");
+                sb.Append("<th>Party name / Item</th>");
                 sb.Append("<th style='width:50px;'>Company</th>");
                 sb.Append("<th class='num' style='width:85px;'>DEBIT</th>");
                 sb.Append("<th class='num' style='width:85px;'>CREDIT</th>");
@@ -548,6 +549,7 @@ namespace Nskg.Controllers
                     string commNo    = row["BillTiNo"] != DBNull.Value && !string.IsNullOrWhiteSpace(row["BillTiNo"].ToString()) ? row["BillTiNo"].ToString() : "";
                     string vehNo     = row["VehicleNo"]?.ToString() ?? "";
                     string station   = row["Station"]?.ToString() ?? "";
+                    string iname     = row["IName"] != DBNull.Value ? row["IName"]?.ToString() ?? "" : "";
                     string rowComp   = row["RowCompany"] != DBNull.Value ? row["RowCompany"].ToString() : "";
                     string rowClass  = isOpening ? "class='op-row'" : "";
 
@@ -555,7 +557,7 @@ namespace Nskg.Controllers
                     {
                         sb.Append($"<tr {rowClass}>");
                         sb.Append("<td></td><td></td><td></td><td></td>");
-                        sb.Append("<td colspan='3' class='bold'>Opening Balance</td>");
+                        sb.Append("<td colspan='4' class='bold'>Opening Balance</td>");
                         sb.Append($"<td class='num'>{(debit != 0 ? debit.ToString("#,##0") : "")}</td>");
                         sb.Append($"<td class='num'>{(credit != 0 ? credit.ToString("#,##0") : "")}</td>");
                         sb.Append($"<td class='num bold'>{balance:#,##0}</td>");
@@ -570,6 +572,7 @@ namespace Nskg.Controllers
                         sb.Append($"<td class='center'>{commNo}</td>");
                         sb.Append($"<td class='bold'>{vehNo}</td>");
                         sb.Append($"<td>{station}</td>");
+                        sb.Append($"<td>{iname}</td>");
                         sb.Append($"<td class='center'>{rowComp}</td>");
                         sb.Append($"<td class='num'>{(debit != 0 ? debit.ToString("#,##0") : "")}</td>");
                         sb.Append($"<td class='num'>{(credit != 0 ? credit.ToString("#,##0") : "")}</td>");
@@ -581,7 +584,7 @@ namespace Nskg.Controllers
                 decimal closingBal = (dt.Rows.Count > 0 && dt.Rows[dt.Rows.Count - 1]["Balance"] != DBNull.Value) ? Convert.ToDecimal(dt.Rows[dt.Rows.Count - 1]["Balance"]) : 0;
 
                 sb.Append("</tbody><tfoot><tr>");
-                sb.Append($"<td colspan='7' class='bold' style='text-align:right;'>GRAND TOTAL............</td>");
+                sb.Append($"<td colspan='8' class='bold' style='text-align:right;'>GRAND TOTAL............</td>");
                 sb.Append($"<td class='num bold'>{totalDebit:#,##0}</td>");
                 sb.Append($"<td class='num bold'>{totalCredit:#,##0}</td>");
                 sb.Append($"<td class='num bold'>{closingBal:#,##0}</td>");

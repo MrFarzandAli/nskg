@@ -64,10 +64,12 @@ namespace Nskg.Controllers
                 .Select(x => new
                 {
                     Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
-                    Name = x.Name.Trim()
+                    Name = x.Name.Trim(),
+                    AC1 = (x.AC1 ?? "").Trim()
                 })
                 .Where(x => !string.IsNullOrEmpty(x.Code))
                 .ToList()
+                .Where(x => !IsExcludedAccount(x.Name, x.AC1))
                 .GroupBy(x => x.Code)
                 .Select(g => new
                 {
@@ -97,10 +99,12 @@ namespace Nskg.Controllers
                 .Select(x => new
                 {
                     code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
-                    name = x.Name.Trim()
+                    name = x.Name.Trim(),
+                    ac1 = (x.AC1 ?? "").Trim()
                 })
                 .Where(x => !string.IsNullOrEmpty(x.code))
                 .ToList()
+                .Where(x => !IsExcludedAccount(x.name, x.ac1))
                 .GroupBy(x => x.code)
                 .Select(g => new
                 {
@@ -111,6 +115,27 @@ namespace Nskg.Controllers
                 .ToList();
 
             return Json(accounts);
+        }
+
+        private static bool IsExcludedAccount(string name, string ac1)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return false;
+            var upper = name.ToUpperInvariant();
+            var ac1Trim = (ac1 ?? "").Trim();
+
+            // Exclude Advance accounts
+            if (ac1Trim == "059" || upper.Contains("ADVANCE") || upper.Contains("(ADV)") || upper.Contains(" ADV ") || upper.EndsWith("(ADV)") || upper.Contains("ADV."))
+                return true;
+
+            // Exclude Party Exp accounts
+            if (ac1Trim == "075" || upper.Contains("PARTY EXP") || upper.Contains("(PARTY EXP)") || (upper.Contains("PARTY") && upper.Contains("EXP")))
+                return true;
+
+            // Exclude Broker accounts
+            if (upper.Contains("BROKER") || upper.Contains("(ROKER)") || upper.Contains("BROKERY"))
+                return true;
+
+            return false;
         }
 
         private DataTable GetAccountLedger(string accode, DateTime fromDate, DateTime toDate, int companyId, int financialYearId)

@@ -390,7 +390,7 @@
                             <tr class="bg-white filter-row align-middle">
                                 <th class="text-center text-muted p-1"><i class="fa fa-search small"></i></th>
                                 <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="1" placeholder="Challan #" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
-                                <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="2" placeholder="Date" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
+                                <th class="p-1"><input type="date" class="form-control form-control-sm col-search" data-col="2" placeholder="Date" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
                                 <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="3" placeholder="Vehicle" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
                                 <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="4" placeholder="Transporter" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
                                 <th class="p-1"><input type="text" class="form-control form-control-sm col-search" data-col="5" placeholder="Driver / Party" style="font-size: 0.72rem; padding: 2px 4px; height: 26px;" /></th>
@@ -750,8 +750,68 @@
 
                 var searchMatches = true;
                 for (var col in searches) {
-                    var cellText = $tr.find('td').eq(col).text().toLowerCase().trim();
-                    if (cellText.indexOf(searches[col]) === -1) {
+                    var sVal = searches[col];
+                    if (!sVal) continue;
+
+                    var $td = $tr.find('td').eq(col);
+                    var cellText = $td.text().replace(/\s+/g, ' ').toLowerCase().trim();
+
+                    var colIdx = parseInt(col);
+
+                    if (colIdx === 2) {
+                        var dMatch = cellText.indexOf(sVal) !== -1;
+                        if (!dMatch && sVal.indexOf('-') !== -1) {
+                            var dParts = sVal.split('-');
+                            if (dParts.length === 3) {
+                                var formattedD = dParts[2] + '/' + dParts[1] + '/' + dParts[0];
+                                if (cellText.indexOf(formattedD) !== -1) dMatch = true;
+                            }
+                        }
+                        if (!dMatch) {
+                            searchMatches = false;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Col 1: Chal No - EXACT NUMERIC MATCH
+                    if (colIdx === 1) {
+                        var cleanCell = cellText.split(' ')[0].trim();
+                        var sNum = parseFloat(sVal);
+                        var cNum = parseFloat(cleanCell);
+                        var matchChal = false;
+                        if (!isNaN(sNum) && !isNaN(cNum)) {
+                            matchChal = (cNum === sNum);
+                        } else {
+                            matchChal = (cleanCell === sVal);
+                        }
+                        if (!matchChal) {
+                            searchMatches = false;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Col 7 to 12 (Amounts) - EXACT NUMERIC MATCH
+                    if (colIdx >= 7 && colIdx <= 12) {
+                        var sNum = parseFloat(sVal);
+                        var cNum = parseFloat(cellText.replace(/,/g, ''));
+                        var matchAmt = false;
+                        if (!isNaN(sNum) && !isNaN(cNum)) {
+                            matchAmt = (cNum === sNum);
+                        } else {
+                            matchAmt = (cellText === sVal);
+                        }
+                        if (!matchAmt) {
+                            searchMatches = false;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Col 3 (Vehicle), Col 4 (Transporter), Col 5 (Driver), Col 6 (Station): exact or starts with (from first letter or word start)
+                    var matchText = (cellText === sVal) || (cellText.indexOf(sVal) === 0) || cellText.split(' ').some(function(w) { return w.indexOf(sVal) === 0; });
+                    if (!matchText) {
                         searchMatches = false;
                         break;
                     }
@@ -912,6 +972,8 @@
                     });
 
                     $("#biltyModalTable tbody").html(rowsHtml);
+                    syncModalSelectedChallans();
+                    applyChallanFilters();
                     $('#biltyMatchCount').text(res.data.length + ' matching challans');
                 } else {
                     $("#biltyModalTable tbody").html(`
@@ -1399,7 +1461,7 @@
 
             initialModalTableHtml = $("#biltyModalTable tbody").html();
 
-            $(document).on('input', '.col-search', function () {
+            $(document).on('input change', '.col-search', function () {
                 syncModalSelectedChallans();
                 applyChallanFilters();
                 handleChallanSearch();

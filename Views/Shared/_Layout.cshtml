@@ -2095,6 +2095,15 @@
 
 				// Check if inside Voucher detail table row:
 				if ($current.closest('#tbl tbody tr').length) {
+					var $row = $current.closest('#tbl tbody tr');
+					// If in Account dropdown:
+					if ($current.is('select[name*="gl3Id"]') || $current.hasClass('select2-selection')) {
+						var $bilti = $row.find('input[name*="Billtino"]:visible');
+						if ($bilti.length) return AppNav.focusElement($bilti);
+						var $inp = $row.find('input:not([type=hidden]):not([disabled]):visible').first();
+						if ($inp.length) return AppNav.focusElement($inp);
+					}
+
 					// If in narration of detail row, add row and focus new row's Account
 					if ($current.is('input[name*="Narration"]')) {
 						if (typeof addRow === 'function') {
@@ -2299,44 +2308,39 @@
 			});
 
 			// 3. Enter key handling:
-			// - On Select2 selection container:
-			//   Enter directly advances to the NEXT field!
-			$(document).on('keydown', '.select2-selection', function (e) {
+			// Capture-phase listener ensures Enter NEVER opens Select2 or native select dropdowns,
+			// and moves directly to the NEXT field!
+			window.addEventListener('keydown', function (e) {
 				if (e.key === 'Enter') {
-					var $container = $(this).closest('.select2-container');
-					// If dropdown is currently OPEN, let Select2 pick the item
-					if ($container.hasClass('select2-container--open')) {
+					var $target = $(e.target);
+					var $selection = $target.closest('.select2-selection');
+					if ($selection.length) {
+						var $container = $selection.closest('.select2-container');
+						// If dropdown is currently OPEN, let Select2 pick the selected item
+						if ($container.hasClass('select2-container--open')) {
+							return;
+						}
+
+						// Dropdown is CLOSED -> Intercept Enter in CAPTURE phase so Select2 NEVER opens!
+						e.preventDefault();
+						e.stopPropagation();
+						e.stopImmediatePropagation();
+
+						var $select = AppNav.getSelectFromSelection($selection);
+						AppNav.moveToNext($select.length ? $select : $selection);
 						return;
 					}
 
-					e.preventDefault();
-					var $select = AppNav.getSelectFromSelection($(this));
-					var val = $select.val();
-
-					// SPECIAL CASE: Inside Voucher detail table (#tbl)
-					var $tblRow = $select.closest('#tbl tbody tr');
-					if ($tblRow.length) {
-						var hasAcc = (val && val !== '' && val !== '0' && val !== 'Select Account');
-						if (!hasAcc) {
-							// Account is NOT selected in this detail row
-							var $allRows = $('#tbl tbody tr').not('#noDataRow');
-							if ($allRows.length > 1) {
-								// Remove this trailing empty row and go to Update / Create button
-								$tblRow.remove();
-								if (typeof calc === 'function') calc();
-								var $saveBtn = $('#btnSave, #btnSaveBottom, #btnUpdate, #btnUpdateBottom, button[type="submit"]').filter(':visible').first();
-								if ($saveBtn.length) {
-									$saveBtn.prop('disabled', false).removeClass('disabled');
-									return AppNav.focusElement($saveBtn);
-								}
-							}
-						}
+					// Native select
+					if ($target.is('select:not(.select2-hidden-accessible)')) {
+						e.preventDefault();
+						e.stopPropagation();
+						e.stopImmediatePropagation();
+						AppNav.moveToNext($target);
+						return;
 					}
-
-					// Advance directly to NEXT field!
-					AppNav.moveToNext($select.length ? $select : $(this));
 				}
-			});
+			}, true);
 
 			// Also handle when inside Select2 search field and Enter pressed without selecting account
 			$(document).on('keydown', '.select2-search__field', function (e) {
@@ -2348,26 +2352,10 @@
 					if ($select.length) {
 						var $highlighted = $('.select2-results__option--highlighted');
 						if ((!$highlighted.length || $highlighted.hasClass('select2-results__message')) && !$search.val()) {
-							var $tblRow = $select.closest('#tbl tbody tr');
-							if ($tblRow.length) {
-								var $allRows = $('#tbl tbody tr').not('#noDataRow');
-								if ($allRows.length > 1) {
-									e.preventDefault();
-									$select.select2('close');
-									$tblRow.remove();
-									if (typeof calc === 'function') calc();
-									var $saveBtn = $('#btnSave, #btnSaveBottom, #btnUpdate, #btnUpdateBottom, button[type="submit"]').filter(':visible').first();
-									if ($saveBtn.length) {
-										$saveBtn.prop('disabled', false).removeClass('disabled');
-										return AppNav.focusElement($saveBtn);
-									}
-								}
-							} else {
-								// In standard form dropdown: close and move to next
-								e.preventDefault();
-								$select.select2('close');
-								AppNav.moveToNext($select);
-							}
+							// Just close dropdown and move to next field - NEVER remove any row!
+							e.preventDefault();
+							$select.select2('close');
+							AppNav.moveToNext($select);
 						}
 					}
 				}

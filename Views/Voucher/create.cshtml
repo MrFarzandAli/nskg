@@ -494,7 +494,7 @@
             }
         });
 
-        // 1. Enter on Master/Header Narration -> jumps to first Detail Row Account
+        // 1. Enter on Master/Header Narration -> jumps to first Detail Row Account (focus, do not open)
         $(document).on('keydown', 'input[name="Head.Narration"], #Head_Narration', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -508,9 +508,6 @@
                 var $firstAcc = $rows.first().find('select[name*="gl3Id"]');
                 if ($firstAcc.length) {
                     AppNav.focusElement($firstAcc);
-                    setTimeout(function() {
-                        AppNav.openSelect2($firstAcc);
-                    }, 40);
                 }
             }
         });
@@ -534,40 +531,62 @@
             return false;
         }
 
-        // 2. Enter on Account Selection in #tbl (when dropdown is closed)
-        $(document).on('keydown', '#tbl .select2-selection', function(e) {
+        // 2. Intercept Enter on ANY list/Select2 in CAPTURE phase so Select2 never receives Enter to open the dropdown!
+        window.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
-                var $container = $(this).closest('.select2-container');
-                if ($container.hasClass('select2-container--open')) {
-                    return; // let Select2 handle item selection
+                var $target = $(e.target);
+                var $selection = $target.closest('.select2-selection');
+                if ($selection.length) {
+                    var $container = $selection.closest('.select2-container');
+                    if ($container.hasClass('select2-container--open')) {
+                        return; // Let select2 pick option if open
+                    }
+
+                    // Dropdown is closed -> Stop Select2 from opening!
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+
+                    var $tr = $selection.closest('tr');
+                    if ($tr.length && $tr.closest('#tbl').length) {
+                        // In detail grid row -> advance to Bilti No (or next visible input)
+                        var $bilti = $tr.find('input[name*="Billtino"]:visible');
+                        if ($bilti.length) {
+                            AppNav.focusElement($bilti);
+                        } else {
+                            var $nextInput = $tr.find('input:not([type=hidden]):not([disabled]):visible').first();
+                            if ($nextInput.length) AppNav.focusElement($nextInput);
+                        }
+                        return;
+                    }
+
+                    // Header Select2 lists
+                    var $select = AppNav.getSelectFromSelection($selection);
+                    if ($select.is('#Head_gl3Id, select[name*="gl3Id"]')) {
+                        var $party = $('#Head_Partycode');
+                        if ($party.length) return AppNav.focusElement($party);
+                    } else if ($select.is('#Head_Partycode, select[name*="Partycode"]')) {
+                        var $person = $('#Head_PersonName, input[name*="PersonName"]');
+                        if ($person.length) return AppNav.focusElement($person);
+                    }
+
+                    if (typeof AppNav !== 'undefined' && AppNav.moveToNext) {
+                        AppNav.moveToNext($select.length ? $select : $selection);
+                    }
+                    return;
                 }
 
-                e.preventDefault();
-                e.stopPropagation();
-
-                var $tr = $(this).closest('tr');
-                if (!$tr.length || $tr.attr('id') === 'noDataRow') return;
-
-                if (!isRowAccountSelected($tr)) {
-                    // NO account selected -> remove empty trailing row if other rows exist, and jump to Save
-                    var $allRows = $('#tbl tbody tr:not(#noDataRow)');
-                    if ($allRows.length > 1) {
-                        $tr.remove();
-                        calc();
-                    }
-                    jumpToSaveButton();
-                } else {
-                    // Account IS selected -> advance to Bilti No
-                    var $bilti = $tr.find('input[name*="Billtino"]:visible');
-                    if ($bilti.length) {
-                        AppNav.focusElement($bilti);
-                    } else {
-                        var $nextInput = $tr.find('input:not([type=hidden]):not([disabled]):visible').first();
-                        if ($nextInput.length) AppNav.focusElement($nextInput);
+                // Native select element
+                if ($target.is('select:not(.select2-hidden-accessible)')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    if (typeof AppNav !== 'undefined' && AppNav.moveToNext) {
+                        AppNav.moveToNext($target);
                     }
                 }
             }
-        });
+        }, true);
 
         // 3. When an account is selected in #tbl via Select2 dropdown
         $(document).on('select2:select', '#tbl select[name*="gl3Id"]', function(e) {
@@ -593,20 +612,18 @@
 
                 if ($openSelect.length && $openSelect.closest('#tbl').length) {
                     var $tr = $openSelect.closest('tr');
-                    var val = $openSelect.val();
-                    var hasAcc = (val && val !== '' && val !== '0' && val !== 'Select Account');
-
-                    if (!$search.val() && !hasAcc) {
+                    // NEVER remove any row! Just close select2 and advance to Bilti No
+                    if (!$search.val()) {
                         e.preventDefault();
                         e.stopPropagation();
                         try { $openSelect.select2('close'); } catch(err) {}
-
-                        var $allRows = $('#tbl tbody tr:not(#noDataRow)');
-                        if ($allRows.length > 1) {
-                            $tr.remove();
-                            calc();
+                        var $bilti = $tr.find('input[name*="Billtino"]:visible');
+                        if ($bilti.length) {
+                            AppNav.focusElement($bilti);
+                        } else {
+                            var $nextInput = $tr.find('input:not([type=hidden]):not([disabled]):visible').first();
+                            if ($nextInput.length) AppNav.focusElement($nextInput);
                         }
-                        jumpToSaveButton();
                     }
                 }
             }
@@ -672,9 +689,6 @@
                             var $newAcc = $lastRow.find('select[name*="gl3Id"]');
                             if ($newAcc.length) {
                                 AppNav.focusElement($newAcc);
-                                setTimeout(function() {
-                                    AppNav.openSelect2($newAcc);
-                                }, 40);
                             }
                         }, 50);
                     }

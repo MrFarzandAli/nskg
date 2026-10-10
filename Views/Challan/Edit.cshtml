@@ -276,6 +276,13 @@
                             <th width="110"><i class="fa fa-credit-card text-primary me-1"></i> Paid Amt</th>
                             <th width="65"><i class="fa fa-cog text-primary me-1"></i></th>
                         </tr>
+                        <tr class="total-row bg-light">
+                            <td colspan="3" class="text-end fw-bold align-middle">Total:</td>
+                            <td><input type="text" id="totalBiltyQty" class="form-control form-control-sm text-end bg-light fw-bold" readonly /></td>
+                            <td><input type="text" id="totalBiltyAmt" class="form-control form-control-sm text-end bg-light fw-bold" readonly /></td>
+                            <td><input type="text" id="totalBiltyPaidAmt" class="form-control form-control-sm text-end bg-light fw-bold" readonly /></td>
+                            <td></td>
+                        </tr>
                     </thead>
 
                     <tbody id="tbodyItems">
@@ -532,7 +539,7 @@
                         <tr class="bg-white filter-row">
                             <th class="text-center text-muted small"><i class="fa fa-search"></i></th>
                             <th><input type="text" class="form-control form-control-sm col-search" data-col="1" placeholder="Search Doc #" /></th>
-                            <th><input type="text" class="form-control form-control-sm col-search" data-col="2" placeholder="Search Date" /></th>
+                            <th><input type="date" class="form-control form-control-sm col-search" data-col="2" placeholder="Search Date" /></th>
                             <th><input type="text" class="form-control form-control-sm col-search" data-col="3" placeholder="Search Bilty #" /></th>
                             <th><input type="text" class="form-control form-control-sm col-search" data-col="4" placeholder="Search Party" /></th>
                             <th><input type="text" class="form-control form-control-sm col-search" data-col="5" placeholder="Search Send To" /></th>
@@ -1037,7 +1044,7 @@
             var hasActiveSearch = Object.keys(searches).length > 0;
 
             var visibleCount = 0;
-            $("#biltyModal tbody tr").each(function () {
+            $("#biltyModalTable tbody tr").each(function () {
                 var $tr = $(this);
                 if ($tr.attr('id') === 'noBiltyMatchRow' || $tr.attr('id') === 'searchingRow') return;
 
@@ -1061,11 +1068,89 @@
                     }
                 }
 
-                // 3. Column searches match
+                // 3. Column searches match: word-by-word tokenized, prefix/contains, numbers, and date
                 var searchMatches = true;
                 for (var col in searches) {
-                    var cellText = $tr.find('td').eq(col).text().toLowerCase().trim();
-                    if (cellText.indexOf(searches[col]) === -1) {
+                    var sVal = searches[col];
+                    if (!sVal) continue;
+
+                    var $td = $tr.find('td').eq(col);
+                    var cellText = $td.text().replace(/\s+/g, ' ').toLowerCase().trim();
+
+                    var colIdx = parseInt(col);
+
+                    if (colIdx === 2) {
+                        var dateRaw = ($tr.data('docdate-raw') || '').toString().toLowerCase();
+                        var dMatch = (dateRaw && dateRaw.indexOf(sVal) !== -1) || (cellText.indexOf(sVal) !== -1);
+                        if (!dMatch && sVal.indexOf('-') !== -1) {
+                            var dParts = sVal.split('-');
+                            if (dParts.length === 3) {
+                                var formattedD = dParts[2] + '/' + dParts[1] + '/' + dParts[0];
+                                if (cellText.indexOf(formattedD) !== -1) dMatch = true;
+                            }
+                        }
+                        if (!dMatch) {
+                            searchMatches = false;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Col 3: Bilty No - MUST BE EXACT NUMERIC MATCH
+                    if (colIdx === 3) {
+                        var sNum = parseFloat(sVal);
+                        var cNum = parseFloat(cellText);
+                        var matchBilty = false;
+                        if (!isNaN(sNum) && !isNaN(cNum)) {
+                            matchBilty = (cNum === sNum);
+                        } else {
+                            matchBilty = (cellText === sVal);
+                        }
+                        if (!matchBilty) {
+                            searchMatches = false;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Col 6 (Qty), Col 7 (Net Amt) - EXACT NUMERIC MATCH
+                    if (colIdx === 6 || colIdx === 7) {
+                        var sNum = parseFloat(sVal);
+                        var cNum = parseFloat(cellText.replace(/,/g, ''));
+                        var matchNum = false;
+                        if (!isNaN(sNum) && !isNaN(cNum)) {
+                            matchNum = (cNum === sNum);
+                        } else {
+                            matchNum = (cellText === sVal);
+                        }
+                        if (!matchNum) {
+                            searchMatches = false;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Col 1 (Doc No) - EXACT OR PREFIX MATCH
+                    if (colIdx === 1) {
+                        var cleanCell = cellText.split(' ')[0].trim();
+                        var sNum = parseFloat(sVal);
+                        var cNum = parseFloat(cleanCell);
+                        var matchDoc = false;
+                        if (!isNaN(sNum) && !isNaN(cNum)) {
+                            matchDoc = (cNum === sNum);
+                        } else {
+                            matchDoc = (cleanCell === sVal || cleanCell.indexOf(sVal) === 0);
+                        }
+                        if (!matchDoc) {
+                            searchMatches = false;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Col 4 (Party), Col 5 (Send To): exact or starts with (from first letter or word start)
+                    var matchText = (cellText === sVal) || (cellText.indexOf(sVal) === 0) || cellText.split(' ').some(function(w) { return w.indexOf(sVal) === 0; });
+                    if (!matchText) {
                         searchMatches = false;
                         break;
                     }
@@ -1083,7 +1168,7 @@
             $("#noBiltyMatchRow").remove();
             if (visibleCount === 0) {
                 var typeLabel = biltyType === 'ToPay' ? 'To Pay' : (biltyType === 'Paid' ? 'Paid' : '');
-                $("#biltyModal tbody").append(`
+                $("#biltyModalTable tbody").append(`
                     <tr id="noBiltyMatchRow">
                         <td colspan="8" class="text-center text-muted py-3">
                             <i class="fa fa-info-circle me-1 text-warning"></i> No bilties found matching the current filter/search.
@@ -1097,6 +1182,9 @@
         var searchDebounceTimer = null;
 
         function handleColumnSearch() {
+            // Instant client-side filter
+            applyBiltyFilters();
+
             clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(function() {
                 var docNo = $('.col-search[data-col="1"]').val() || '';
@@ -1126,7 +1214,7 @@
                     syncModalSelectedBilties();
                     applyBiltyFilters();
                 }
-            }, 300);
+            }, 400);
         }
 
         function performServerBiltySearch(params) {
@@ -1236,6 +1324,7 @@
                     $("#biltyModalTable tbody").html(html);
                     syncModalSelectedBilties();
                     sortBiltyModalRows();
+                    applyBiltyFilters();
                 } else {
                     $("#biltyModalTable tbody").html(`
                         <tr id="noBiltyMatchRow">
@@ -1562,17 +1651,28 @@
             alert('Please enter or select a valid Bilty No first.');
         }
 
-        // 🔥 TOTAL CALCULATION (MAIN LOGIC) - UNCHANGED
+        // 🔥 TOTAL CALCULATION (MAIN LOGIC)
         function calculateTotals() {
 
             // =========================
-            // SUM DETAIL BILTY AMOUNT
+            // SUM DETAIL BILTY AMOUNT, PAID AMOUNT & QTY
             // =========================
             let detailBiltyTotal = 0;
+            let detailPaidTotal = 0;
+            let totalQty = 0;
 
-            $(".biltyamt").each(function () {
-                detailBiltyTotal += parseFloat($(this).val()) || 0;
+            $("#tbodyItems tr").not("#noDataRow").each(function () {
+                let q = parseFloat($(this).find(".qty").val());
+                if (!isNaN(q)) totalQty += q;
+                let b = parseFloat($(this).find(".biltyamt").val());
+                if (!isNaN(b)) detailBiltyTotal += b;
+                let p = parseFloat($(this).find(".paidamt").val());
+                if (!isNaN(p)) detailPaidTotal += p;
             });
+
+            $("#totalBiltyQty").val(totalQty);
+            $("#totalBiltyAmt").val(detailBiltyTotal.toFixed(2));
+            $("#totalBiltyPaidAmt").val(detailPaidTotal.toFixed(2));
 
             // =========================
             // TOTAL BILTY
@@ -1615,9 +1715,11 @@
             return parseFloat($(selector).val()) || 0;
         }
 
-        // realtime - UNCHANGED
+        // realtime
         $(document).on("input", `
             .biltyamt,
+            .paidamt,
+            .qty,
             #Head_BillTiAmt,
             #Head_TotToPaid,
             #Head_PExpAmt,
@@ -1640,7 +1742,7 @@
             calculateTotals();
 
             // Bind column searches in modal
-            $(document).on("input", ".col-search", handleColumnSearch);
+            $(document).on("input change", ".col-search", handleColumnSearch);
 
             // Ensure at least one row exists if empty
             if ($("#tbodyItems tr").not("#noDataRow").length === 0) {
