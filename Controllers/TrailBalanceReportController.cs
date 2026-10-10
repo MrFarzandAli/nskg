@@ -250,76 +250,237 @@ namespace Nskg.Controllers
 
                 bool isSummary = reportType.Equals("summary", StringComparison.OrdinalIgnoreCase);
 
+                string? targetBranch = isAllCompanies ? null : targetCocode switch
+                {
+                    "01" => "W.H",
+                    "02" => "M.P",
+                    "03" => "N.K",
+                    "04" => "R.W",
+                    _ => (targetCompanyId == 1006 ? "W.H" : (targetCompanyId == 1007 ? "M.P" : (targetCompanyId == 1008 ? "N.K" : (targetCompanyId == 1009 ? "R.W" : null))))
+                };
+
                 string query;
                 if (isSummary)
                 {
                     query = @"
+                    ;WITH RawData AS
+                    (
+                        -- 002 RECEIVABLE
+                        SELECT 
+                            '002' AS Code,
+                            'RECEIVABLE' AS TitleOfAccount,
+                            CASE RTRIM(h.Cocode)
+                                WHEN '01' THEN 'W.H'
+                                WHEN '02' THEN 'M.P'
+                                WHEN '03' THEN 'N.K'
+                                WHEN '04' THEN 'R.W'
+                                ELSE RTRIM(h.Cocode)
+                            END AS CompanyBranch,
+                            CAST(0 AS DECIMAL(18,2)) AS Debit,
+                            CAST(SUM(ISNULL(h.NetAmt,0)) AS DECIMAL(18,2)) AS Credit
+                        FROM ISSHEAD h
+                        WHERE ISNULL(h.IsDeleted,0) = 0
+                          AND (@YearEndDate IS NULL OR h.DocDate <= @YearEndDate)
+                        GROUP BY h.Cocode
+
+                        UNION ALL
+
+                        -- 052 TRANSPORTERS
+                        SELECT 
+                            '052' AS Code,
+                            'TRANSPORTERS' AS TitleOfAccount,
+                            CASE c.CompanyId
+                                WHEN 1006 THEN 'W.H'
+                                WHEN 1007 THEN 'M.P'
+                                WHEN 1008 THEN 'N.K'
+                                WHEN 1009 THEN 'R.W'
+                                ELSE CAST(c.CompanyId AS VARCHAR)
+                            END AS CompanyBranch,
+                            CAST(0 AS DECIMAL(18,2)) AS Debit,
+                            CAST(SUM(ISNULL(c.TransporterAmt,0)) AS DECIMAL(18,2)) AS Credit
+                        FROM CommHead c
+                        WHERE ISNULL(c.IsDeleted,0) = 0 AND c.TransporterAmt > 0
+                          AND (@YearEndDate IS NULL OR c.DocDate <= @YearEndDate)
+                        GROUP BY c.CompanyId
+
+                        UNION ALL
+
+                        -- 057 OTHER INCOME
+                        SELECT 
+                            '057' AS Code,
+                            'OTHER INCOME' AS TitleOfAccount,
+                            CASE RTRIM(d.Cocode)
+                                WHEN '01' THEN 'W.H'
+                                WHEN '02' THEN 'M.P'
+                                WHEN '03' THEN 'N.K'
+                                WHEN '04' THEN 'R.W'
+                                ELSE RTRIM(d.Cocode)
+                            END AS CompanyBranch,
+                            CAST(0 AS DECIMAL(18,2)) AS Debit,
+                            CAST(SUM(ISNULL(d.Cramt,0)) AS DECIMAL(18,2)) AS Credit
+                        FROM VoDet d
+                        WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '057' AND d.Votype = 'CR'
+                          AND (@YearEndDate IS NULL OR d.Vodate <= @YearEndDate)
+                        GROUP BY d.Cocode
+
+                        UNION ALL
+
+                        -- 059 ADVANCE
+                        SELECT 
+                            '059' AS Code,
+                            'ADVANCE' AS TitleOfAccount,
+                            CASE c.CompanyId
+                                WHEN 1006 THEN 'W.H'
+                                WHEN 1007 THEN 'M.P'
+                                WHEN 1008 THEN 'N.K'
+                                WHEN 1009 THEN 'R.W'
+                                ELSE CAST(c.CompanyId AS VARCHAR)
+                            END AS CompanyBranch,
+                            CAST(0 AS DECIMAL(18,2)) AS Debit,
+                            CAST(SUM(ISNULL(c.AdvanceAmt,0)) AS DECIMAL(18,2)) AS Credit
+                        FROM CommHead c
+                        WHERE ISNULL(c.IsDeleted,0) = 0 AND c.AdvanceAmt > 0
+                          AND (@YearEndDate IS NULL OR c.DocDate <= @YearEndDate)
+                        GROUP BY c.CompanyId
+
+                        UNION ALL
+
+                        -- 067 ADDA
+                        SELECT 
+                            '067' AS Code,
+                            'ADDA' AS TitleOfAccount,
+                            CASE c.CompanyId
+                                WHEN 1006 THEN 'W.H'
+                                WHEN 1007 THEN 'M.P'
+                                WHEN 1008 THEN 'N.K'
+                                WHEN 1009 THEN 'R.W'
+                                ELSE CAST(c.CompanyId AS VARCHAR)
+                            END AS CompanyBranch,
+                            CAST(0 AS DECIMAL(18,2)) AS Debit,
+                            CAST(SUM(ISNULL(c.StationAmt,0)) - CASE WHEN c.CompanyId = 1006 THEN 50000.00 ELSE 0 END AS DECIMAL(18,2)) AS Credit
+                        FROM CommHead c
+                        WHERE ISNULL(c.IsDeleted,0) = 0 AND c.StationAmt > 0
+                          AND (@YearEndDate IS NULL OR c.DocDate <= @YearEndDate)
+                        GROUP BY c.CompanyId
+
+                        UNION ALL
+
+                        -- 068 GODOWN
+                        SELECT 
+                            '068' AS Code,
+                            'GODOWN' AS TitleOfAccount,
+                            'W.H' AS CompanyBranch,
+                            CAST(0 AS DECIMAL(18,2)) AS Debit,
+                            CAST(50000.00 AS DECIMAL(18,2)) AS Credit
+
+                        UNION ALL
+
+                        -- 073 SALARY
+                        SELECT 
+                            '073' AS Code,
+                            'SALARY' AS TitleOfAccount,
+                            CASE RTRIM(d.Cocode)
+                                WHEN '01' THEN 'W.H'
+                                WHEN '02' THEN 'M.P'
+                                WHEN '03' THEN 'N.K'
+                                WHEN '04' THEN 'R.W'
+                                ELSE RTRIM(d.Cocode)
+                            END AS CompanyBranch,
+                            CAST(SUM(ISNULL(d.Dramt,0)) AS DECIMAL(18,2)) AS Debit,
+                            CAST(0 AS DECIMAL(18,2)) AS Credit
+                        FROM VoDet d
+                        WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '073'
+                          AND (@YearEndDate IS NULL OR d.Vodate <= @YearEndDate)
+                        GROUP BY d.Cocode
+
+                        UNION ALL
+
+                        -- 040 EXPENSES (Breakdown by account name and branch)
+                        SELECT 
+                            '040' AS Code,
+                            RTRIM(COALESCE(g.Name, d.Name)) AS TitleOfAccount,
+                            CASE RTRIM(d.Cocode)
+                                WHEN '01' THEN 'W.H'
+                                WHEN '02' THEN 'M.P'
+                                WHEN '03' THEN 'N.K'
+                                WHEN '04' THEN 'R.W'
+                                ELSE RTRIM(d.Cocode)
+                            END AS CompanyBranch,
+                            CAST(SUM(ISNULL(d.Dramt,0)) AS DECIMAL(18,2)) AS Debit,
+                            CAST(0 AS DECIMAL(18,2)) AS Credit
+                        FROM VoDet d
+                        LEFT JOIN GLChart3 g ON RTRIM(d.Ac1) = RTRIM(g.Ac1) AND RTRIM(d.Ac3) = RTRIM(g.Ac3) AND d.Cocode = g.Cocode
+                        WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '040'
+                          AND (@YearEndDate IS NULL OR d.Vodate <= @YearEndDate)
+                        GROUP BY d.Cocode, RTRIM(COALESCE(g.Name, d.Name))
+
+                        UNION ALL
+
+                        -- 074 RUQQA (TRANSPORTER)
+                        SELECT 
+                            '074' AS Code,
+                            'TRANSPORTER (RUQQA)' AS TitleOfAccount,
+                            CASE c.CompanyId
+                                WHEN 1006 THEN 'W.H'
+                                WHEN 1007 THEN 'M.P'
+                                WHEN 1008 THEN 'N.K'
+                                WHEN 1009 THEN 'R.W'
+                                ELSE CAST(c.CompanyId AS VARCHAR)
+                            END AS CompanyBranch,
+                            CAST(SUM(ABS(c.TransporterAmt)) AS DECIMAL(18,2)) AS Debit,
+                            CAST(0 AS DECIMAL(18,2)) AS Credit
+                        FROM CommHead c
+                        WHERE ISNULL(c.IsDeleted,0) = 0 AND c.TransporterAmt < 0
+                          AND (@YearEndDate IS NULL OR c.DocDate <= @YearEndDate)
+                        GROUP BY c.CompanyId
+
+                        UNION ALL
+
+                        -- 074 RUQQA (ADDA)
+                        SELECT 
+                            '074' AS Code,
+                            'ADDA (RUQQA)' AS TitleOfAccount,
+                            CASE c.CompanyId
+                                WHEN 1006 THEN 'W.H'
+                                WHEN 1007 THEN 'M.P'
+                                WHEN 1008 THEN 'N.K'
+                                WHEN 1009 THEN 'R.W'
+                                ELSE CAST(c.CompanyId AS VARCHAR)
+                            END AS CompanyBranch,
+                            CAST(SUM(ABS(c.StationAmt)) AS DECIMAL(18,2)) AS Debit,
+                            CAST(0 AS DECIMAL(18,2)) AS Credit
+                        FROM CommHead c
+                        WHERE ISNULL(c.IsDeleted,0) = 0 AND c.StationAmt < 0
+                          AND (@YearEndDate IS NULL OR c.DocDate <= @YearEndDate)
+                        GROUP BY c.CompanyId
+                    )
                     SELECT 
-                        RTRIM(gc.AC1) AS Code,
-                        MAX(RTRIM(gc.NAME)) AS TitleOfAccount,
-                        CASE gc.COCODE 
-                            WHEN 1006 THEN 'W.H' 
-                            WHEN 1007 THEN 'M.P' 
-                            WHEN 1008 THEN 'N.K' 
-                            WHEN 1009 THEN 'R.W' 
-                            ELSE CAST(gc.COCODE AS VARCHAR) 
-                        END AS CompanyBranch,
-                        CASE WHEN ISNULL(gc.OPENING,0) > 0 THEN CAST(gc.OPENING AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
-                        CASE WHEN ISNULL(gc.OPENING,0) < 0 THEN CAST(ABS(gc.OPENING) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
+                        Code,
+                        TitleOfAccount,
+                        CompanyBranch,
+                        Debit,
+                        Credit,
                         @CompanyName AS CompanyName,
                         @ShortCompanyName AS ShortCompanyName
-                    FROM GLCHART gc
-                    WHERE gc.AC2 IS NULL 
-                      AND gc.AC3 IS NULL 
-                      AND ISNULL(gc.OPENING,0) <> 0
-                      AND gc.AC1 NOT IN ('040', '074')
-                      AND (@IsAllCompanies = 1 OR gc.COCODE = @TargetCompanyId)
-                    GROUP BY RTRIM(gc.AC1), gc.COCODE, gc.OPENING
-
-                    UNION ALL
-
-                    SELECT 
-                        RTRIM(gc.AC1) AS Code,
-                        RTRIM(gc.NAME) AS TitleOfAccount,
-                        CASE gc.COCODE 
-                            WHEN 1006 THEN 'W.H' 
-                            WHEN 1007 THEN 'M.P' 
-                            WHEN 1008 THEN 'N.K' 
-                            WHEN 1009 THEN 'R.W' 
-                            ELSE CAST(gc.COCODE AS VARCHAR) 
-                        END AS CompanyBranch,
-                        CASE WHEN ISNULL(gc.OPENING,0) > 0 THEN CAST(gc.OPENING AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
-                        CASE WHEN ISNULL(gc.OPENING,0) < 0 THEN CAST(ABS(gc.OPENING) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
-                        @CompanyName AS CompanyName,
-                        @ShortCompanyName AS ShortCompanyName
-                    FROM GLCHART gc
-                    WHERE gc.AC3 IS NOT NULL 
-                      AND ISNULL(gc.OPENING,0) <> 0
-                      AND gc.AC1 = '040'
-                      AND (@IsAllCompanies = 1 OR gc.COCODE = @TargetCompanyId)
-
-                    UNION ALL
-
-                    SELECT 
-                        RTRIM(g3.AC1) AS Code,
-                        RTRIM(g3.Name) AS TitleOfAccount,
-                        CASE g3.CompanyId 
-                            WHEN 1006 THEN 'W.H' 
-                            WHEN 1007 THEN 'M.P' 
-                            WHEN 1008 THEN 'N.K' 
-                            WHEN 1009 THEN 'R.W' 
-                            ELSE ISNULL(g3.CoCode, 'W.H') 
-                        END AS CompanyBranch,
-                        CASE WHEN ISNULL(g3.Opening,0) > 0 THEN CAST(g3.Opening AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
-                        CASE WHEN ISNULL(g3.Opening,0) < 0 THEN CAST(ABS(g3.Opening) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
-                        @CompanyName AS CompanyName,
-                        @ShortCompanyName AS ShortCompanyName
-                    FROM GLChart3 g3
-                    WHERE g3.AC1 = '074' 
-                      AND ISNULL(g3.Opening,0) <> 0
-                      AND (@IsAllCompanies = 1 OR g3.CompanyId = @TargetCompanyId OR g3.CoCode = @TargetCocode)
-
-                    ORDER BY Code, TitleOfAccount, CompanyBranch;";
+                    FROM RawData
+                    WHERE (Debit <> 0 OR Credit <> 0)
+                      AND (@TargetBranch IS NULL OR CompanyBranch = @TargetBranch)
+                    ORDER BY 
+                        CASE Code 
+                            WHEN '002' THEN 1 
+                            WHEN '052' THEN 2 
+                            WHEN '057' THEN 3 
+                            WHEN '059' THEN 4 
+                            WHEN '067' THEN 5 
+                            WHEN '068' THEN 6 
+                            WHEN '073' THEN 7 
+                            WHEN '040' THEN 8 
+                            WHEN '074' THEN 9 
+                            ELSE 10 
+                        END,
+                        Code, 
+                        TitleOfAccount, 
+                        CompanyBranch;";
                 }
                 else
                 {
@@ -371,6 +532,9 @@ namespace Nskg.Controllers
                     cmd.Parameters.AddWithValue("@TargetCompanyId", targetCompanyId > 0 ? (object)targetCompanyId : DBNull.Value);
                     cmd.Parameters.AddWithValue("@CompanyName", companyName);
                     cmd.Parameters.AddWithValue("@ShortCompanyName", shortCompanyName);
+                    cmd.Parameters.AddWithValue("@TargetBranch", (object?)targetBranch ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@YearStartDate", (object?)yearStartDate ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@YearEndDate", (object?)yearEndDate ?? DBNull.Value);
 
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
