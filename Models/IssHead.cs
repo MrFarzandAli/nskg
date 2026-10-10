@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Nskg.Models
@@ -196,6 +196,7 @@ namespace Nskg.Models
         public DateTime? ModifiedOn { get; set; }
         public string? ModifiedBy { get; set; }
         public int? ChallanId { get; set; }
+        public int? VoucherId { get; set; }
 
         // Navigation Property
         public ICollection<IssDetail> Details { get; set; } = new List<IssDetail>();
@@ -203,6 +204,7 @@ namespace Nskg.Models
         public GLChart3? Station { get; set; }
         public GLChart3? Customer { get; set; }
         public ChallanHead? Challan { get; set; }
+        public VoHead? Voucher { get; set; }
 
     }
 }

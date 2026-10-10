@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +89,12 @@ namespace Nskg.Data
                 .HasOne(x => x.Station)
                 .WithMany()
                 .HasForeignKey(x => x.StationId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<IssHead>()
+                .HasOne(x => x.Voucher)
+                .WithMany()
+                .HasForeignKey(x => x.VoucherId)
                 .OnDelete(DeleteBehavior.NoAction);
 
             // Global query filters for soft delete

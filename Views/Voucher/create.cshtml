@@ -92,18 +92,52 @@
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-2">
 
-        <div>
-            <h4 class="mb-0 fw-bold text-navy">
-                <i class="fa fa-file-text-o text-primary me-2"></i>
-                @(ViewBag.Votype ?? Model?.Head?.Votype ?? "Voucher Entry")
-            </h4>
-            <small class="text-muted" style="font-size: 11px;">
-                <i class="fa fa-info-circle me-1"></i>
-                Create and manage accounting voucher
-            </small>
+        <div class="d-flex align-items-center gap-2">
+            <div>
+                <h4 class="mb-0 fw-bold text-navy">
+                    <i class="fa fa-file-text-o text-primary me-2"></i>
+                    @(ViewBag.Votype ?? Model?.Head?.Votype ?? "Voucher Entry")
+                </h4>
+                <small class="text-muted" style="font-size: 11px;">
+                    <i class="fa fa-info-circle me-1"></i>
+                    Create and manage accounting voucher
+                </small>
+            </div>
+            @if (!string.IsNullOrEmpty(Model?.Head?.Vono))
+            {
+                <span class="badge bg-primary fs-7 px-2 py-1 shadow-sm"><i class="fa fa-hashtag me-1"></i>@Model.Head.Vono</span>
+            }
         </div>
 
-        <div>
+        <div class="d-flex flex-wrap align-items-center gap-1">
+            @if (ViewBag.PrevId != null)
+            {
+                <a href="@Url.Action("Edit", new { id = ViewBag.PrevId })" class="btn btn-outline-secondary btn-sm custom-btn" title="Previous Entry">
+                    <i class="fa fa-arrow-left me-1"></i> Prev
+                </a>
+            }
+            else
+            {
+                <button type="button" class="btn btn-outline-secondary btn-sm custom-btn disabled" disabled>
+                    <i class="fa fa-arrow-left me-1"></i> Prev
+                </button>
+            }
+
+            <button type="button" class="btn btn-outline-secondary btn-sm custom-btn disabled" disabled title="Next Entry">
+                Next <i class="fa fa-arrow-right ms-1"></i>
+            </button>
+
+            <a asp-action="Create" asp-route-type="@(Model?.Head?.Votype ?? ViewBag.VoucherType)" class="btn btn-outline-primary btn-sm custom-btn me-2" title="New Entry">
+                <i class="fa fa-plus-circle me-1"></i> New
+            </a>
+
+            @if (Model?.Head?.Votype == "CR" || ViewBag.VoucherType == "CR")
+            {
+                <button type="button" class="btn btn-outline-info btn-sm custom-btn me-2 btnOpenPartyModal" title="Show pending biltys for selected party">
+                    <i class="fa fa-truck me-1"></i> Party
+                </button>
+            }
+
             <button type="button" id="btnAddRow" class="btn btn-outline-primary btn-sm custom-btn me-2" onclick="addRow()">
                 <i class="fa fa-plus me-1"></i> Add Row
             </button>
@@ -172,9 +206,17 @@
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-muted fw-semibold mb-0">
-                        <i class="fa fa-exchange text-primary me-1"></i> Pay / Receive
-                    </label>
+                    <div class="d-flex justify-content-between align-items-center mb-0">
+                        <label class="form-label small text-muted fw-semibold mb-0">
+                            <i class="fa fa-exchange text-primary me-1"></i> Pay / Receive
+                        </label>
+                        @if (Model?.Head?.Votype == "CR" || ViewBag.VoucherType == "CR")
+                        {
+                            <button type="button" class="btn btn-primary btn-xs py-0 px-2 rounded btnOpenPartyModal" style="font-size: 11px;" title="Fetch pending biltis for selected party">
+                                <i class="fa fa-truck me-1"></i> Party
+                            </button>
+                        }
+                    </div>
                     <select asp-for="Head.Partycode" class="form-select form-select-sm select2"
                             asp-items="@(new SelectList(ViewBag.PartyAccounts, "Value", "Text"))">
                     </select>
@@ -315,6 +357,112 @@
     </div>
 
 </form> 
+
+@if (Model?.Head?.Votype == "CR" || ViewBag.VoucherType == "CR")
+{
+    <!-- ======================================================== -->
+    <!-- 🔥 PARTYS PENDING BILTIS MODAL (MATCHING ORACLE FORMS) -->
+    <!-- ======================================================== -->
+    <div class="modal fade" id="partyBiltyModal" tabindex="-1" aria-labelledby="partyBiltyModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-navy text-white py-2 px-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fa fa-truck text-warning me-2 fs-5"></i>
+                        <h5 class="modal-title mb-0 fw-bold fs-6" id="partyBiltyModalLabel">Partys Biltis</h5>
+                        <span class="badge bg-warning text-dark ms-3 fs-7" id="modalPartyBadge">No Party Selected</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-2 px-3">
+                    <!-- Toolbar: Party Selector, Search, Summary -->
+                    <div class="row g-2 align-items-center mb-2 pb-2 border-bottom">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold text-muted mb-0">Party Account:</label>
+                            <select id="modalPartySelect" class="form-select form-select-sm select2">
+                                @if (ViewBag.PartyAccounts != null)
+                                {
+                                    foreach (var p in (IEnumerable<SelectListItem>)ViewBag.PartyAccounts)
+                                    {
+                                        <option value="@p.Value">@p.Text</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold text-muted mb-0">Search in Biltis:</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white"><i class="fa fa-search text-muted"></i></span>
+                                <input type="text" id="modalBiltySearch" class="form-control" placeholder="Search by Bilty #, Bill #, Vehicle..." />
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end pt-3">
+                            <span class="text-muted small">Pending:</span> <strong id="modalTotalBiltisCount" class="text-primary fs-6">0</strong>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-muted small">Selected:</span> <strong id="modalSelectedCount" class="text-success fs-6">0</strong>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-muted small">Total:</span> <strong id="modalSelectedAmount" class="text-success fs-6">0.00</strong>
+                        </div>
+                    </div>
+
+                    <!-- Biltis Table -->
+                    <div class="table-responsive" style="max-height: 420px; min-height: 250px;">
+                        <table class="table table-sm table-bordered table-hover align-middle mb-0" id="tblPartyBiltis">
+                            <thead class="table-light sticky-top" style="top: 0; z-index: 2;">
+                                <tr class="text-center align-middle">
+                                    <th style="width: 45px;">
+                                        <input type="checkbox" id="chkSelectAllBiltis" class="form-check-input" title="Select All" />
+                                    </th>
+                                    <th style="width: 125px;">Docdate</th>
+                                    <th>Cusname</th>
+                                    <th style="width: 120px;">Vehicleno</th>
+                                    <th style="width: 100px;">Bilno</th>
+                                    <th style="width: 100px;">Billtino</th>
+                                    <th style="width: 130px;" class="text-end">Netamt</th>
+                                </tr>
+                                <tr class="bg-white filter-row align-middle">
+                                    <th class="text-center text-muted small"><i class="fa fa-search text-warning"></i></th>
+                                    <th><input type="text" class="form-control form-control-sm bilty-col-search" data-col="docdate" placeholder="Search Date" /></th>
+                                    <th><input type="text" class="form-control form-control-sm bilty-col-search" data-col="cusname" placeholder="Search Party" /></th>
+                                    <th><input type="text" class="form-control form-control-sm bilty-col-search" data-col="vehicleno" placeholder="Search Vehicle #" /></th>
+                                    <th><input type="text" class="form-control form-control-sm bilty-col-search" data-col="bilno" placeholder="Search Bil #" /></th>
+                                    <th><input type="text" class="form-control form-control-sm bilty-col-search" data-col="billtino" placeholder="Search Bilty #" /></th>
+                                    <th><input type="text" class="form-control form-control-sm bilty-col-search text-end" data-col="netamt" placeholder="Search Net" /></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tblPartyBiltisBody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="fa fa-info-circle me-1"></i> Please select a party to load biltis.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-secondary me-2" id="modalStatusMsg"></span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success btn-sm px-3 shadow-sm" id="btnModalSaveBiltis">
+                            <i class="fa fa-save me-1"></i> Save
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3" id="btnModalShowAll">
+                            <i class="fa fa-list me-1"></i> Show All
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm px-3" id="btnModalRefresh">
+                            <i class="fa fa-refresh me-1"></i> Refresh
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">
+                            <i class="fa fa-times me-1"></i> Exit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+} 
 @section scripts {
     <script>
         let i = 0;
@@ -343,48 +491,110 @@
             const dr = row.querySelector("[name*='Dramt']");
             const cr = row.querySelector("[name*='Cramt']");
 
-            if (dr) dr.disabled = !rule.debit;
-            if (cr) cr.disabled = !rule.credit;
+            if (dr) {
+                dr.readOnly = !rule.debit;
+                if (!rule.debit) {
+                    dr.classList.add("bg-light");
+                    dr.tabIndex = -1;
+                    dr.value = "";
+                } else {
+                    dr.classList.remove("bg-light");
+                    dr.tabIndex = 0;
+                }
+            }
 
-            if (!rule.debit) dr.value = "";
-            if (!rule.credit) cr.value = "";
+            if (cr) {
+                cr.readOnly = !rule.credit;
+                if (!rule.credit) {
+                    cr.classList.add("bg-light");
+                    cr.tabIndex = -1;
+                    cr.value = "";
+                } else {
+                    cr.classList.remove("bg-light");
+                    cr.tabIndex = 0;
+                }
+            }
         }
 
-        function addRow() {
+        function reindexDetailRows() {
+            var $rows = $('#tbl tbody tr:not(#noDataRow)');
+            $rows.each(function (idx) {
+                var $tr = $(this);
+                var $indexInput = $tr.find('input[name="Details.Index"]');
+                if (!$indexInput.length) {
+                    $tr.append(`<input type="hidden" name="Details.Index" value="${idx}" />`);
+                } else {
+                    $indexInput.val(idx);
+                }
+
+                $tr.find('[name]').each(function () {
+                    var name = $(this).attr('name');
+                    if (name && name.startsWith('Details[')) {
+                        var newName = name.replace(/^Details\[\d+\]/, 'Details[' + idx + ']');
+                        $(this).attr('name', newName);
+                    }
+                });
+            });
+            i = $rows.length;
+        }
+
+        function addRow(prefillData) {
 
             const noDataRow = document.getElementById("noDataRow");
             if (noDataRow) noDataRow.remove();
 
             // Default Narration from previous row, or from Master Narration
             let defaultNarration = "";
-            const prevNarrationInput = document.querySelector("#tbl tbody tr:not(#noDataRow):last-child input[name*='Narration']");
-            if (prevNarrationInput && prevNarrationInput.value) {
-                defaultNarration = prevNarrationInput.value;
+            if (prefillData && prefillData.narration !== undefined) {
+                defaultNarration = prefillData.narration;
             } else {
-                const headNarr = document.querySelector("input[name='Head.Narration'], #Head_Narration");
-                if (headNarr && headNarr.value) {
-                    defaultNarration = headNarr.value;
+                const prevNarrationInput = document.querySelector("#tbl tbody tr:not(#noDataRow):last-child input[name*='Narration']");
+                if (prevNarrationInput && prevNarrationInput.value) {
+                    defaultNarration = prevNarrationInput.value;
+                } else {
+                    const headNarr = document.querySelector("input[name='Head.Narration'], #Head_Narration");
+                    if (headNarr && headNarr.value) {
+                        defaultNarration = headNarr.value;
+                    }
                 }
             }
 
+            const gl3Val = (prefillData && prefillData.gl3Id) ? String(prefillData.gl3Id) : "";
+            const biltiVal = (prefillData && prefillData.billTiNo) ? escapeHtml(String(prefillData.billTiNo)) : "";
+            const bilnoVal = (prefillData && prefillData.bilNo) ? escapeHtml(String(prefillData.bilNo)) : "";
+            const vehVal = (prefillData && prefillData.vehicleNo) ? escapeHtml(prefillData.vehicleNo) : "";
+            const dramtVal = (prefillData && prefillData.dramt !== undefined && prefillData.dramt !== null) ? prefillData.dramt : "";
+            const cramtVal = (prefillData && prefillData.cramt !== undefined && prefillData.cramt !== null) ? prefillData.cramt : "";
+            const biltyIdHidden = (prefillData && prefillData.id) ? `<input type="hidden" name="SelectedBiltyIds" value="${prefillData.id}" class="imported-bilty-id" />` : "";
+
             const row = document.createElement("tr");
+            if (prefillData && prefillData.id) {
+                row.setAttribute("data-bilty-id", prefillData.id);
+            }
 
             row.innerHTML = `
                 <td>
                     <select name="Details[${i}].gl3Id" class="form-control select2">
                         <option value="">Select Account</option>
-                        @foreach (var acc in ViewBag.Accounts)
+                        @if (ViewBag.Accounts != null)
                         {
+                            foreach (var acc in ViewBag.Accounts)
+                            {
                                 <option value="@acc.Value">@acc.Text</option>
+                            }
                         }
                     </select>
+                    <input type="hidden" name="Details.Index" value="${i}" />
+                    <input type="hidden" name="Details[${i}].Id" value="0" />
+                    ${biltyIdHidden}
+                    <input type="hidden" name="Details[${i}].Vehicleno" value="${vehVal}" />
                 </td>
 
-                <td><input name="Details[${i}].Billtino" class="form-control"/></td>
-                <td><input name="Details[${i}].Bilno" class="form-control"/></td>
+                <td><input name="Details[${i}].Billtino" value="${biltiVal}" class="form-control"/></td>
+                <td><input name="Details[${i}].Bilno" value="${bilnoVal}" class="form-control"/></td>
 
-                <td><input name="Details[${i}].Dramt" oninput="calc()" class="form-control"/></td>
-                <td><input name="Details[${i}].Cramt" oninput="calc()" class="form-control"/></td>
+                <td><input name="Details[${i}].Dramt" value="${dramtVal}" oninput="calc()" class="form-control"/></td>
+                <td><input name="Details[${i}].Cramt" value="${cramtVal}" oninput="calc()" class="form-control"/></td>
 
                 ${showTax ? `<td><input name="Details[${i}].Ptax" class="form-control"/></td>` : ""}
 
@@ -399,11 +609,22 @@
 
             document.querySelector("#tbl tbody").appendChild(row);
 
+            var $select = $(row).find("select[name*='gl3Id']");
+            if (gl3Val) {
+                if (!$select.find('option[value="' + gl3Val + '"]').length && prefillData.cusName) {
+                    $select.append(new Option(prefillData.cusName, gl3Val, true, true));
+                }
+                $select.val(gl3Val);
+            }
+
+            $select.select2();
+            if (gl3Val) {
+                $select.val(gl3Val).trigger('change');
+            }
+
             applyRowRules(row);
 
             i++;
-
-            $("#tbl .select2").select2();
             calc();
         }
 
@@ -478,6 +699,7 @@
                     </tr>`;
             }
 
+            reindexDetailRows();
             calc();
         }
 
@@ -821,6 +1043,516 @@
             setTimeout(function() {
                 AppNav.focusElement($('#Head_Vodate, #Head_Vono').first());
             }, 100);
+        });
+
+        // ========================================================
+        // 🔥 PARTYS PENDING BILTIS MODAL WORKFLOW
+        // ========================================================
+        let currentLoadedBiltis = [];
+
+        // Open Modal handler (from toolbar button or header Pay/Receive button)
+        $(document).on('click', '.btnOpenPartyModal', function (e) {
+            e.preventDefault();
+            var partyId = $('#Head_Partycode').val();
+
+            if (partyId) {
+                $('#modalPartySelect').val(partyId).trigger('change.select2');
+            } else {
+                var firstVal = $('#modalPartySelect option:not([value=""]):first').val();
+                if (firstVal) {
+                    $('#modalPartySelect').val(firstVal).trigger('change.select2');
+                    $('#Head_Partycode').val(firstVal).trigger('change.select2');
+                    partyId = firstVal;
+                }
+            }
+
+            var modal = new bootstrap.Modal(document.getElementById('partyBiltyModal'));
+            modal.show();
+
+            if (partyId) {
+                loadPartyBiltis(partyId);
+            } else {
+                renderPartyBiltisTable([]);
+            }
+        });
+
+        // Party change inside Modal -> sync with main form and reload biltis
+        $('#modalPartySelect').on('change', function () {
+            var selectedId = $(this).val();
+            if (selectedId) {
+                $('#Head_Partycode').val(selectedId).trigger('change.select2');
+                loadPartyBiltis(selectedId);
+            } else {
+                renderPartyBiltisTable([]);
+            }
+        });
+
+        // Load Pending Biltis for selected party via AJAX
+        function loadPartyBiltis(partyId) {
+            if (!partyId) {
+                renderPartyBiltisTable([]);
+                return;
+            }
+
+            var partyText = $('#modalPartySelect option:selected').text() || 'Selected Party';
+            $('#modalPartyBadge').text(partyText);
+            $('#tblPartyBiltisBody').html(`
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-primary">
+                        <i class="fa fa-spinner fa-spin fa-2x me-2"></i> Loading pending biltis...
+                    </td>
+                </tr>
+            `);
+
+            $.ajax({
+                url: '/Voucher/GetPartyBiltis',
+                type: 'GET',
+                data: { partyId: partyId },
+                success: function (res) {
+                    if (res.success) {
+                        currentLoadedBiltis = res.data || [];
+                        renderPartyBiltisTable(currentLoadedBiltis);
+                    } else {
+                        $('#tblPartyBiltisBody').html(`
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-danger">
+                                    <i class="fa fa-exclamation-triangle me-1"></i> ${escapeHtml(res.message || 'Failed to load biltis')}
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function () {
+                    $('#tblPartyBiltisBody').html(`
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-danger">
+                                <i class="fa fa-exclamation-circle me-1"></i> Server error while loading biltis.
+                            </td>
+                        </tr>
+                    `);
+                }
+            });
+        }
+
+        // Render Table: displays biltis with column exact match capability
+        function renderPartyBiltisTable(items) {
+            currentLoadedBiltis = items || [];
+
+            // Collect all bilty IDs already present in #tbl
+            var existingBiltyIds = new Set();
+            $('#tbl input[name="SelectedBiltyIds"]').each(function () {
+                var v = $(this).val();
+                if (v) existingBiltyIds.add(String(v));
+            });
+            $('#tbl input[name*="Billtino"]').each(function () {
+                var v = $(this).val();
+                if (v && v.trim() !== '') existingBiltyIds.add(String(v.trim()));
+            });
+
+            var pendingCount = 0;
+            var html = '';
+
+            items.forEach(function (b) {
+                var isAlreadyInGrid = existingBiltyIds.has(String(b.id)) || (b.billTiNo && existingBiltyIds.has(String(b.billTiNo)));
+                var isDbUsed = (b.isUsed === true);
+                var isSelectedState = isAlreadyInGrid || isDbUsed;
+
+                if (!isSelectedState) {
+                    pendingCount++;
+                }
+
+                var netAmtFormatted = (parseFloat(b.netAmt) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                var badgeHtml = '';
+                if (isAlreadyInGrid) {
+                    badgeHtml = '<span class="badge bg-warning text-dark ms-1" style="font-size:0.75rem;"><i class="fa fa-check me-1"></i>In Voucher</span>';
+                } else if (isDbUsed) {
+                    if (b.vono && b.voucherId) {
+                        badgeHtml = `<a href="/Voucher/Edit/${b.voucherId}" target="_blank" class="badge bg-secondary ms-1 text-white text-decoration-none shadow-sm" style="font-size:0.75rem;" onclick="event.stopPropagation();" title="Open Voucher ${escapeHtml(b.vono)} in new tab">Selected: ${escapeHtml(b.vono)} <i class="fa fa-external-link" style="font-size:0.65rem;"></i></a>`;
+                    } else {
+                        badgeHtml = `<span class="badge bg-secondary ms-1 shadow-sm" style="font-size:0.75rem;" title="Already Selected">Selected</span>`;
+                    }
+                }
+
+                html += `
+                    <tr class="bilty-row ${isSelectedState ? 'already-selected' : ''}" 
+                        data-id="${b.id}" 
+                        data-docno="${escapeHtml(b.docNo)}"
+                        data-vono="${escapeHtml(b.vono || '')}"
+                        data-voucherid="${b.voucherId || ''}"
+                        data-docdate="${escapeHtml(b.docDate)}" 
+                        data-docdateraw="${escapeHtml(b.docDateRaw)}"
+                        data-cusname="${escapeHtml(b.cusName)}" 
+                        data-vehicleno="${escapeHtml(b.vehicleNo)}" 
+                        data-bilno="${escapeHtml(b.bilNo)}" 
+                        data-billtino="${escapeHtml(b.billTiNo)}" 
+                        data-netamt="${b.netAmt}"
+                        data-is-selected="${isSelectedState ? 'true' : 'false'}"
+                        style="${isSelectedState ? 'display: none;' : ''}">
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" ${isAlreadyInGrid ? 'checked' : ''} />
+                        </td>
+                        <td class="text-center fw-semibold text-secondary">${escapeHtml(b.docDate)}</td>
+                        <td>${escapeHtml(b.cusName)} ${badgeHtml}</td>
+                        <td class="text-center">${escapeHtml(b.vehicleNo)}</td>
+                        <td class="text-center fw-bold text-dark">${escapeHtml(b.bilNo)}</td>
+                        <td class="text-center fw-bold text-primary">${escapeHtml(b.billTiNo)}</td>
+                        <td class="text-end fw-bold text-success">${netAmtFormatted}</td>
+                    </tr>
+                `;
+            });
+
+            $('#modalTotalBiltisCount').text(pendingCount);
+            $('#chkSelectAllBiltis').prop('checked', false);
+
+            if (items.length === 0) {
+                $('#tblPartyBiltisBody').html(`
+                    <tr id="noBiltisRow">
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="fa fa-info-circle text-info me-1"></i> No biltis found for this party.
+                        </td>
+                    </tr>
+                `);
+            } else {
+                $('#tblPartyBiltisBody').html(html);
+                if (pendingCount === 0 && items.length > 0) {
+                    $('#tblPartyBiltisBody').append(`
+                        <tr id="allSelectedMsgRow">
+                            <td colspan="7" class="text-center py-3 text-muted">
+                                <i class="fa fa-check-circle text-success me-1"></i> All biltis are currently selected. Use search to view any specific bilty.
+                            </td>
+                        </tr>
+                    `);
+                }
+            }
+
+            filterPartyBiltis();
+            updateModalCounters();
+        }
+
+        // Helper: Exact Match comparator
+        function isExactMatch(searchedVal, cellVal, isNumeric, isDate, rawDateVal) {
+            if (!searchedVal || searchedVal.trim() === '') return true;
+            var s = searchedVal.trim();
+            if (cellVal === undefined || cellVal === null) cellVal = '';
+            var c = cellVal.toString().trim();
+
+            if (isNumeric) {
+                var sNum = parseFloat(s.replace(/,/g, ''));
+                var cNum = parseFloat(c.replace(/,/g, ''));
+                if (!isNaN(sNum) && !isNaN(cNum)) {
+                    return sNum === cNum;
+                }
+                return s.toLowerCase() === c.toLowerCase();
+            }
+
+            if (isDate) {
+                var sLow = s.toLowerCase();
+                var cLow = c.toLowerCase();
+                var rawLow = (rawDateVal || '').toString().toLowerCase().trim();
+                if (sLow === cLow || (rawLow && sLow === rawLow)) return true;
+
+                // Match variations: dd-MM-yyyy, dd/MM/yyyy, yyyy-MM-dd
+                var sParts = s.split(/[-/.]/);
+                var cParts = c.split(/[-/.]/);
+                if (sParts.length === 3 && cParts.length === 3) {
+                    var sD = new Date(s);
+                    var cD = new Date(c);
+                    if (!isNaN(sD.getTime()) && !isNaN(cD.getTime())) {
+                        return sD.toDateString() === cD.toDateString();
+                    }
+                }
+                return false;
+            }
+
+            // String exact match (case-insensitive, trimmed)
+            return s.toLowerCase() === c.toLowerCase();
+        }
+
+        var biltyServerSearchTimer = null;
+
+        // Live Filter function inside Modal (EXACT MATCH FOR EACH COLUMN, EVEN IF SELECTED OR NOT)
+        function filterPartyBiltis() {
+            var sDocDate = ($('.bilty-col-search[data-col="docdate"]').val() || '').trim();
+            var sCusName = ($('.bilty-col-search[data-col="cusname"]').val() || '').trim();
+            var sVehicle = ($('.bilty-col-search[data-col="vehicleno"]').val() || '').trim();
+            var sBilNo   = ($('.bilty-col-search[data-col="bilno"]').val() || '').trim();
+            var sBillTiNo= ($('.bilty-col-search[data-col="billtino"]').val() || '').trim();
+            var sNetAmt  = ($('.bilty-col-search[data-col="netamt"]').val() || '').trim();
+            var sGlobal  = ($('#modalBiltySearch').val() || '').trim();
+
+            var hasActiveSearch = (sDocDate !== '' || sCusName !== '' || sVehicle !== '' || sBilNo !== '' || sBillTiNo !== '' || sNetAmt !== '' || sGlobal !== '');
+
+            $('#allSelectedMsgRow').toggle(!hasActiveSearch && $('#tblPartyBiltisBody tr.bilty-row:not(.already-selected)').length === 0);
+            $('#noExactMatchRow').remove();
+
+            var visibleCount = 0;
+
+            $('#tblPartyBiltisBody tr.bilty-row').each(function () {
+                var $tr = $(this);
+                var isSelected = $tr.hasClass('already-selected');
+
+                if (!hasActiveSearch) {
+                    // When NO search active, only show unselected/pending rows
+                    var shouldShow = !isSelected;
+                    $tr.toggle(shouldShow);
+                    if (shouldShow) visibleCount++;
+                    return;
+                }
+
+                // WHEN ACTIVE SEARCH: EXACT MATCH ONLY, EVEN ITS SELECTED OR NOT!
+                var rDocDate    = $tr.data('docdate') || '';
+                var rDocDateRaw = $tr.data('docdateraw') || '';
+                var rCusName    = $tr.data('cusname') || '';
+                var rVehicle    = $tr.data('vehicleno') || '';
+                var rBilNo      = $tr.data('bilno') || '';
+                var rBillTiNo   = $tr.data('billtino') || '';
+                var rNetAmt     = $tr.data('netamt') || '';
+
+                var match = true;
+
+                if (sDocDate && !isExactMatch(sDocDate, rDocDate, false, true, rDocDateRaw)) match = false;
+                if (match && sCusName && !isExactMatch(sCusName, rCusName, false)) match = false;
+                if (match && sVehicle && !isExactMatch(sVehicle, rVehicle, false)) match = false;
+                if (match && sBilNo && !isExactMatch(sBilNo, rBilNo, true)) match = false;
+                if (match && sBillTiNo && !isExactMatch(sBillTiNo, rBillTiNo, true)) match = false;
+                if (match && sNetAmt && !isExactMatch(sNetAmt, rNetAmt, true)) match = false;
+
+                if (match && sGlobal) {
+                    // Global exact match on any field
+                    var rVono = $tr.data('vono') || '';
+                    var gMatch = isExactMatch(sGlobal, rBillTiNo, true) ||
+                                 isExactMatch(sGlobal, rBilNo, true) ||
+                                 isExactMatch(sGlobal, rNetAmt, true) ||
+                                 isExactMatch(sGlobal, rVehicle, false) ||
+                                 isExactMatch(sGlobal, rCusName, false) ||
+                                 isExactMatch(sGlobal, rDocDate, false, true, rDocDateRaw) ||
+                                 isExactMatch(sGlobal, rVono, false);
+                    if (!gMatch) match = false;
+                }
+
+                $tr.toggle(match);
+                if (match) visibleCount++;
+            });
+
+            if (hasActiveSearch && visibleCount === 0) {
+                $('#tblPartyBiltisBody').append(`
+                    <tr id="noExactMatchRow">
+                        <td colspan="7" class="text-center py-4 text-danger">
+                            <i class="fa fa-search me-1"></i> No exact matching bilty found.
+                        </td>
+                    </tr>
+                `);
+
+                // Server-side fallback search across database if not found locally
+                clearTimeout(biltyServerSearchTimer);
+                biltyServerSearchTimer = setTimeout(function () {
+                    var partyId = $('#modalPartySelect').val();
+                    $.ajax({
+                        url: '/Voucher/SearchPartyBiltis',
+                        type: 'GET',
+                        data: {
+                            partyId: partyId,
+                            docDate: sDocDate,
+                            cusName: sCusName,
+                            vehicleNo: sVehicle,
+                            bilNo: sBilNo,
+                            billTiNo: sBillTiNo,
+                            netAmt: sNetAmt,
+                            q: sGlobal
+                        },
+                        success: function (res) {
+                            if (res && res.success && res.data && res.data.length > 0) {
+                                $('#noExactMatchRow').remove();
+                                res.data.forEach(function (b) {
+                                    if ($(`#tblPartyBiltisBody tr.bilty-row[data-id="${b.id}"]`).length === 0) {
+                                        var netAmtFormatted = (parseFloat(b.netAmt) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                        var badgeHtml = '';
+                                        if (b.isUsed) {
+                                            if (b.vono && b.voucherId) {
+                                                badgeHtml = `<a href="/Voucher/Edit/${b.voucherId}" target="_blank" class="badge bg-secondary ms-1 text-white text-decoration-none shadow-sm" style="font-size:0.75rem;" onclick="event.stopPropagation();" title="Open Voucher ${escapeHtml(b.vono)} in new tab">Selected: ${escapeHtml(b.vono)} <i class="fa fa-external-link" style="font-size:0.65rem;"></i></a>`;
+                                            } else {
+                                                badgeHtml = `<span class="badge bg-secondary ms-1 shadow-sm" style="font-size:0.75rem;" title="Already Selected">Selected</span>`;
+                                            }
+                                        }
+                                        var rowHtml = `
+                                            <tr class="bilty-row ${b.isUsed ? 'already-selected' : ''}" 
+                                                data-id="${b.id}" 
+                                                data-docno="${escapeHtml(b.docNo)}"
+                                                data-vono="${escapeHtml(b.vono || '')}"
+                                                data-voucherid="${b.voucherId || ''}"
+                                                data-docdate="${escapeHtml(b.docDate)}" 
+                                                data-docdateraw="${escapeHtml(b.docDateRaw)}"
+                                                data-cusname="${escapeHtml(b.cusName)}" 
+                                                data-vehicleno="${escapeHtml(b.vehicleNo)}" 
+                                                data-bilno="${escapeHtml(b.bilNo)}" 
+                                                data-billtino="${escapeHtml(b.billTiNo)}" 
+                                                data-netamt="${b.netAmt}">
+                                                <td class="text-center">
+                                                    <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" />
+                                                </td>
+                                                <td class="text-center fw-semibold text-secondary">${escapeHtml(b.docDate)}</td>
+                                                <td>${escapeHtml(b.cusName)} ${badgeHtml}</td>
+                                                <td class="text-center">${escapeHtml(b.vehicleNo)}</td>
+                                                <td class="text-center fw-bold text-dark">${escapeHtml(b.bilNo)}</td>
+                                                <td class="text-center fw-bold text-primary">${escapeHtml(b.billTiNo)}</td>
+                                                <td class="text-end fw-bold text-success">${netAmtFormatted}</td>
+                                            </tr>
+                                        `;
+                                        $('#tblPartyBiltisBody').append(rowHtml);
+                                    }
+                                });
+                                updateModalCounters();
+                            }
+                        }
+                    });
+                }, 400);
+            }
+
+            $('#modalTotalBiltisCount').text(hasActiveSearch ? visibleCount : $('#tblPartyBiltisBody tr.bilty-row:visible').length);
+            updateModalCounters();
+        }
+
+        // Live column search inputs & global search input
+        $(document).on('input change', '.bilty-col-search', function () {
+            filterPartyBiltis();
+        });
+
+        $('#modalBiltySearch').on('input', function () {
+            filterPartyBiltis();
+        });
+
+        // Show All button -> clear search and show all rows
+        $('#btnModalShowAll').on('click', function () {
+            $('#modalBiltySearch').val('');
+            $('.bilty-col-search').val('');
+            filterPartyBiltis();
+        });
+
+        // Refresh button -> re-fetch biltis from server
+        $('#btnModalRefresh').on('click', function () {
+            $('.bilty-col-search').val('');
+            $('#modalBiltySearch').val('');
+            var partyId = $('#modalPartySelect').val();
+            loadPartyBiltis(partyId);
+        });
+
+        // Toggle Select All checkboxes
+        $('#chkSelectAllBiltis').on('change', function () {
+            var checked = $(this).is(':checked');
+            $('#tblPartyBiltisBody tr.bilty-row:visible .bilty-chk').prop('checked', checked);
+            updateModalCounters();
+        });
+
+        // Individual checkbox change
+        $(document).on('change', '.bilty-chk', function () {
+            updateModalCounters();
+        });
+
+        // Clicking row toggles checkbox (except clicking checkbox itself)
+        $(document).on('click', '#tblPartyBiltisBody tr.bilty-row', function (e) {
+            if ($(e.target).is('input[type="checkbox"]')) return;
+            var $chk = $(this).find('.bilty-chk');
+            $chk.prop('checked', !$chk.is(':checked')).trigger('change');
+        });
+
+        // Update modal summary stats (selected count and selected amount)
+        function updateModalCounters() {
+            var selectedCount = 0;
+            var selectedAmt = 0;
+
+            $('#tblPartyBiltisBody tr.bilty-row').each(function () {
+                var $chk = $(this).find('.bilty-chk');
+                if ($chk.is(':checked')) {
+                    selectedCount++;
+                    selectedAmt += parseFloat($(this).data('netamt') || 0);
+                }
+            });
+
+            $('#modalSelectedCount').text(selectedCount);
+            $('#modalSelectedAmount').text(selectedAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        }
+
+        // Save selected biltis from Modal into Voucher Detail Grid
+        $('#btnModalSaveBiltis').on('click', function () {
+            var selectedBiltis = [];
+            var partyId = $('#modalPartySelect').val() || $('#Head_Partycode').val();
+
+            $('#tblPartyBiltisBody tr.bilty-row').each(function () {
+                var $chk = $(this).find('.bilty-chk');
+                if ($chk.is(':checked')) {
+                    selectedBiltis.push({
+                        id: $(this).data('id'),
+                        docDate: $(this).data('docdate'),
+                        cusName: $(this).data('cusname'),
+                        vehicleNo: $(this).data('vehicleno'),
+                        bilNo: $(this).data('bilno'),
+                        billTiNo: $(this).data('billtino'),
+                        netAmt: parseFloat($(this).data('netamt') || 0)
+                    });
+                }
+            });
+
+            if (selectedBiltis.length === 0) {
+                alert('Please select at least one bilty to import.');
+                return;
+            }
+
+            // If the detail grid currently has only 1 blank row, remove that blank row
+            var $existingRows = $('#tbl tbody tr:not(#noDataRow)');
+            if ($existingRows.length === 1) {
+                var $firstRow = $existingRows.first();
+                var accVal = $firstRow.find('select[name*="gl3Id"]').val();
+                var bNoVal = $firstRow.find('input[name*="Billtino"]').val();
+                var drVal = $firstRow.find('input[name*="Dramt"]').val();
+                var crVal = $firstRow.find('input[name*="Cramt"]').val();
+
+                if (!accVal && !bNoVal && !drVal && !crVal) {
+                    $firstRow.remove();
+                }
+            }
+
+            // Default narration
+            var masterNarr = $('#Head_Narration').val() || '';
+
+            // Add each checked bilty to the voucher grid
+            selectedBiltis.forEach(function (b) {
+                var rowNarration = masterNarr;
+
+                // For Cash Receipt (CR) or Bank Receipt (BR), party net amount goes to Credit!
+                // For Cash Payment (CP) or Bank Payment (BP), party net amount goes to Debit!
+                var isPay = (type === 'CP' || type === 'BP');
+                var dramt = isPay ? b.netAmt.toFixed(2) : '';
+                var cramt = !isPay ? b.netAmt.toFixed(2) : '';
+
+                addRow({
+                    gl3Id: partyId,
+                    billTiNo: b.billTiNo,
+                    bilNo: b.bilNo,
+                    vehicleNo: b.vehicleNo,
+                    dramt: dramt,
+                    cramt: cramt,
+                    narration: rowNarration,
+                    id: b.id,
+                    cusName: b.cusName
+                });
+            });
+
+            reindexDetailRows();
+
+            // Close the modal
+            var modalEl = document.getElementById('partyBiltyModal');
+            var modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+
+            // Recalculate totals
+            calc();
+        });
+
+        // Ensure rows are strictly indexed 0, 1, 2... before submitting form
+        $('form').on('submit', function () {
+            reindexDetailRows();
         });
 
     </script>
