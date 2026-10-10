@@ -211,12 +211,14 @@ namespace Nskg.Controllers
                     }
                 }
 
+                bool isSummary = reportType.Equals("summary", StringComparison.OrdinalIgnoreCase);
+
                 // 1. Run dbo.sp_ProcessTrialBalance to synchronize and calculate GLChart1 and GLChart3 Opening balances
-                bool shouldRunProcess = withProcess;
+                bool shouldRunProcess = withProcess || !isSummary;
                 if (!shouldRunProcess)
                 {
-                    // Auto-run if GLChart1 has no calculated balances yet
-                    using (SqlCommand cmdCheck = new SqlCommand("SELECT COUNT(*) FROM GLChart1 WHERE ISNULL(Opening, 0) <> 0", con))
+                    // Auto-run if GLChart3 has no calculated balances yet
+                    using (SqlCommand cmdCheck = new SqlCommand("SELECT COUNT(*) FROM GLChart3 WHERE ISNULL(Opening, 0) <> 0", con))
                     {
                         var cnt = Convert.ToInt32(cmdCheck.ExecuteScalar() ?? 0);
                         if (cnt == 0)
@@ -247,8 +249,6 @@ namespace Nskg.Controllers
                         Console.WriteLine("Warning: dbo.sp_ProcessTrialBalance in TrialBalance execution: " + ex.Message);
                     }
                 }
-
-                bool isSummary = reportType.Equals("summary", StringComparison.OrdinalIgnoreCase);
 
                 string? targetBranch = isAllCompanies ? null : targetCocode switch
                 {
@@ -490,17 +490,17 @@ namespace Nskg.Controllers
                         // All Companies / Linked: Each linked account is grouped across all branches and shown ONCE with net summed balance
                         query = @"
                         SELECT 
-                            RTRIM(gc.AC1) + RTRIM(gc.AC3) AS Code,
-                            MAX(RTRIM(gc.NAME)) AS TitleOfAccount,
+                            RTRIM(g3.AC1) + RTRIM(g3.AC3) AS Code,
+                            MAX(RTRIM(g3.Name)) AS TitleOfAccount,
                             'LINKED' AS CompanyBranch,
-                            CASE WHEN SUM(ISNULL(gc.OPENING,0)) > 0 THEN CAST(SUM(ISNULL(gc.OPENING,0)) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
-                            CASE WHEN SUM(ISNULL(gc.OPENING,0)) < 0 THEN CAST(ABS(SUM(ISNULL(gc.OPENING,0))) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
+                            CASE WHEN SUM(ISNULL(g3.Opening,0)) > 0 THEN CAST(SUM(ISNULL(g3.Opening,0)) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
+                            CASE WHEN SUM(ISNULL(g3.Opening,0)) < 0 THEN CAST(ABS(SUM(ISNULL(g3.Opening,0))) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
                             @CompanyName AS CompanyName,
                             @ShortCompanyName AS ShortCompanyName
-                        FROM GLCHART gc
-                        WHERE gc.AC3 IS NOT NULL
-                        GROUP BY RTRIM(gc.AC1) + RTRIM(gc.AC3)
-                        HAVING SUM(ISNULL(gc.OPENING,0)) <> 0
+                        FROM GLChart3 g3
+                        WHERE g3.AC3 IS NOT NULL
+                        GROUP BY RTRIM(g3.AC1) + RTRIM(g3.AC3)
+                        HAVING SUM(ISNULL(g3.Opening,0)) <> 0
                         ORDER BY Code;";
                     }
                     else
@@ -508,18 +508,18 @@ namespace Nskg.Controllers
                         // Single branch selected: Show accounts belonging to that branch
                         query = @"
                         SELECT 
-                            RTRIM(gc.AC1) + RTRIM(gc.AC3) AS Code,
-                            MAX(RTRIM(gc.NAME)) AS TitleOfAccount,
+                            RTRIM(g3.AC1) + RTRIM(g3.AC3) AS Code,
+                            MAX(RTRIM(g3.Name)) AS TitleOfAccount,
                             @ShortCompanyName AS CompanyBranch,
-                            CASE WHEN SUM(ISNULL(gc.OPENING,0)) > 0 THEN CAST(SUM(ISNULL(gc.OPENING,0)) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
-                            CASE WHEN SUM(ISNULL(gc.OPENING,0)) < 0 THEN CAST(ABS(SUM(ISNULL(gc.OPENING,0))) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
+                            CASE WHEN SUM(ISNULL(g3.Opening,0)) > 0 THEN CAST(SUM(ISNULL(g3.Opening,0)) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Debit,
+                            CASE WHEN SUM(ISNULL(g3.Opening,0)) < 0 THEN CAST(ABS(SUM(ISNULL(g3.Opening,0))) AS DECIMAL(18,2)) ELSE CAST(0 AS DECIMAL(18,2)) END AS Credit,
                             @CompanyName AS CompanyName,
                             @ShortCompanyName AS ShortCompanyName
-                        FROM GLCHART gc
-                        WHERE gc.AC3 IS NOT NULL
-                          AND gc.COCODE = @TargetCompanyId
-                        GROUP BY RTRIM(gc.AC1) + RTRIM(gc.AC3)
-                        HAVING SUM(ISNULL(gc.OPENING,0)) <> 0
+                        FROM GLChart3 g3
+                        WHERE g3.AC3 IS NOT NULL
+                          AND (g3.CompanyId = @TargetCompanyId OR g3.CoCode = @TargetCocode)
+                        GROUP BY RTRIM(g3.AC1) + RTRIM(g3.AC3)
+                        HAVING SUM(ISNULL(g3.Opening,0)) <> 0
                         ORDER BY Code;";
                     }
                 }
