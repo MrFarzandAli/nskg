@@ -213,61 +213,28 @@ namespace Nskg.Controllers
                 string query;
                 if (isAllCompanies)
                 {
-                    // Group and net across all companies/branches (Linked Accounts) - 100% matched with Oracle All-Companies benchmark
+                    // Group and net across all companies/branches (Linked Accounts) dynamically from GLChart3
                     query = @"
                     ;WITH Aggregated AS (
                         SELECT 
-                            t.AC1,
-                            ISNULL(g1.Name, t.AC1) AS GroupName,
-                            t.Code AS HACC,
-                            MAX(RTRIM(t.Name)) AS Name,
-                            SUM(t.Debit - t.Credit) AS NetBal
-                        FROM dbo.OracleTrialBalanceTarget t
+                            RTRIM(g3.AC1) AS AC1,
+                            ISNULL(g1.Name, g3.AC1) AS GroupName,
+                            RTRIM(g3.AC1) + RTRIM(g3.AC3) AS HACC,
+                            MAX(RTRIM(g3.Name)) AS Name,
+                            SUM(ISNULL(g3.Opening, 0)) AS NetBal
+                        FROM GLChart3 g3
                         OUTER APPLY (
                             SELECT TOP 1 RTRIM(Name) AS Name 
                             FROM GLChart1 
-                            WHERE RTRIM(AC1) = RTRIM(t.AC1)
+                            WHERE RTRIM(AC1) = RTRIM(g3.AC1)
                         ) g1
-                        WHERE t.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
-                          AND NOT (t.AC1 = '057' AND t.Code <> '057036')
-                          AND (@PAC1 = '' OR RTRIM(t.AC1) = @PAC1)
-                        GROUP BY t.AC1, ISNULL(g1.Name, t.AC1), t.Code
-                        HAVING SUM(t.Debit - t.Credit) <> 0
-                    )
-                    SELECT 
-                        AC1,
-                        GroupName,
-                        HACC,
-                        Name,
-                        '1' AS mactype,
-                        CASE WHEN NetBal > 0 THEN NetBal ELSE 0 END AS Receivables,
-                        CASE WHEN NetBal < 0 THEN ABS(NetBal) ELSE 0 END AS Payables,
-                        @CompanyName AS CompanyName
-                    FROM Aggregated
-                    ORDER BY AC1, HACC;";
-                }
-                else if (targetCompanyId == 1006 || targetCocode == "01")
-                {
-                    // Single Branch West Wharf - matched with Oracle West Wharf benchmark
-                    query = @"
-                    ;WITH Aggregated AS (
-                        SELECT 
-                            t.AC1,
-                            ISNULL(g1.Name, t.AC1) AS GroupName,
-                            t.Code AS HACC,
-                            MAX(RTRIM(t.Name)) AS Name,
-                            SUM(t.Debit - t.Credit) AS NetBal
-                        FROM dbo.OracleWestWharfTarget t
-                        OUTER APPLY (
-                            SELECT TOP 1 RTRIM(Name) AS Name 
-                            FROM GLChart1 
-                            WHERE RTRIM(AC1) = RTRIM(t.AC1)
-                        ) g1
-                        WHERE t.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
-                          AND NOT (t.AC1 = '057' AND t.Code <> '057036')
-                          AND (@PAC1 = '' OR RTRIM(t.AC1) = @PAC1)
-                        GROUP BY t.AC1, ISNULL(g1.Name, t.AC1), t.Code
-                        HAVING SUM(t.Debit - t.Credit) <> 0
+                        WHERE g3.AC3 IS NOT NULL
+                          AND g3.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
+                          AND NOT (g3.AC1 = '057' AND (RTRIM(g3.AC1) + RTRIM(g3.AC3)) <> '057036')
+                          AND g3.AcType NOT IN ('S', 'E', 'I', 'C')
+                          AND (@PAC1 = '' OR RTRIM(g3.AC1) = @PAC1)
+                        GROUP BY RTRIM(g3.AC1), ISNULL(g1.Name, g3.AC1), RTRIM(g3.AC1) + RTRIM(g3.AC3)
+                        HAVING SUM(ISNULL(g3.Opening, 0)) <> 0
                     )
                     SELECT 
                         AC1,
@@ -283,28 +250,29 @@ namespace Nskg.Controllers
                 }
                 else
                 {
-                    // Other Branches query
+                    // Single Branch selected: Filter by branch CompanyId or Cocode dynamically from GLChart3
                     query = @"
                     ;WITH Aggregated AS (
                         SELECT 
-                            gc.AC1,
-                            ISNULL(g1.Name, gc.AC1) AS GroupName,
-                            RTRIM(gc.AC1) + RTRIM(gc.AC3) AS HACC,
-                            MAX(RTRIM(gc.NAME)) AS Name,
-                            SUM(ISNULL(gc.OPENING, 0)) AS NetBal
-                        FROM GLCHART gc
+                            RTRIM(g3.AC1) AS AC1,
+                            ISNULL(g1.Name, g3.AC1) AS GroupName,
+                            RTRIM(g3.AC1) + RTRIM(g3.AC3) AS HACC,
+                            MAX(RTRIM(g3.Name)) AS Name,
+                            SUM(ISNULL(g3.Opening, 0)) AS NetBal
+                        FROM GLChart3 g3
                         OUTER APPLY (
                             SELECT TOP 1 RTRIM(Name) AS Name 
                             FROM GLChart1 
-                            WHERE RTRIM(AC1) = RTRIM(gc.AC1)
+                            WHERE RTRIM(AC1) = RTRIM(g3.AC1)
                         ) g1
-                        WHERE gc.AC3 IS NOT NULL
-                          AND (gc.COCODE = @TargetCompanyId OR CAST(gc.COCODE AS VARCHAR) = @Rcocode)
-                          AND gc.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
-                          AND NOT (gc.AC1 = '057' AND (RTRIM(gc.AC1) + RTRIM(gc.AC3)) <> '057036')
-                          AND (@PAC1 = '' OR RTRIM(gc.AC1) = @PAC1)
-                        GROUP BY gc.AC1, ISNULL(g1.Name, gc.AC1), RTRIM(gc.AC1) + RTRIM(gc.AC3)
-                        HAVING SUM(ISNULL(gc.OPENING, 0)) <> 0
+                        WHERE g3.AC3 IS NOT NULL
+                          AND (g3.CompanyId = @TargetCompanyId OR g3.CoCode = @TargetCocode OR CAST(g3.CompanyId AS VARCHAR) = @Rcocode OR g3.CoCode = @Rcocode)
+                          AND g3.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
+                          AND NOT (g3.AC1 = '057' AND (RTRIM(g3.AC1) + RTRIM(g3.AC3)) <> '057036')
+                          AND g3.AcType NOT IN ('S', 'E', 'I', 'C')
+                          AND (@PAC1 = '' OR RTRIM(g3.AC1) = @PAC1)
+                        GROUP BY RTRIM(g3.AC1), ISNULL(g1.Name, g3.AC1), RTRIM(g3.AC1) + RTRIM(g3.AC3)
+                        HAVING SUM(ISNULL(g3.Opening, 0)) <> 0
                     )
                     SELECT 
                         AC1,
@@ -324,6 +292,7 @@ namespace Nskg.Controllers
                     cmd.CommandTimeout = 180;
                     cmd.Parameters.AddWithValue("@Rcocode", string.IsNullOrWhiteSpace(rcocode) ? "" : rcocode.Trim());
                     cmd.Parameters.AddWithValue("@TargetCompanyId", targetCompanyId);
+                    cmd.Parameters.AddWithValue("@TargetCocode", (object?)targetCocode ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@CompanyName", companyName);
                     cmd.Parameters.AddWithValue("@PAC1", string.IsNullOrWhiteSpace(pac1) ? "" : pac1.Trim());
 
