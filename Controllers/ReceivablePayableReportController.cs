@@ -231,7 +231,7 @@ namespace Nskg.Controllers
                         WHERE g3.AC3 IS NOT NULL
                           AND g3.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
                           AND NOT (g3.AC1 = '057' AND (RTRIM(g3.AC1) + RTRIM(g3.AC3)) <> '057036')
-                          AND g3.AcType NOT IN ('S', 'E', 'I', 'C')
+                          AND (g3.AcType NOT IN ('S', 'E', 'I', 'C') OR (RTRIM(g3.AC1) + RTRIM(g3.AC3)) = '057036')
                           AND (@PAC1 = '' OR RTRIM(g3.AC1) = @PAC1)
                         GROUP BY RTRIM(g3.AC1), ISNULL(g1.Name, g3.AC1), RTRIM(g3.AC1) + RTRIM(g3.AC3)
                         HAVING SUM(ISNULL(g3.Opening, 0)) <> 0
@@ -269,7 +269,7 @@ namespace Nskg.Controllers
                           AND (g3.CompanyId = @TargetCompanyId OR g3.CoCode = @TargetCocode OR CAST(g3.CompanyId AS VARCHAR) = @Rcocode OR g3.CoCode = @Rcocode)
                           AND g3.AC1 IN ('002', '003', '004', '052', '057', '059', '060', '066', '067', '068', '072', '075')
                           AND NOT (g3.AC1 = '057' AND (RTRIM(g3.AC1) + RTRIM(g3.AC3)) <> '057036')
-                          AND g3.AcType NOT IN ('S', 'E', 'I', 'C')
+                          AND (g3.AcType NOT IN ('S', 'E', 'I', 'C') OR (RTRIM(g3.AC1) + RTRIM(g3.AC3)) = '057036')
                           AND (@PAC1 = '' OR RTRIM(g3.AC1) = @PAC1)
                         GROUP BY RTRIM(g3.AC1), ISNULL(g1.Name, g3.AC1), RTRIM(g3.AC1) + RTRIM(g3.AC3)
                         HAVING SUM(ISNULL(g3.Opening, 0)) <> 0
@@ -448,10 +448,14 @@ namespace Nskg.Controllers
             sb.Append($@"
         </tbody>
         <tfoot>
-            <tr class='total-row'>
-                <td colspan='3' class='text-right fw-bold'>GRAND TOTAL:</td>
-                <td class='text-right fw-bold'>{totalReceivables:#,##0.00}</td>
-                <td class='text-right fw-bold'>{totalPayables:#,##0.00}</td>
+            <tr class='total-row' style='background-color:#f8f9fa;'>
+                <td colspan='3' class='text-right fw-bold' style='font-size:14px;'>Grand Total:</td>
+                <td class='text-right fw-bold' style='font-size:14px;'>{totalReceivables:#,##0.00}</td>
+                <td class='text-right fw-bold' style='font-size:14px;'>{totalPayables:#,##0.00}</td>
+            </tr>
+            <tr class='total-row' style='background-color:#e9ecef;'>
+                <td colspan='3' class='text-right fw-bold' style='font-size:15px;'>Balance:</td>
+                <td colspan='2' class='text-center fw-bold' style='font-size:15px; color:#0b5ed7;'>{(totalReceivables - totalPayables):#,##0.00}</td>
             </tr>
         </tfoot>
     </table>
@@ -537,7 +541,8 @@ namespace Nskg.Controllers
                 }
 
                 sb.AppendLine();
-                sb.AppendLine($",,GRAND TOTAL:,{totalRec:#,##0.00},{totalPay:#,##0.00}");
+                sb.AppendLine($",,Grand Total:,{totalRec:#,##0.00},{totalPay:#,##0.00}");
+                sb.AppendLine($",,Balance:,,{(totalRec - totalPay):#,##0.00}");
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
                 return File(bytes, "text/csv", $"ReceivablePayableReport_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
