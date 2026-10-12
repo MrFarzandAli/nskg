@@ -1235,10 +1235,10 @@ namespace Nskg.Controllers
                     .AsNoTracking()
                     .Where(x => !x.IsDeleted);
 
-                if (companyId > 0)
-                {
-                    query = query.Where(x => x.CompanyId == companyId || (!string.IsNullOrEmpty(companyCode) && companyCode != "0" && x.CoCode == companyCode));
-                }
+                // if (companyId > 0)
+                // {
+                //     query = query.Where(x => x.CompanyId == companyId || (!string.IsNullOrEmpty(companyCode) && companyCode != "0" && x.CoCode == companyCode));
+                // }
 
                 // Match by CustomerId or CusCode
                 query = query.Where(x => x.CustomerId == partyId ||

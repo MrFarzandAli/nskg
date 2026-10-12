@@ -15,12 +15,7 @@ Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 // DB Connection
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlServerOptionsAction: sqlOptions =>
-        {
-            sqlOptions.EnableRetryOnFailure();
-        }));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Identity Config
 builder.Services.AddDefaultIdentity<IdentityUser>(options =>
