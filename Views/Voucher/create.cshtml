@@ -1189,7 +1189,7 @@
                         data-is-selected="${isSelectedState ? 'true' : 'false'}"
                         style="${isSelectedState ? 'display: none;' : ''}">
                         <td class="text-center">
-                            <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" ${isAlreadyInGrid ? 'checked' : ''} />
+                            <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" ${isSelectedState ? 'disabled' : ''} />
                         </td>
                         <td class="text-center fw-semibold text-secondary">${escapeHtml(b.docDate)}</td>
                         <td>${escapeHtml(b.cusName)} ${badgeHtml}</td>
@@ -1388,7 +1388,7 @@
                                                 data-billtino="${escapeHtml(b.billTiNo)}" 
                                                 data-netamt="${b.netAmt}">
                                                 <td class="text-center">
-                                                    <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" />
+                                                    <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" ${b.isUsed ? 'disabled' : ''} />
                                                 </td>
                                                 <td class="text-center fw-semibold text-secondary">${escapeHtml(b.docDate)}</td>
                                                 <td>${escapeHtml(b.cusName)} ${badgeHtml}</td>
@@ -1436,10 +1436,10 @@
             loadPartyBiltis(partyId);
         });
 
-        // Toggle Select All checkboxes
+        // Toggle Select All checkboxes (only pending/enabled biltis)
         $('#chkSelectAllBiltis').on('change', function () {
             var checked = $(this).is(':checked');
-            $('#tblPartyBiltisBody tr.bilty-row:visible .bilty-chk').prop('checked', checked);
+            $('#tblPartyBiltisBody tr.bilty-row:visible:not(.already-selected) .bilty-chk:not(:disabled)').prop('checked', checked);
             updateModalCounters();
         });
 
@@ -1448,11 +1448,13 @@
             updateModalCounters();
         });
 
-        // Clicking row toggles checkbox (except clicking checkbox itself)
-        $(document).on('click', '#tblPartyBiltisBody tr.bilty-row', function (e) {
+        // Clicking row toggles checkbox (only for pending, non-disabled rows, except clicking checkbox itself)
+        $(document).on('click', '#tblPartyBiltisBody tr.bilty-row:not(.already-selected)', function (e) {
             if ($(e.target).is('input[type="checkbox"]')) return;
-            var $chk = $(this).find('.bilty-chk');
-            $chk.prop('checked', !$chk.is(':checked')).trigger('change');
+            var $chk = $(this).find('.bilty-chk:not(:disabled)');
+            if ($chk.length) {
+                $chk.prop('checked', !$chk.is(':checked')).trigger('change');
+            }
         });
 
         // Update modal summary stats (selected count and selected amount)
@@ -1460,8 +1462,8 @@
             var selectedCount = 0;
             var selectedAmt = 0;
 
-            $('#tblPartyBiltisBody tr.bilty-row').each(function () {
-                var $chk = $(this).find('.bilty-chk');
+            $('#tblPartyBiltisBody tr.bilty-row:not(.already-selected)').each(function () {
+                var $chk = $(this).find('.bilty-chk:not(:disabled)');
                 if ($chk.is(':checked')) {
                     selectedCount++;
                     selectedAmt += parseFloat($(this).data('netamt') || 0);
@@ -1477,8 +1479,8 @@
             var selectedBiltis = [];
             var partyId = $('#modalPartySelect').val() || $('#Head_Partycode').val();
 
-            $('#tblPartyBiltisBody tr.bilty-row').each(function () {
-                var $chk = $(this).find('.bilty-chk');
+            $('#tblPartyBiltisBody tr.bilty-row:not(.already-selected)').each(function () {
+                var $chk = $(this).find('.bilty-chk:not(:disabled)');
                 if ($chk.is(':checked')) {
                     selectedBiltis.push({
                         id: $(this).data('id'),
