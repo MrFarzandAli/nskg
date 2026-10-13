@@ -1433,6 +1433,19 @@
             const noDataRow = document.getElementById("noDataRow");
             if (noDataRow) noDataRow.remove();
 
+            // If table only contains a single blank row, remove it first
+            var existingRows = $("#tbodyItems tr").not("#noDataRow");
+            if (existingRows.length === 1) {
+                var firstRow = existingRows.first();
+                var bNo = (firstRow.find(".billti-no").val() || "").trim();
+                var cName = (firstRow.find(".cus-name").val() || "").trim();
+                var qVal = (firstRow.find(".qty").val() || "").trim();
+                var aVal = (firstRow.find(".biltyamt").val() || "").trim();
+                if (!bNo && !cName && !qVal && !aVal) {
+                    firstRow.remove();
+                }
+            }
+
             const tbody = $("#tbodyItems");
             let hasSelected = false;
             let selectedCount = 0;
@@ -1453,20 +1466,23 @@
             $(".bilty-check:checked:not(:disabled)").each(function() {
                 hasSelected = true;
                 const $checkbox = $(this);
-                const biltyId = ($checkbox.data("id") || "").toString().trim();
-                const docNo = ($checkbox.data("docno") || "").toString().trim();
-                const billTiNoValue = ($checkbox.data("billtino") || "").toString().trim();
+                const biltyId = ($checkbox.attr("data-id") || $checkbox.data("id") || "").toString().trim();
+                const docNo = ($checkbox.attr("data-docno") || $checkbox.data("docno") || "").toString().trim();
+                const billTiNoValue = ($checkbox.attr("data-billtino") || $checkbox.data("billtino") || "").toString().trim();
 
                 // If this bilty is already in the table, don't duplicate it
-                if ((biltyId && existingBiltyIds.indexOf(biltyId) !== -1) ||
+                const isDuplicate = (biltyId && existingBiltyIds.indexOf(biltyId) !== -1) ||
                     (docNo && existingDocNos.indexOf(docNo.toLowerCase()) !== -1) ||
-                    (billTiNoValue && existingBiltyNos.indexOf(billTiNoValue.toLowerCase()) !== -1)) {
+                    (billTiNoValue && existingBiltyNos.some(function(b) {
+                        return b === billTiNoValue.toLowerCase() || (parseFloat(b) > 0 && parseFloat(b) === parseFloat(billTiNoValue));
+                    }));
+                if (isDuplicate) {
                     return;
                 }
 
                 const currentIndex = getNextRowIndex();
 
-                const ptype = ($checkbox.data("ptype") || "").trim();
+                const ptype = ($checkbox.attr("data-ptype") || $checkbox.data("ptype") || "").toString().trim();
                 const netAmt = parseFloat($checkbox.data("netamt")) || 0;
                 const paidAmt = ptype === "Paid" ? netAmt : 0;
 
@@ -1481,10 +1497,10 @@
                 // Calculate BillTiAmt properly
                 const billtiAmt = labour + cartage2 + cartage3 + partyEx + lifter2 + otherEx;
 
-                const bilNo = $checkbox.data("bilno") || "";
-                const cusName = $checkbox.data("cusname") || "";
-                const sendTo = $checkbox.data("sendto") || "";
-                const qty = $checkbox.data("qty") || 0;
+                const bilNo = ($checkbox.attr("data-bilno") || $checkbox.data("bilno") || "").toString().trim();
+                const cusName = $checkbox.attr("data-cusname") || $checkbox.data("cusname") || "";
+                const sendTo = $checkbox.attr("data-sendto") || $checkbox.data("sendto") || "";
+                const qty = $checkbox.attr("data-qty") || $checkbox.data("qty") || 0;
 
                 // Calculate tabindex for new row
                 var rowCount = $("#tbodyItems tr").length;

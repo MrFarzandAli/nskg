@@ -372,49 +372,89 @@ namespace Nskg.Controllers
 
                 // =========================
                 // SAVE DETAILS
-                // Map ViewModel -> Entity before adding to DbContext (fixed)
+                // Map ViewModel -> Entity before adding to DbContext
                 // =========================
-                foreach (var item in model.Details)
-                {                   
-                    var det = new ChallanDet
-                    {
-                        ChallanHeadId = model.Head.Id,
-                        DocNo = model.Head.DocNo,
-                        DocDate = model.Head.DocDate,
-                        CompanyId = model.Head.CompanyId,
-                        FyId = model.Head.FyId,
-                        CoCode = model.Head.CoCode,
+                if (model.Details != null)
+                {
+                    // Filter out completely blank rows
+                    model.Details = model.Details
+                        .Where(d => !string.IsNullOrWhiteSpace(d.BillTiNo) || !string.IsNullOrWhiteSpace(d.CusName) || (d.Qty.HasValue && d.Qty > 0) || (d.BiltyId.HasValue && d.BiltyId > 0))
+                        .ToList();
 
-                        Transporter = model.Head.TransCode,
-                        VehicleNo = model.Head.VehicleNo,
-                        TrName = model.Head.Transporter,
+                    foreach (var item in model.Details)
+                    {                   
+                        // =========================
+                        // FIND AND LINK ORIGINAL BILTY (IssHead)
+                        // Mark as used (DescYN = "Y", ChallanId = model.Head.Id)
+                        // =========================
+                        IssHead? originalBilty = null;
 
-                        // Map fields from the view-model
-                        CusName = item.CusName,
-                        SendTo = item.SendTo,
-                        BillTiNo = item.BillTiNo,
-                        BillTiAmt = item.BillTiAmt,
-                        PaidAmt = item.PaidAmt,
-                        // Qty in entity is int? while VM uses decimal? - convert safely
-                        Qty = item.Qty.HasValue ? (int?)Convert.ToInt32(item.Qty.Value) : null
-                    };
+                        // 1. Direct ID lookup (Primary Key - Most Reliable)
+                        if (item.BiltyId.HasValue && item.BiltyId.Value > 0)
+                        {
+                            originalBilty = _context.IssHead.FirstOrDefault(b => b.Id == item.BiltyId.Value);
+                        }
 
-                    _context.ChallanDet.Add(det);
+                        // 2. Lookup by DCNo (DocNo of IssHead)
+                        if (originalBilty == null && !string.IsNullOrWhiteSpace(item.DCNo))
+                        {
+                            var dc = item.DCNo.Trim();
+                            originalBilty = _context.IssHead.FirstOrDefault(b => b.DocNo == dc);
+                        }
 
-                    // =========================
-                    // UPDATE ORIGINAL BILTY TABLE
-                    // Mark as used (Descyn = "Y")
-                    // =========================
-                    if (!string.IsNullOrWhiteSpace(item.DCNo))
-                    {
-                        // Find the original bilty record
-                        var originalBilty = _context.IssHead // Replace with your actual table name
-                            .FirstOrDefault(b => b.DocNo == item.DCNo && b.BillTiNo.ToString() == item.BillTiNo);
+                        // 3. Fallback: Lookup by BillTiNo (numeric match)
+                        if (originalBilty == null && !string.IsNullOrWhiteSpace(item.BillTiNo))
+                        {
+                            if (decimal.TryParse(item.BillTiNo.Trim(), out var bVal))
+                            {
+                                originalBilty = _context.IssHead.FirstOrDefault(b => b.BillTiNo == bVal || b.BilNo == bVal);
+                            }
+                        }
+
+                        // 4. Fallback: Lookup by BilNo (numeric match)
+                        if (originalBilty == null && !string.IsNullOrWhiteSpace(item.BilNo))
+                        {
+                            if (decimal.TryParse(item.BilNo.Trim(), out var bilVal))
+                            {
+                                originalBilty = _context.IssHead.FirstOrDefault(b => b.BilNo == bilVal || b.BillTiNo == bilVal);
+                            }
+                        }
+
+                        // If found, populate missing DCNo/BilNo from the original bilty record
+                        var resolvedDcNo = !string.IsNullOrWhiteSpace(item.DCNo) ? item.DCNo.Trim() : originalBilty?.DocNo;
+                        var resolvedBilNo = !string.IsNullOrWhiteSpace(item.BilNo) ? item.BilNo.Trim() : (originalBilty?.BilNo.HasValue == true ? originalBilty.BilNo.Value.ToString() : null);
+
+                        var det = new ChallanDet
+                        {
+                            ChallanHeadId = model.Head.Id,
+                            DocNo = model.Head.DocNo,
+                            DocDate = model.Head.DocDate,
+                            CompanyId = model.Head.CompanyId,
+                            FyId = model.Head.FyId,
+                            CoCode = model.Head.CoCode,
+
+                            Transporter = model.Head.TransCode,
+                            VehicleNo = model.Head.VehicleNo,
+                            TrName = model.Head.Transporter,
+
+                            // Map fields from the view-model
+                            CusName = item.CusName,
+                            SendTo = item.SendTo,
+                            BillTiNo = item.BillTiNo,
+                            BillTiAmt = item.BillTiAmt,
+                            PaidAmt = item.PaidAmt,
+                            // Qty in entity is int? while VM uses decimal? - convert safely
+                            Qty = item.Qty.HasValue ? (int?)Convert.ToInt32(item.Qty.Value) : null,
+                            DCNo = resolvedDcNo,
+                            BilNo = resolvedBilNo
+                        };
+
+                        _context.ChallanDet.Add(det);
 
                         if (originalBilty != null)
                         {
                             originalBilty.DescYN = "Y";  // Mark as used
-                            originalBilty.ChallanId = model.Head.Id; // Optional: store reference
+                            originalBilty.ChallanId = model.Head.Id;
                             originalBilty.VehicleNo = model.Head.VehicleNo;
                             _context.Entry(originalBilty).State = EntityState.Modified;
                         }
@@ -658,18 +698,33 @@ namespace Nskg.Controllers
                  .ToList();
 
             var dcNos = details.Where(d => !string.IsNullOrEmpty(d.DCNo)).Select(d => d.DCNo).Distinct().ToList();
+            var biltyNumbers = details.Where(d => !string.IsNullOrEmpty(d.BillTiNo) && decimal.TryParse(d.BillTiNo, out _))
+                .Select(d => decimal.Parse(d.BillTiNo))
+                .Distinct()
+                .ToList();
+
             var biltyMap = _context.IssHead
-                .Where(b => !b.IsDeleted && (b.ChallanId == id || (b.DocNo != null && dcNos.Contains(b.DocNo))))
-                .Select(b => new { b.Id, b.DocNo, b.BillTiNo })
+                .Where(b => !b.IsDeleted && (b.ChallanId == id || (b.DocNo != null && dcNos.Contains(b.DocNo)) || (b.BillTiNo.HasValue && biltyNumbers.Contains(b.BillTiNo.Value)) || (b.BilNo.HasValue && biltyNumbers.Contains(b.BilNo.Value))))
+                .Select(b => new { b.Id, b.DocNo, b.BillTiNo, b.BilNo })
                 .ToList();
 
             foreach (var det in details)
             {
-                var match = biltyMap.FirstOrDefault(b => (!string.IsNullOrEmpty(det.DCNo) && b.DocNo == det.DCNo)
+                decimal.TryParse(det.BillTiNo, out var parsedBiltyNo);
+                decimal.TryParse(det.BilNo, out var parsedBilNo);
+
+                var match = biltyMap.FirstOrDefault(b => 
+                    (!string.IsNullOrEmpty(det.DCNo) && b.DocNo == det.DCNo)
+                    || (parsedBiltyNo > 0 && b.BillTiNo.HasValue && b.BillTiNo.Value == parsedBiltyNo)
+                    || (parsedBiltyNo > 0 && b.BilNo.HasValue && b.BilNo.Value == parsedBiltyNo)
+                    || (parsedBilNo > 0 && b.BilNo.HasValue && b.BilNo.Value == parsedBilNo)
                     || (det.BillTiNo != null && b.BillTiNo.HasValue && b.BillTiNo.Value.ToString() == det.BillTiNo));
+
                 if (match != null)
                 {
                     det.BiltyId = match.Id;
+                    if (string.IsNullOrEmpty(det.DCNo)) det.DCNo = match.DocNo;
+                    if (string.IsNullOrEmpty(det.BilNo) && match.BilNo.HasValue) det.BilNo = match.BilNo.Value.ToString();
                 }
             }
 
@@ -802,11 +857,32 @@ namespace Nskg.Controllers
                 );
 
                 // =========================
-                // GET CURRENT DC NUMBERS
+                // FILTER DETAILS & IDENTIFIERS
                 // =========================
+                if (model.Details != null)
+                {
+                    model.Details = model.Details
+                        .Where(d => !string.IsNullOrWhiteSpace(d.BillTiNo) || !string.IsNullOrWhiteSpace(d.CusName) || (d.Qty.HasValue && d.Qty > 0) || (d.BiltyId.HasValue && d.BiltyId > 0))
+                        .ToList();
+                }
+                else
+                {
+                    model.Details = new List<ChallanDetailVM>();
+                }
+
                 var currentDcNos = model.Details
                     .Where(x => !string.IsNullOrWhiteSpace(x.DCNo))
-                    .Select(x => x.DCNo.Trim())
+                    .Select(x => x.DCNo.Trim().ToLower())
+                    .ToList();
+
+                var currentBiltyIds = model.Details
+                    .Where(x => x.BiltyId.HasValue && x.BiltyId.Value > 0)
+                    .Select(x => x.BiltyId.Value)
+                    .ToList();
+
+                var currentBiltyNumbers = model.Details
+                    .Where(x => !string.IsNullOrWhiteSpace(x.BillTiNo) && decimal.TryParse(x.BillTiNo.Trim(), out _))
+                    .Select(x => decimal.Parse(x.BillTiNo.Trim()))
                     .ToList();
 
                 // =========================
@@ -818,7 +894,12 @@ namespace Nskg.Controllers
 
                 foreach (var bilty in linkedBilties)
                 {
-                    if (!currentDcNos.Contains(bilty.DocNo))
+                    bool isStillPresent = currentBiltyIds.Contains(bilty.Id)
+                        || (!string.IsNullOrEmpty(bilty.DocNo) && currentDcNos.Contains(bilty.DocNo.ToLower()))
+                        || (bilty.BillTiNo.HasValue && currentBiltyNumbers.Contains(bilty.BillTiNo.Value))
+                        || (bilty.BilNo.HasValue && currentBiltyNumbers.Contains(bilty.BilNo.Value));
+
+                    if (!isStillPresent)
                     {
                         bilty.DescYN = "N";
                         bilty.VehicleNo = null;
@@ -834,10 +915,43 @@ namespace Nskg.Controllers
                 _context.SaveChanges();
 
                 // =========================
-                // ADD NEW DETAILS
+                // ADD NEW DETAILS & LINK
                 // =========================
                 foreach (var detail in model.Details)
                 {
+                    // Find original bilty to link
+                    IssHead? bilty = null;
+
+                    if (detail.BiltyId.HasValue && detail.BiltyId.Value > 0)
+                    {
+                        bilty = _context.IssHead.FirstOrDefault(b => b.Id == detail.BiltyId.Value);
+                    }
+
+                    if (bilty == null && !string.IsNullOrWhiteSpace(detail.DCNo))
+                    {
+                        var dc = detail.DCNo.Trim();
+                        bilty = _context.IssHead.FirstOrDefault(b => b.DocNo == dc);
+                    }
+
+                    if (bilty == null && !string.IsNullOrWhiteSpace(detail.BillTiNo))
+                    {
+                        if (decimal.TryParse(detail.BillTiNo.Trim(), out var bVal))
+                        {
+                            bilty = _context.IssHead.FirstOrDefault(b => b.BillTiNo == bVal || b.BilNo == bVal);
+                        }
+                    }
+
+                    if (bilty == null && !string.IsNullOrWhiteSpace(detail.BilNo))
+                    {
+                        if (decimal.TryParse(detail.BilNo.Trim(), out var bilVal))
+                        {
+                            bilty = _context.IssHead.FirstOrDefault(b => b.BilNo == bilVal || b.BillTiNo == bilVal);
+                        }
+                    }
+
+                    var resolvedDcNo = !string.IsNullOrWhiteSpace(detail.DCNo) ? detail.DCNo.Trim() : bilty?.DocNo;
+                    var resolvedBilNo = !string.IsNullOrWhiteSpace(detail.BilNo) ? detail.BilNo.Trim() : (bilty?.BilNo.HasValue == true ? bilty.BilNo.Value.ToString() : null);
+
                     var challanDet = new ChallanDet
                     {
                         ChallanHeadId = head.Id,
@@ -855,26 +969,18 @@ namespace Nskg.Controllers
                         VehicleNo = head.VehicleNo,
                         Transporter = head.Transporter,
                         TrName = head.Driver,
-                        DCNo = detail.DCNo
+                        DCNo = resolvedDcNo,
+                        BilNo = resolvedBilNo
                     };
 
                     _context.ChallanDet.Add(challanDet);
 
-                    // =========================
-                    // LINK BILTY TO CHALLAN
-                    // =========================
-                    if (!string.IsNullOrWhiteSpace(detail.DCNo))
+                    if (bilty != null)
                     {
-                        var bilty = _context.IssHead
-                            .FirstOrDefault(b => b.DocNo == detail.DCNo);
-
-                        if (bilty != null)
-                        {
-                            bilty.DescYN = "Y";
-                            bilty.ChallanId = head.Id;
-                            bilty.VehicleNo = head.VehicleNo;
-                            _context.Entry(bilty).State = EntityState.Modified;
-                        }
+                        bilty.DescYN = "Y";
+                        bilty.ChallanId = head.Id;
+                        bilty.VehicleNo = head.VehicleNo;
+                        _context.Entry(bilty).State = EntityState.Modified;
                     }
                 }
 
