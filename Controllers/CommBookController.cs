@@ -811,23 +811,39 @@ namespace Nskg.Controllers
 
             compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
 
-            // Next entry (next row down in list: older date, or same date with lower Id)
-            var nextId = _context.CommHead
+            // Prev entry (previous record with lower Id)
+            var prevId = _context.CommHead
                 .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
-                    (x.DocDate < head.DocDate || (x.DocDate == head.DocDate && x.Id < id)))
-                .OrderByDescending(x => x.DocDate)
-                .ThenByDescending(x => x.Id)
+                    x.Id < id)
+                .OrderByDescending(x => x.Id)
                 .Select(x => (long?)x.Id)
                 .FirstOrDefault();
 
-            // Prev entry (previous row up in list: newer date, or same date with higher Id)
-            var prevId = _context.CommHead
+            // Next entry (next record with higher Id)
+            var nextId = _context.CommHead
                 .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
-                    (x.DocDate > head.DocDate || (x.DocDate == head.DocDate && x.Id > id)))
-                .OrderBy(x => x.DocDate)
-                .ThenBy(x => x.Id)
+                    x.Id > id)
+                .OrderBy(x => x.Id)
                 .Select(x => (long?)x.Id)
                 .FirstOrDefault();
+
+            if ((prevId == null || prevId == 0) && compId > 0)
+            {
+                prevId = _context.CommHead
+                    .Where(x => !x.IsDeleted && x.Id < id)
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => (long?)x.Id)
+                    .FirstOrDefault();
+            }
+
+            if ((nextId == null || nextId == 0) && compId > 0)
+            {
+                nextId = _context.CommHead
+                    .Where(x => !x.IsDeleted && x.Id > id)
+                    .OrderBy(x => x.Id)
+                    .Select(x => (long?)x.Id)
+                    .FirstOrDefault();
+            }
 
             ViewBag.PrevId = prevId > 0 ? prevId : null;
             ViewBag.NextId = nextId > 0 ? nextId : null;

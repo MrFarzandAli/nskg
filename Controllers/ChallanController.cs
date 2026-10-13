@@ -208,10 +208,10 @@ namespace Nskg.Controllers
                 query = query.Where(x => x.CompanyId == companyId || (!string.IsNullOrEmpty(companyCode) && companyCode != "0" && x.CoCode == companyCode));
             }
 
-            var lastEntry = query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
+            var lastEntry = query.OrderByDescending(x => x.Id).FirstOrDefault();
             if (lastEntry == null)
             {
-                lastEntry = _context.ChallanHead.Where(x => !x.IsDeleted).OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
+                lastEntry = _context.ChallanHead.Where(x => !x.IsDeleted).OrderByDescending(x => x.Id).FirstOrDefault();
             }
 
             if (lastEntry != null)
@@ -728,25 +728,39 @@ namespace Nskg.Controllers
                 }
             }
 
-            DateTime docDate = head.DocDate ?? DateTime.Today;
-
-            // Next entry (next row down in list: older date, or same date with lower Id)
-            var nextId = _context.ChallanHead
-                .Where(x => !x.IsDeleted && (x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
-                    (x.DocDate < docDate || (x.DocDate == docDate && x.Id < id)))
-                .OrderByDescending(x => x.DocDate)
-                .ThenByDescending(x => x.Id)
-                .Select(x => x.Id)
-                .FirstOrDefault();
-
-            // Prev entry (previous row up in list: newer date, or same date with higher Id)
+            // Prev entry (previous record with lower Id)
             var prevId = _context.ChallanHead
-                .Where(x => !x.IsDeleted && (x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
-                    (x.DocDate > docDate || (x.DocDate == docDate && x.Id > id)))
-                .OrderBy(x => x.DocDate)
-                .ThenBy(x => x.Id)
+                .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
+                    x.Id < id)
+                .OrderByDescending(x => x.Id)
                 .Select(x => x.Id)
                 .FirstOrDefault();
+
+            // Next entry (next record with higher Id)
+            var nextId = _context.ChallanHead
+                .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
+                    x.Id > id)
+                .OrderBy(x => x.Id)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+
+            if (prevId == 0 && compId > 0)
+            {
+                prevId = _context.ChallanHead
+                    .Where(x => !x.IsDeleted && x.Id < id)
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => x.Id)
+                    .FirstOrDefault();
+            }
+
+            if (nextId == 0 && compId > 0)
+            {
+                nextId = _context.ChallanHead
+                    .Where(x => !x.IsDeleted && x.Id > id)
+                    .OrderBy(x => x.Id)
+                    .Select(x => x.Id)
+                    .FirstOrDefault();
+            }
 
             ViewBag.PrevId = prevId > 0 ? prevId : (int?)null;
             ViewBag.NextId = nextId > 0 ? nextId : (int?)null;

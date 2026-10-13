@@ -378,25 +378,40 @@ namespace Nskg.Controllers
                 .ToList();
 
             int compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
-            DateTime docDate = head.DocDate ?? DateTime.Today;
 
-            // Next entry (next row down in list: older date, or same date with lower Id)
-            var nextId = _context.IssHead
-                .Where(x => !x.IsDeleted && (x.PType == "Paid" || x.PType == null) && (compId <= 0 || x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
-                    (x.DocDate < docDate || (x.DocDate == docDate && x.Id < id)))
-                .OrderByDescending(x => x.DocDate)
-                .ThenByDescending(x => x.Id)
-                .Select(x => x.Id)
-                .FirstOrDefault();
-
-            // Prev entry (previous row up in list: newer date, or same date with higher Id)
+            // Prev entry (previous record with lower Id)
             var prevId = _context.IssHead
                 .Where(x => !x.IsDeleted && (x.PType == "Paid" || x.PType == null) && (compId <= 0 || x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
-                    (x.DocDate > docDate || (x.DocDate == docDate && x.Id > id)))
-                .OrderBy(x => x.DocDate)
-                .ThenBy(x => x.Id)
+                    x.Id < id)
+                .OrderByDescending(x => x.Id)
                 .Select(x => x.Id)
                 .FirstOrDefault();
+
+            // Next entry (next record with higher Id)
+            var nextId = _context.IssHead
+                .Where(x => !x.IsDeleted && (x.PType == "Paid" || x.PType == null) && (compId <= 0 || x.CompanyId == compId || (head.CoCode != null && x.CoCode == head.CoCode)) &&
+                    x.Id > id)
+                .OrderBy(x => x.Id)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+
+            if (prevId == 0 && compId > 0)
+            {
+                prevId = _context.IssHead
+                    .Where(x => !x.IsDeleted && (x.PType == "Paid" || x.PType == null) && x.Id < id)
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => x.Id)
+                    .FirstOrDefault();
+            }
+
+            if (nextId == 0 && compId > 0)
+            {
+                nextId = _context.IssHead
+                    .Where(x => !x.IsDeleted && (x.PType == "Paid" || x.PType == null) && x.Id > id)
+                    .OrderBy(x => x.Id)
+                    .Select(x => x.Id)
+                    .FirstOrDefault();
+            }
 
             ViewBag.PrevId = prevId > 0 ? prevId : (int?)null;
             ViewBag.NextId = nextId > 0 ? nextId : (int?)null;

@@ -224,12 +224,12 @@ namespace Nskg.Controllers
                     prevQuery = prevQuery.Where(x => x.CompanyId == currentCompId || (!string.IsNullOrEmpty(currentCoCode) && currentCoCode != "0" && x.Cocode == currentCoCode));
                 }
 
-                var prevVoucher = prevQuery.OrderByDescending(x => x.Vodate).ThenByDescending(x => x.Id).FirstOrDefault();
+                var prevVoucher = prevQuery.OrderByDescending(x => x.Id).FirstOrDefault();
                 if (prevVoucher == null)
                 {
                     prevVoucher = _context.VoHead.AsNoTracking()
                         .Where(x => !x.IsDeleted && x.Votype == type)
-                        .OrderByDescending(x => x.Vodate).ThenByDescending(x => x.Id)
+                        .OrderByDescending(x => x.Id)
                         .FirstOrDefault();
                 }
 
@@ -552,55 +552,50 @@ namespace Nskg.Controllers
 
                 int compId = data.CompanyId > 0 ? data.CompanyId : User.GetCompanyId();
                 string? coCode = !string.IsNullOrEmpty(data.Cocode) ? data.Cocode : User.GetCompanyCode();
-                DateTime voDate = data.Vodate ?? DateTime.Today;
                 string? voType = data.Votype;
 
-                // Next entry (next row down in list: older date, or same date with lower Id)
-                var nextId = _context.VoHead
-                    .AsNoTracking()
-                    .Where(x => !x.IsDeleted &&
-                                x.Votype == voType &&
-                                (compId <= 0 || x.CompanyId == compId || (!string.IsNullOrEmpty(coCode) && coCode != "0" && x.Cocode == coCode)) &&
-                                (x.Vodate < voDate || (x.Vodate == voDate && x.Id < id)))
-                    .OrderByDescending(x => x.Vodate)
-                    .ThenByDescending(x => x.Id)
-                    .Select(x => x.Id)
-                    .FirstOrDefault();
-
-                // Prev entry (previous row up in list: newer date, or same date with higher Id)
+                // Prev entry (previous record with lower Id)
                 var prevId = _context.VoHead
                     .AsNoTracking()
                     .Where(x => !x.IsDeleted &&
-                                x.Votype == voType &&
+                                (string.IsNullOrEmpty(voType) || x.Votype == voType) &&
                                 (compId <= 0 || x.CompanyId == compId || (!string.IsNullOrEmpty(coCode) && coCode != "0" && x.Cocode == coCode)) &&
-                                (x.Vodate > voDate || (x.Vodate == voDate && x.Id > id)))
-                    .OrderBy(x => x.Vodate)
-                    .ThenBy(x => x.Id)
+                                x.Id < id)
+                    .OrderByDescending(x => x.Id)
                     .Select(x => x.Id)
                     .FirstOrDefault();
 
-                if (nextId == 0 && compId > 0)
-                {
-                    nextId = _context.VoHead
-                        .AsNoTracking()
-                        .Where(x => !x.IsDeleted &&
-                                    x.Votype == voType &&
-                                    (x.Vodate < voDate || (x.Vodate == voDate && x.Id < id)))
-                        .OrderByDescending(x => x.Vodate)
-                        .ThenByDescending(x => x.Id)
-                        .Select(x => x.Id)
-                        .FirstOrDefault();
-                }
+                // Next entry (next record with higher Id)
+                var nextId = _context.VoHead
+                    .AsNoTracking()
+                    .Where(x => !x.IsDeleted &&
+                                (string.IsNullOrEmpty(voType) || x.Votype == voType) &&
+                                (compId <= 0 || x.CompanyId == compId || (!string.IsNullOrEmpty(coCode) && coCode != "0" && x.Cocode == coCode)) &&
+                                x.Id > id)
+                    .OrderBy(x => x.Id)
+                    .Select(x => x.Id)
+                    .FirstOrDefault();
 
                 if (prevId == 0 && compId > 0)
                 {
                     prevId = _context.VoHead
                         .AsNoTracking()
                         .Where(x => !x.IsDeleted &&
-                                    x.Votype == voType &&
-                                    (x.Vodate > voDate || (x.Vodate == voDate && x.Id > id)))
-                        .OrderBy(x => x.Vodate)
-                        .ThenBy(x => x.Id)
+                                    (string.IsNullOrEmpty(voType) || x.Votype == voType) &&
+                                    x.Id < id)
+                        .OrderByDescending(x => x.Id)
+                        .Select(x => x.Id)
+                        .FirstOrDefault();
+                }
+
+                if (nextId == 0 && compId > 0)
+                {
+                    nextId = _context.VoHead
+                        .AsNoTracking()
+                        .Where(x => !x.IsDeleted &&
+                                    (string.IsNullOrEmpty(voType) || x.Votype == voType) &&
+                                    x.Id > id)
+                        .OrderBy(x => x.Id)
                         .Select(x => x.Id)
                         .FirstOrDefault();
                 }
