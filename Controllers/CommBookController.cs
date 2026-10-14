@@ -980,6 +980,15 @@ namespace Nskg.Controllers
                 head.ModifiedOn = DateTime.Now;
                 head.ModifiedBy = User?.Identity?.Name;
 
+                var currentUserName = !string.IsNullOrWhiteSpace(User?.Identity?.Name) ? User.Identity.Name : "Admin";
+                if (string.IsNullOrWhiteSpace(head.CreatedBy))
+                {
+                    head.CreatedBy = currentUserName;
+                }
+
+                var createdBy = !string.IsNullOrWhiteSpace(head.CreatedBy) ? head.CreatedBy : currentUserName;
+                var createdOn = head.CreatedOn != default ? head.CreatedOn : DateTime.Now;
+
                 // Delete old details
                 var oldDetails = _context.CommDetail.Where(d => d.CommHeadId == head.Id).ToList();
                 _context.CommDetail.RemoveRange(oldDetails);
@@ -994,8 +1003,10 @@ namespace Nskg.Controllers
                         DocDate = head.DocDate,
                         CompanyId = head.CompanyId,
                         FinancialYearId = head.FinancialYearId,
-                        CreatedBy = head.CreatedBy,
-                        CreatedOn = head.CreatedOn,
+                        CreatedBy = createdBy,
+                        CreatedOn = createdOn,
+                        ModifiedBy = User?.Identity?.Name,
+                        ModifiedOn = DateTime.Now,
 
                         Fooder = item.Fooder,
                         CusName = item.CusName,

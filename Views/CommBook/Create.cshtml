@@ -669,15 +669,19 @@
 
             var selectedChallanIds = [];
             var selectedDocNos = [];
-            var selectedChalNos = [];
+            var manualRows = [];
 
             $("#tbodyItems tr").not("#noDataRow").each(function () {
                 var cid = ($(this).find(".challan-id").val() || "").toString().trim();
                 var dno = ($(this).find(".dc-no").val() || "").toString().trim().toLowerCase();
                 var cno = ($(this).find(".billti-no").val() || "").toString().trim().toLowerCase();
+                var stn = ($(this).find(".fooder").val() || "").toString().trim().toLowerCase();
+                var trn = ($(this).find(".cus-name").val() || "").toString().trim().toLowerCase();
                 if (cid && cid !== "0") selectedChallanIds.push(cid);
                 if (dno) selectedDocNos.push(dno);
-                if (cno) selectedChalNos.push(cno);
+                if ((!cid || cid === "0") && !dno && cno) {
+                    manualRows.push({ cno: cno, stn: stn, trn: trn });
+                }
             });
 
             $("#biltyModalTable tbody tr").each(function () {
@@ -689,12 +693,16 @@
                 var cid = ($chk.data("id") || "").toString().trim();
                 var dno = ($chk.data("docno") || "").toString().trim().toLowerCase();
                 var cno = ($chk.data("chalno") || "").toString().trim().toLowerCase();
+                var stn = ($chk.data("station") || "").toString().trim().toLowerCase();
+                var trn = ($chk.data("transporter") || "").toString().trim().toLowerCase();
                 var isAssignedDb = ($chk.data("isassigned") === true || $chk.data("isassigned") === "true");
 
                 var isAlreadyInCurrentGrid = 
                     (cid && cid !== "0" && selectedChallanIds.indexOf(cid) !== -1) ||
                     (dno && dno !== "" && selectedDocNos.indexOf(dno) !== -1) ||
-                    (cno && cno !== "" && selectedChalNos.indexOf(cno) !== -1);
+                    (manualRows.some(function (m) {
+                        return m.cno === cno && (!m.stn || m.stn === stn) && (!m.trn || m.trn === trn);
+                    }));
 
                 if (hasActiveSearch) {
                     // Actively searching: Always show matching row, mark as Selected if already added
@@ -904,15 +912,19 @@
                 if (res && res.success && res.data && res.data.length > 0) {
                     var selectedChallanIds = [];
                     var selectedDocNos = [];
-                    var selectedChalNos = [];
+                    var manualRows = [];
 
                     $("#tbodyItems tr").not("#noDataRow").each(function () {
                         var cid = ($(this).find(".challan-id").val() || "").toString().trim();
                         var dno = ($(this).find(".dc-no").val() || "").toString().trim().toLowerCase();
                         var cno = ($(this).find(".billti-no").val() || "").toString().trim().toLowerCase();
+                        var stn = ($(this).find(".fooder").val() || "").toString().trim().toLowerCase();
+                        var trn = ($(this).find(".cus-name").val() || "").toString().trim().toLowerCase();
                         if (cid && cid !== "0") selectedChallanIds.push(cid);
                         if (dno) selectedDocNos.push(dno);
-                        if (cno) selectedChalNos.push(cno);
+                        if ((!cid || cid === "0") && !dno && cno) {
+                            manualRows.push({ cno: cno, stn: stn, trn: trn });
+                        }
                     });
 
                     var rowsHtml = '';
@@ -920,9 +932,14 @@
                         var cid = (c.id || "").toString().trim();
                         var dno = (c.docNo || "").toString().trim().toLowerCase();
                         var cno = (c.chalNo || "").toString().trim().toLowerCase();
+                        var stn = (c.station || "").toString().trim().toLowerCase();
+                        var trn = (c.transporter || "").toString().trim().toLowerCase();
+
                         var isAlreadyInGrid = (cid && cid !== "0" && selectedChallanIds.indexOf(cid) !== -1) ||
                                               (dno && dno !== "" && selectedDocNos.indexOf(dno) !== -1) ||
-                                              (cno && cno !== "" && selectedChalNos.indexOf(cno) !== -1);
+                                              (manualRows.some(function (m) {
+                                                  return m.cno === cno && (!m.stn || m.stn === stn) && (!m.trn || m.trn === trn);
+                                              }));
                         var isAssigned = c.isInCommBook || isAlreadyInGrid;
                         var displayNo = (c.chalNo !== null && c.chalNo !== undefined && c.chalNo !== '') ? c.chalNo : '';
                         var isMuted = isAssigned;
