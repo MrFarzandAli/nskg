@@ -366,13 +366,13 @@ namespace Nskg.Controllers
                     .FirstOrDefault(x => x.Id == model.Head.AdvanceId);
 
                 model.Head.Station = station?.Name;
-                model.Head.StationCode = station?.ACC;
+                model.Head.StationCode = !string.IsNullOrWhiteSpace(station?.ACC) ? station.ACC : (station != null ? (station.AC1 + station.AC3) : null);
 
                 model.Head.Transporter = transporter?.Name;
-                model.Head.TransCode = transporter?.ACC;
+                model.Head.TransCode = !string.IsNullOrWhiteSpace(transporter?.ACC) ? transporter.ACC : (transporter != null ? (transporter.AC1 + transporter.AC3) : null);
 
                 model.Head.Advance = advance?.Name;
-                model.Head.AdvanceCode = advance?.ACC;
+                model.Head.AdvanceCode = !string.IsNullOrWhiteSpace(advance?.ACC) ? advance.ACC : (advance != null ? (advance.AC1 + advance.AC3) : null);
 
                 var salesAccount = _context.AcPara.Where(a => AccountCategories.Sales.Contains(a.ActypeCode)
                    && a.CompanyId == model.Head.CompanyId
@@ -917,14 +917,50 @@ namespace Nskg.Controllers
                 head.ChalNo = model.Head.ChalNo;
                 head.DocDate = model.Head.DocDate;
                 head.StationId = model.Head.StationId;
+                if (head.StationId.HasValue && head.StationId.Value > 0)
+                {
+                    var station = _context.GLChart3.FirstOrDefault(x => x.Id == head.StationId.Value);
+                    head.Station = station?.Name;
+                    head.StationCode = !string.IsNullOrWhiteSpace(station?.ACC) ? station.ACC : (station != null ? (station.AC1 + station.AC3) : null);
+                }
+                else
+                {
+                    head.Station = null;
+                    head.StationCode = null;
+                }
+
                 head.TransId = model.Head.TransId;
+                if (head.TransId.HasValue && head.TransId.Value > 0)
+                {
+                    var transporter = _context.GLChart3.FirstOrDefault(x => x.Id == head.TransId.Value);
+                    head.Transporter = transporter?.Name;
+                    head.TransCode = !string.IsNullOrWhiteSpace(transporter?.ACC) ? transporter.ACC : (transporter != null ? (transporter.AC1 + transporter.AC3) : null);
+                }
+                else
+                {
+                    head.Transporter = null;
+                    head.TransCode = null;
+                }
+
+                head.AdvanceId = model.Head.AdvanceId;
+                if (head.AdvanceId.HasValue && head.AdvanceId.Value > 0)
+                {
+                    var advance = _context.GLChart3.FirstOrDefault(x => x.Id == head.AdvanceId.Value);
+                    head.Advance = advance?.Name;
+                    head.AdvanceCode = !string.IsNullOrWhiteSpace(advance?.ACC) ? advance.ACC : (advance != null ? (advance.AC1 + advance.AC3) : null);
+                }
+                else
+                {
+                    head.Advance = null;
+                    head.AdvanceCode = null;
+                }
+
                 head.VehicleNo = model.Head.VehicleNo;
                 head.Driver = model.Head.Driver;
                 head.Narration = model.Head.Narration;
 
                 head.StationAmt = model.Head.StationAmt;
                 head.TransporterAmt = model.Head.TransporterAmt;
-                head.AdvanceId = model.Head.AdvanceId;
                 head.AdvanceAmt = model.Head.AdvanceAmt;
 
                 head.PartyExAmt = model.Head.PartyExAmt;
@@ -1133,7 +1169,7 @@ namespace Nskg.Controllers
 
                 var transporterAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         transporterlist.Contains(g.AC1)
                     )
@@ -1163,7 +1199,7 @@ namespace Nskg.Controllers
 
                 var advanceAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         advancelist.Contains(g.AC1)
                     )
@@ -1193,7 +1229,7 @@ namespace Nskg.Controllers
 
                 var stationAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         stationList.Contains(g.AC1)
                     )
@@ -1223,7 +1259,7 @@ namespace Nskg.Controllers
 
                 var PartyStationAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         PartyStationList.Contains(g.AC1)
                     )
@@ -1253,7 +1289,7 @@ namespace Nskg.Controllers
 
                 var PartyExpAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         PartyExpList.Contains(g.AC1)
                     )
@@ -1278,7 +1314,7 @@ namespace Nskg.Controllers
                 var challanQuery = _context.ChallanHead.AsQueryable();
                 if (compId > 0)
                 {
-                    challanQuery = challanQuery.Where(x => x.CompanyId == compId || x.CompanyId == 0 || x.CompanyId == 1006);
+                    challanQuery = challanQuery.Where(x => x.CompanyId == compId || x.CompanyId == 0);
                 }
 
                 if (commBookId.HasValue && commBookId.Value > 0)
@@ -1346,7 +1382,7 @@ namespace Nskg.Controllers
                 var query = _context.ChallanHead.AsQueryable();
                 if (compId > 0)
                 {
-                    query = query.Where(x => x.CompanyId == compId || x.CompanyId == 0 || x.CompanyId == 1006);
+                    query = query.Where(x => x.CompanyId == compId || x.CompanyId == 0);
                 }
 
                 bool hasFilter = false;

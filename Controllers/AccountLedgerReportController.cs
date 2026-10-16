@@ -298,21 +298,20 @@ namespace Nskg.Controllers
                                     ELSE ''
                                 END
                             ) AS Votype,
-                            COALESCE(
-                                CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
-                                CASE WHEN ish.BillTiNo IS NOT NULL AND ish.BillTiNo <> 0 THEN CAST(CAST(ish.BillTiNo AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
-                                NULL
-                            ) AS BillTiNo,
-                            COALESCE(
-                                CASE WHEN a.BILNO IS NOT NULL AND a.BILNO <> 0 THEN CAST(CAST(a.BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
-                                CASE WHEN ish.BilNo IS NOT NULL AND ish.BilNo <> 0 THEN CAST(CAST(ish.BilNo AS BIGINT) AS VARCHAR(50)) ELSE NULL END,
-                                NULL
-                            ) AS BilNo,
+                            CASE 
+                                WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50))
+                                WHEN a.VOTYPE = 'BL' AND ish.BillTiNo IS NOT NULL AND ish.BillTiNo <> 0 THEN CAST(CAST(ish.BillTiNo AS BIGINT) AS VARCHAR(50))
+                                ELSE NULL
+                            END AS BillTiNo,
+                            CASE 
+                                WHEN a.BILNO IS NOT NULL AND a.BILNO <> 0 THEN CAST(CAST(a.BILNO AS BIGINT) AS VARCHAR(50))
+                                WHEN a.VOTYPE = 'BL' AND ish.BilNo IS NOT NULL AND ish.BilNo <> 0 THEN CAST(CAST(ish.BilNo AS BIGINT) AS VARCHAR(50))
+                                ELSE NULL
+                            END AS BilNo,
                             COALESCE(
                                 NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''),
-                                NULLIF(RTRIM(LTRIM(ish.VehicleNo)), ''),
                                 CASE WHEN a.VOTYPE = 'CL' AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND a.NARRATION NOT LIKE '%-%-%' THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
-                                CASE WHEN a.VOTYPE IN ('CR', 'CP', 'BR', 'BP', 'JV') AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND (a.NARRATION LIKE '%[0-9]%' OR a.NARRATION LIKE '%-%') THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
+                                CASE WHEN a.VOTYPE = 'BL' THEN NULLIF(RTRIM(LTRIM(ish.VehicleNo)), '') ELSE NULL END,
                                 ''
                             ) AS VehicleNo,
                             COALESCE(
@@ -322,7 +321,7 @@ namespace Nskg.Controllers
                             ISNULL(a.INAME, ISNULL(a.NARRATION, '')) AS IName,
                             COALESCE(
                                 NULLIF(a.QTY, 0),
-                                NULLIF(ish.Qty, 0),
+                                CASE WHEN a.VOTYPE = 'BL' THEN NULLIF(ish.Qty, 0) ELSE NULL END,
                                 NULL
                             ) AS Qty,
                             CASE 
@@ -346,7 +345,9 @@ namespace Nskg.Controllers
                         OUTER APPLY (
                             SELECT TOP 1 ish.BillTiNo, ish.BilNo, ish.VehicleNo, ish.Qty, ish.CompanyId, ish.Cocode
                             FROM IssHead ish 
-                            WHERE (ish.DocNo = a.VONO OR (a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 AND ish.BillTiNo = a.BILLTINO))
+                            WHERE a.VOTYPE = 'BL'
+                              AND (ish.DocNo = a.VONO OR (a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 AND ish.BillTiNo = a.BILLTINO))
+                              AND (@CompanyId = 0 OR ish.CompanyId = @CompanyId OR ish.CompanyId = TRY_CAST(a.COCODE AS INT))
                               AND ISNULL(ish.IsDeleted, 0) = 0
                             ORDER BY ish.Id DESC
                         ) ish

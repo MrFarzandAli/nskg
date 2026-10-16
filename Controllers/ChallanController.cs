@@ -1093,7 +1093,7 @@ namespace Nskg.Controllers
 
                 var transporterAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         (transporterlist.Contains(g.AC1) || g.AC1 == "052")
                     )
@@ -1123,7 +1123,7 @@ namespace Nskg.Controllers
 
                 var stationAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         (stationList.Contains(g.AC1) || g.AC1 == "067" || g.AC1 == "068")
                     )
@@ -1153,7 +1153,7 @@ namespace Nskg.Controllers
 
                 var PartyStationAccounts = _context.GLChart3
                     .Where(g =>
-                        (g.CompanyId == compId || g.CompanyId == 0 || g.CompanyId == 1006) &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         (PartyStationList.Contains(g.AC1) || g.AC1 == "067" || g.AC1 == "068")
                     )
@@ -1183,7 +1183,7 @@ namespace Nskg.Controllers
 
                 var PartyExpAccounts = _context.GLChart3
                     .Where(g =>
-                        g.CompanyId == User.GetCompanyId() &&
+                        (g.CompanyId == compId || g.CompanyId == 0) &&
                         g.AcType != "S" &&
                         PartyExpList.Contains(g.AC1)
                     )
@@ -1205,7 +1205,7 @@ namespace Nskg.Controllers
 
 
                 // Load bilty - filter by user CompanyId, 3+ days old bilties first at top, then order by DocDate descending
-                var userCompanyId = User.GetCompanyId();
+                var userCompanyId = compId;
                 var threeDaysAgo = DateTime.Today.AddDays(-3);
                 ViewBag.BiltyList = _context.IssHead
                     .Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN) || (currentChallanId != null && x.ChallanId == currentChallanId)) 
