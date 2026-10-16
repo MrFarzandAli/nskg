@@ -565,11 +565,12 @@
             const vehVal = (prefillData && prefillData.vehicleNo) ? escapeHtml(prefillData.vehicleNo) : "";
             const dramtVal = (prefillData && prefillData.dramt !== undefined && prefillData.dramt !== null) ? prefillData.dramt : "";
             const cramtVal = (prefillData && prefillData.cramt !== undefined && prefillData.cramt !== null) ? prefillData.cramt : "";
-            const biltyIdHidden = (prefillData && prefillData.id) ? `<input type="hidden" name="SelectedBiltyIds" value="${prefillData.id}" class="imported-bilty-id" />` : "";
+            const biltyIdRaw = (prefillData && (prefillData.biltyId || prefillData.id)) ? String(prefillData.biltyId || prefillData.id) : "";
+            const biltyIdHidden = biltyIdRaw ? `<input type="hidden" name="SelectedBiltyIds" value="${biltyIdRaw}" class="imported-bilty-id" />` : "";
 
             const row = document.createElement("tr");
-            if (prefillData && prefillData.id) {
-                row.setAttribute("data-bilty-id", prefillData.id);
+            if (biltyIdRaw) {
+                row.setAttribute("data-bilty-id", biltyIdRaw);
             }
 
             row.innerHTML = `
@@ -586,6 +587,7 @@
                     </select>
                     <input type="hidden" name="Details.Index" value="${i}" />
                     <input type="hidden" name="Details[${i}].Id" value="0" />
+                    <input type="hidden" name="Details[${i}].BiltyId" value="${biltyIdRaw}" />
                     ${biltyIdHidden}
                     <input type="hidden" name="Details[${i}].Vehicleno" value="${vehVal}" />
                 </td>
@@ -1134,6 +1136,36 @@
             });
         }
 
+        // Helper: build badges for vouchers where bilty was picked
+        function getBiltyVoucherBadgesHtml(b, isAlreadyInGrid) {
+            var badges = '';
+
+            if (isAlreadyInGrid) {
+                badges += '<span class="badge bg-warning text-dark ms-1 shadow-sm" style="font-size:0.75rem;"><i class="fa fa-check me-1"></i>In Current Grid</span>';
+            }
+
+            var vList = b.vouchers || [];
+            if (vList.length === 0 && b.voucherId && b.vono) {
+                vList = [{ id: b.voucherId, vono: b.vono }];
+            }
+
+            if (vList.length > 0) {
+                if (vList.length === 1) {
+                    var v = vList[0];
+                    badges += `<a href="/Voucher/Edit/${v.id}" target="_blank" class="badge bg-info text-dark ms-1 text-decoration-none shadow-sm" style="font-size:0.75rem;" onclick="event.stopPropagation();" title="Open Voucher ${escapeHtml(v.vono)} in new tab"><i class="fa fa-file-text-o me-1"></i>Picked: ${escapeHtml(v.vono)} <i class="fa fa-external-link" style="font-size:0.65rem;"></i></a>`;
+                } else {
+                    var links = vList.map(function (v) {
+                        return `<a href="/Voucher/Edit/${v.id}" target="_blank" class="badge bg-light text-dark ms-1 text-decoration-none border shadow-xs" onclick="event.stopPropagation();" title="Open Voucher ${escapeHtml(v.vono)} in new tab">${escapeHtml(v.vono)} <i class="fa fa-external-link" style="font-size:0.6rem;"></i></a>`;
+                    }).join('');
+                    badges += `<span class="badge bg-danger ms-1 text-white shadow-sm" style="font-size:0.75rem;" title="Picked in ${vList.length} vouchers"><i class="fa fa-files-o me-1"></i>Picked in ${vList.length} Vouchers:</span>${links}`;
+                }
+            } else if (b.isUsed) {
+                badges += `<span class="badge bg-secondary ms-1 shadow-sm" style="font-size:0.75rem;" title="Already Picked in Voucher">Picked</span>`;
+            }
+
+            return badges;
+        }
+
         // Render Table: displays biltis with column exact match capability
         function renderPartyBiltisTable(items) {
             currentLoadedBiltis = items || [];
@@ -1154,7 +1186,8 @@
 
             items.forEach(function (b) {
                 var isAlreadyInGrid = existingBiltyIds.has(String(b.id)) || (b.billTiNo && existingBiltyIds.has(String(b.billTiNo)));
-                var isDbUsed = (b.isUsed === true);
+                var vCount = (b.vouchers && b.vouchers.length) ? b.vouchers.length : (b.voucherCount || (b.voucherId ? 1 : 0));
+                var isDbUsed = (b.isUsed === true) || vCount > 0;
                 var isSelectedState = isAlreadyInGrid || isDbUsed;
 
                 if (!isSelectedState) {
@@ -1162,16 +1195,7 @@
                 }
 
                 var netAmtFormatted = (parseFloat(b.netAmt) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                var badgeHtml = '';
-                if (isAlreadyInGrid) {
-                    badgeHtml = '<span class="badge bg-warning text-dark ms-1" style="font-size:0.75rem;"><i class="fa fa-check me-1"></i>In Voucher</span>';
-                } else if (isDbUsed) {
-                    if (b.vono && b.voucherId) {
-                        badgeHtml = `<a href="/Voucher/Edit/${b.voucherId}" target="_blank" class="badge bg-secondary ms-1 text-white text-decoration-none shadow-sm" style="font-size:0.75rem;" onclick="event.stopPropagation();" title="Open Voucher ${escapeHtml(b.vono)} in new tab">Selected: ${escapeHtml(b.vono)} <i class="fa fa-external-link" style="font-size:0.65rem;"></i></a>`;
-                    } else {
-                        badgeHtml = `<span class="badge bg-secondary ms-1 shadow-sm" style="font-size:0.75rem;" title="Already Selected">Selected</span>`;
-                    }
-                }
+                var badgeHtml = getBiltyVoucherBadgesHtml(b, isAlreadyInGrid);
 
                 html += `
                     <tr class="bilty-row ${isSelectedState ? 'already-selected' : ''}" 
@@ -1189,7 +1213,7 @@
                         data-is-selected="${isSelectedState ? 'true' : 'false'}"
                         style="${isSelectedState ? 'display: none;' : ''}">
                         <td class="text-center">
-                            <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" ${isSelectedState ? 'disabled' : ''} />
+                            <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" />
                         </td>
                         <td class="text-center fw-semibold text-secondary">${escapeHtml(b.docDate)}</td>
                         <td>${escapeHtml(b.cusName)} ${badgeHtml}</td>
@@ -1366,14 +1390,7 @@
                                 res.data.forEach(function (b) {
                                     if ($(`#tblPartyBiltisBody tr.bilty-row[data-id="${b.id}"]`).length === 0) {
                                         var netAmtFormatted = (parseFloat(b.netAmt) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                        var badgeHtml = '';
-                                        if (b.isUsed) {
-                                            if (b.vono && b.voucherId) {
-                                                badgeHtml = `<a href="/Voucher/Edit/${b.voucherId}" target="_blank" class="badge bg-secondary ms-1 text-white text-decoration-none shadow-sm" style="font-size:0.75rem;" onclick="event.stopPropagation();" title="Open Voucher ${escapeHtml(b.vono)} in new tab">Selected: ${escapeHtml(b.vono)} <i class="fa fa-external-link" style="font-size:0.65rem;"></i></a>`;
-                                            } else {
-                                                badgeHtml = `<span class="badge bg-secondary ms-1 shadow-sm" style="font-size:0.75rem;" title="Already Selected">Selected</span>`;
-                                            }
-                                        }
+                                        var badgeHtml = getBiltyVoucherBadgesHtml(b, false);
                                         var rowHtml = `
                                             <tr class="bilty-row ${b.isUsed ? 'already-selected' : ''}" 
                                                 data-id="${b.id}" 
@@ -1388,7 +1405,7 @@
                                                 data-billtino="${escapeHtml(b.billTiNo)}" 
                                                 data-netamt="${b.netAmt}">
                                                 <td class="text-center">
-                                                    <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" ${b.isUsed ? 'disabled' : ''} />
+                                                    <input type="checkbox" class="form-check-input bilty-chk" value="${b.id}" />
                                                 </td>
                                                 <td class="text-center fw-semibold text-secondary">${escapeHtml(b.docDate)}</td>
                                                 <td>${escapeHtml(b.cusName)} ${badgeHtml}</td>
@@ -1436,10 +1453,10 @@
             loadPartyBiltis(partyId);
         });
 
-        // Toggle Select All checkboxes (only pending/enabled biltis)
+        // Toggle Select All checkboxes
         $('#chkSelectAllBiltis').on('change', function () {
             var checked = $(this).is(':checked');
-            $('#tblPartyBiltisBody tr.bilty-row:visible:not(.already-selected) .bilty-chk:not(:disabled)').prop('checked', checked);
+            $('#tblPartyBiltisBody tr.bilty-row:visible .bilty-chk').prop('checked', checked);
             updateModalCounters();
         });
 
@@ -1448,10 +1465,10 @@
             updateModalCounters();
         });
 
-        // Clicking row toggles checkbox (only for pending, non-disabled rows, except clicking checkbox itself)
-        $(document).on('click', '#tblPartyBiltisBody tr.bilty-row:not(.already-selected)', function (e) {
-            if ($(e.target).is('input[type="checkbox"]')) return;
-            var $chk = $(this).find('.bilty-chk:not(:disabled)');
+        // Clicking row toggles checkbox (except clicking checkbox or link itself)
+        $(document).on('click', '#tblPartyBiltisBody tr.bilty-row', function (e) {
+            if ($(e.target).is('input[type="checkbox"]') || $(e.target).closest('a').length) return;
+            var $chk = $(this).find('.bilty-chk');
             if ($chk.length) {
                 $chk.prop('checked', !$chk.is(':checked')).trigger('change');
             }
@@ -1462,8 +1479,8 @@
             var selectedCount = 0;
             var selectedAmt = 0;
 
-            $('#tblPartyBiltisBody tr.bilty-row:not(.already-selected)').each(function () {
-                var $chk = $(this).find('.bilty-chk:not(:disabled)');
+            $('#tblPartyBiltisBody tr.bilty-row').each(function () {
+                var $chk = $(this).find('.bilty-chk');
                 if ($chk.is(':checked')) {
                     selectedCount++;
                     selectedAmt += parseFloat($(this).data('netamt') || 0);
@@ -1479,8 +1496,8 @@
             var selectedBiltis = [];
             var partyId = $('#modalPartySelect').val() || $('#Head_Partycode').val();
 
-            $('#tblPartyBiltisBody tr.bilty-row:not(.already-selected)').each(function () {
-                var $chk = $(this).find('.bilty-chk:not(:disabled)');
+            $('#tblPartyBiltisBody tr.bilty-row').each(function () {
+                var $chk = $(this).find('.bilty-chk');
                 if ($chk.is(':checked')) {
                     selectedBiltis.push({
                         id: $(this).data('id'),
@@ -1535,6 +1552,7 @@
                     cramt: cramt,
                     narration: rowNarration,
                     id: b.id,
+                    biltyId: b.id,
                     cusName: b.cusName
                 });
             });

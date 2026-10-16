@@ -204,14 +204,16 @@ namespace Nskg.Controllers
                 query = query.Where(x => x.CompanyId == companyId);
             }
 
-            var last = query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
+            var last = query.OrderByDescending(x => x.DocNo).ThenByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
             if (last == null)
             {
-                last = _context.CommHead.Where(x => !x.IsDeleted).OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
+                last = _context.CommHead.Where(x => !x.IsDeleted).OrderByDescending(x => x.DocNo).ThenByDescending(x => x.DocDate).ThenByDescending(x => x.Id).FirstOrDefault();
             }
 
             if (last != null)
             {
+                ViewBag.PrevId = last.Id;
+
                 var stationsList = ViewBag.Stations as List<SelectListItem> ?? new List<SelectListItem>();
                 if (last.StationId.HasValue && last.StationId.Value > 0 && !stationsList.Any(s => s.Value == last.StationId.Value.ToString()))
                 {
@@ -811,42 +813,9 @@ namespace Nskg.Controllers
 
             compId = head.CompanyId > 0 ? head.CompanyId : User.GetCompanyId();
 
-            // Prev entry (previous record with lower Id)
-            var prevId = _context.CommHead
-                .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
-                    x.Id < id)
-                .OrderByDescending(x => x.Id)
-                .Select(x => (long?)x.Id)
-                .FirstOrDefault();
-
-            // Next entry (next record with higher Id)
-            var nextId = _context.CommHead
-                .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
-                    x.Id > id)
-                .OrderBy(x => x.Id)
-                .Select(x => (long?)x.Id)
-                .FirstOrDefault();
-
-            if ((prevId == null || prevId == 0) && compId > 0)
-            {
-                prevId = _context.CommHead
-                    .Where(x => !x.IsDeleted && x.Id < id)
-                    .OrderByDescending(x => x.Id)
-                    .Select(x => (long?)x.Id)
-                    .FirstOrDefault();
-            }
-
-            if ((nextId == null || nextId == 0) && compId > 0)
-            {
-                nextId = _context.CommHead
-                    .Where(x => !x.IsDeleted && x.Id > id)
-                    .OrderBy(x => x.Id)
-                    .Select(x => (long?)x.Id)
-                    .FirstOrDefault();
-            }
-
-            ViewBag.PrevId = prevId > 0 ? prevId : null;
-            ViewBag.NextId = nextId > 0 ? nextId : null;
+            var (prevId, nextId) = GetPrevAndNextIds(head, compId);
+            ViewBag.PrevId = prevId;
+            ViewBag.NextId = nextId;
 
             var model = new CommBookViewModel
             {
@@ -884,6 +853,9 @@ namespace Nskg.Controllers
                 if (!ModelState.IsValid)
                 {
                     LoadDropdowns();
+                    var (pId, nId) = GetPrevAndNextIds(model.Head, model.Head?.CompanyId ?? 0);
+                    ViewBag.PrevId = pId;
+                    ViewBag.NextId = nId;
                     return View(model);
                 }
 
@@ -1071,13 +1043,16 @@ namespace Nskg.Controllers
                 transaction.Commit();
 
                 TempData["SuccessMessage"] = "✅ Commission book updated successfully.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Edit), new { id = head.Id });
             }
             catch (Exception ex)
             {
                 _audit.LogAsync("Error", "CommBook Edit", "0", ex.ToString()).Wait();
                 TempData["ErrorMessage"] = "❌ Failed to update commission book.";
                 LoadDropdowns();
+                var (pId, nId) = GetPrevAndNextIds(model.Head, model.Head?.CompanyId ?? 0);
+                ViewBag.PrevId = pId;
+                ViewBag.NextId = nId;
                 return View(model);
             }
         }
@@ -1591,6 +1566,151 @@ namespace Nskg.Controllers
             }
 
             return $"{nextNumber:D4}/{code}";
+        }
+
+        private (long? prevId, long? nextId) GetPrevAndNextIds(CommHead? head, int compId)
+        {
+            if (head == null) return (null, null);
+
+            var currentDocNo = (head.DocNo ?? "").Trim();
+            string suffix = "";
+            if (currentDocNo.Contains('/'))
+            {
+                var slashIdx = currentDocNo.LastIndexOf('/');
+                suffix = currentDocNo.Substring(slashIdx); // e.g. "/1026"
+            }
+
+            long? prevId = null;
+            long? nextId = null;
+
+            if (!string.IsNullOrEmpty(currentDocNo))
+            {
+                if (!string.IsNullOrEmpty(suffix))
+                {
+                    // 1. Within the same series (matching suffix, e.g. /1026)
+                    prevId = _context.CommHead
+                        .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
+                                    x.DocNo != null && x.DocNo.EndsWith(suffix) &&
+                                    string.Compare(x.DocNo, currentDocNo) < 0)
+                        .OrderByDescending(x => x.DocNo)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+
+                    nextId = _context.CommHead
+                        .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
+                                    x.DocNo != null && x.DocNo.EndsWith(suffix) &&
+                                    string.Compare(x.DocNo, currentDocNo) > 0)
+                        .OrderBy(x => x.DocNo)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+                }
+                else
+                {
+                    // Plain DocNo without slash
+                    prevId = _context.CommHead
+                        .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
+                                    x.DocNo != null &&
+                                    string.Compare(x.DocNo, currentDocNo) < 0)
+                        .OrderByDescending(x => x.DocNo)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+
+                    nextId = _context.CommHead
+                        .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
+                                    x.DocNo != null &&
+                                    string.Compare(x.DocNo, currentDocNo) > 0)
+                        .OrderBy(x => x.DocNo)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+                }
+
+                // 2. Fallback across series if at the boundary of a month/series
+                if (prevId == null || prevId == 0)
+                {
+                    prevId = _context.CommHead
+                        .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
+                                    x.DocNo != null &&
+                                    (x.DocDate < head.DocDate || (x.DocDate == head.DocDate && string.Compare(x.DocNo, currentDocNo) < 0)))
+                        .OrderByDescending(x => x.DocDate)
+                        .ThenByDescending(x => x.DocNo)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+                }
+
+                if (nextId == null || nextId == 0)
+                {
+                    nextId = _context.CommHead
+                        .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) &&
+                                    x.DocNo != null &&
+                                    (x.DocDate > head.DocDate || (x.DocDate == head.DocDate && string.Compare(x.DocNo, currentDocNo) > 0)))
+                        .OrderBy(x => x.DocDate)
+                        .ThenBy(x => x.DocNo)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+                }
+            }
+
+            // 3. Fallback by Id if DocNo comparison yielded nothing
+            if (prevId == null || prevId == 0)
+            {
+                prevId = _context.CommHead
+                    .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) && x.Id < head.Id)
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => (long?)x.Id)
+                    .FirstOrDefault();
+            }
+
+            if (nextId == null || nextId == 0)
+            {
+                nextId = _context.CommHead
+                    .Where(x => !x.IsDeleted && (compId <= 0 || x.CompanyId == compId) && x.Id > head.Id)
+                    .OrderBy(x => x.Id)
+                    .Select(x => (long?)x.Id)
+                    .FirstOrDefault();
+            }
+
+            // 4. Fallback across all companies if company-specific query found nothing
+            if ((prevId == null || prevId == 0) && compId > 0)
+            {
+                if (!string.IsNullOrEmpty(suffix))
+                {
+                    prevId = _context.CommHead
+                        .Where(x => !x.IsDeleted && x.DocNo != null && x.DocNo.EndsWith(suffix) && string.Compare(x.DocNo, currentDocNo) < 0)
+                        .OrderByDescending(x => x.DocNo)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+                }
+                if (prevId == null || prevId == 0)
+                {
+                    prevId = _context.CommHead
+                        .Where(x => !x.IsDeleted && x.Id < head.Id)
+                        .OrderByDescending(x => x.Id)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+                }
+            }
+
+            if ((nextId == null || nextId == 0) && compId > 0)
+            {
+                if (!string.IsNullOrEmpty(suffix))
+                {
+                    nextId = _context.CommHead
+                        .Where(x => !x.IsDeleted && x.DocNo != null && x.DocNo.EndsWith(suffix) && string.Compare(x.DocNo, currentDocNo) > 0)
+                        .OrderBy(x => x.DocNo)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+                }
+                if (nextId == null || nextId == 0)
+                {
+                    nextId = _context.CommHead
+                        .Where(x => !x.IsDeleted && x.Id > head.Id)
+                        .OrderBy(x => x.Id)
+                        .Select(x => (long?)x.Id)
+                        .FirstOrDefault();
+                }
+            }
+
+            return (prevId > 0 ? prevId : null, nextId > 0 ? nextId : null);
         }
     }
 }

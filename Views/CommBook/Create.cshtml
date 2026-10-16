@@ -130,7 +130,13 @@
             <span class="badge bg-primary px-2 py-1 shadow-sm" style="font-size: 0.78rem;"><i class="fa fa-file-text me-1"></i>Doc No: @Model.Head.DocNo</span>
         </div>
 
-        <div>
+        <div class="d-flex flex-wrap align-items-center gap-1">
+            @if (ViewBag.PrevId != null)
+            {
+                <a href="@Url.Action("Edit", new { id = ViewBag.PrevId })" class="btn btn-outline-secondary btn-sm custom-btn me-2" title="Previous Entry">
+                    <i class="fa fa-arrow-left me-1"></i> Prev
+                </a>
+            }
             <button type="button"
                     id="btnAddChallan"
                     class="btn btn-outline-primary btn-sm custom-btn me-2"

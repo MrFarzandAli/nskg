@@ -97,6 +97,12 @@ namespace Nskg.Data
                 .HasForeignKey(x => x.VoucherId)
                 .OnDelete(DeleteBehavior.NoAction);
 
+            builder.Entity<VoDet>()
+                .HasOne(x => x.Bilty)
+                .WithMany()
+                .HasForeignKey(x => x.BiltyId)
+                .OnDelete(DeleteBehavior.NoAction);
+
             // Global query filters for soft delete
             builder.Entity<IssHead>().HasQueryFilter(i => !i.IsDeleted);
             builder.Entity<ChallanHead>().HasQueryFilter(c => !c.IsDeleted);

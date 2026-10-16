@@ -357,6 +357,14 @@ namespace Nskg.Controllers
                         d.CreatedOn = DateTime.Now;
                         d.CreatedBy = GetUser();
                         d.IsDeleted = false;
+
+                        // Auto-resolve BiltyId if not explicitly bound
+                        if ((d.BiltyId == null || d.BiltyId == 0) && d.Billtino.HasValue && d.Billtino.Value > 0)
+                        {
+                            var matchBilty = _context.IssHead.FirstOrDefault(b => !b.IsDeleted && b.BillTiNo == d.Billtino.Value && (d.gl3Id == null || b.CustomerId == d.gl3Id));
+                            if (matchBilty != null) d.BiltyId = matchBilty.Id;
+                        }
+
                         _context.VoDet.Add(d);
                     }
                 }
@@ -779,6 +787,12 @@ namespace Nskg.Controllers
                     }
 
                     target.gl3Id = d.gl3Id;
+                    target.BiltyId = d.BiltyId;
+                    if ((target.BiltyId == null || target.BiltyId == 0) && d.Billtino.HasValue && d.Billtino.Value > 0)
+                    {
+                        var matchBilty = _context.IssHead.FirstOrDefault(b => !b.IsDeleted && b.BillTiNo == d.Billtino.Value && (d.gl3Id == null || b.CustomerId == d.gl3Id));
+                        if (matchBilty != null) target.BiltyId = matchBilty.Id;
+                    }
                     target.Transcode = d.Transcode;
                     target.Billtino = d.Billtino;
                     target.Bilno = d.Bilno;
@@ -1153,33 +1167,194 @@ namespace Nskg.Controllers
             public decimal NetAmt { get; set; }
             public int? VoucherId { get; set; }
             public string? DescYN1 { get; set; }
+            public int? CustomerId { get; set; }
         }
 
-        private List<object> EnrichBiltisWithVoucherInfo(List<BiltyRawDto> rawData)
+        private class BiltyVoDetMatch
         {
+            public int? BiltyId { get; set; }
+            public int Billtino { get; set; }
+            public int? Bilno { get; set; }
+            public int? gl3Id { get; set; }
+            public int VoucherId { get; set; }
+            public string Vono { get; set; } = "";
+            public string Votype { get; set; } = "";
+            public DateTime? Vodate { get; set; }
+        }
+
+        private class BiltyVoucherItem
+        {
+            public int Id { get; set; }
+            public string Vono { get; set; } = "";
+            public string Votype { get; set; } = "";
+            public string Vodate { get; set; } = "";
+            public int? Bilno { get; set; }
+        }
+
+        private List<object> EnrichBiltisWithVoucherInfo(List<BiltyRawDto> rawData, int? partyId = null, List<int>? partyAccountIds = null)
+        {
+            if (rawData == null || !rawData.Any())
+                return new List<object>();
+
+            var biltyIds = rawData
+                .Where(x => x.Id > 0)
+                .Select(x => x.Id)
+                .Distinct()
+                .ToList();
+
+            var biltyNos = rawData
+                .Where(x => x.BillTiNo.HasValue && x.BillTiNo.Value > 0)
+                .Select(x => (int)x.BillTiNo.Value)
+                .Distinct()
+                .ToList();
+
             var voucherIds = rawData
                 .Where(x => x.VoucherId.HasValue && x.VoucherId.Value > 0)
                 .Select(x => x.VoucherId!.Value)
                 .Distinct()
                 .ToList();
 
-            var voucherMap = voucherIds.Any()
+            // 1. Efficiently query VoDet using indexed party accounts or top-100 bilty keys
+            var voDetQuery = from vd in _context.VoDet.AsNoTracking()
+                             join vh in _context.VoHead.AsNoTracking() on vd.VoHeadId equals vh.Id
+                             where !vd.IsDeleted && !vh.IsDeleted
+                             select new { vd, vh };
+
+            if (partyAccountIds != null && partyAccountIds.Any())
+            {
+                // Instant indexed seek on gl3Id
+                voDetQuery = voDetQuery.Where(x => x.vd.gl3Id.HasValue && partyAccountIds.Contains(x.vd.gl3Id.Value));
+            }
+            else if (partyId.HasValue && partyId.Value > 0)
+            {
+                int pId = partyId.Value;
+                voDetQuery = voDetQuery.Where(x => x.vd.gl3Id == pId);
+            }
+            else
+            {
+                voDetQuery = voDetQuery.Where(x => (x.vd.BiltyId.HasValue && biltyIds.Contains(x.vd.BiltyId.Value)) ||
+                                                   (x.vd.Billtino.HasValue && biltyNos.Contains(x.vd.Billtino.Value)));
+            }
+
+            var voDetMatches = voDetQuery.Select(x => new BiltyVoDetMatch
+            {
+                BiltyId = x.vd.BiltyId,
+                Billtino = x.vd.Billtino ?? 0,
+                Bilno = x.vd.Bilno,
+                gl3Id = x.vd.gl3Id,
+                VoucherId = x.vh.Id,
+                Vono = x.vh.Vono ?? x.vd.Vono ?? "",
+                Votype = x.vh.Votype ?? x.vd.Votype ?? "",
+                Vodate = x.vh.Vodate ?? x.vd.Vodate
+            }).ToList();
+
+            // 2. Pre-index voDetMatches into O(1) Dictionaries to avoid O(N*M) linear scans
+            var byBiltyId = voDetMatches
+                .Where(vd => vd.BiltyId.HasValue && vd.BiltyId.Value > 0)
+                .GroupBy(vd => vd.BiltyId!.Value)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.GroupBy(vd => vd.VoucherId)
+                          .Select(vg => vg.First())
+                          .Select(vd => new BiltyVoucherItem
+                          {
+                              Id = vd.VoucherId,
+                              Vono = vd.Vono,
+                              Votype = vd.Votype,
+                              Vodate = vd.Vodate != null ? vd.Vodate.Value.ToString("dd-MMM-yyyy") : "",
+                              Bilno = vd.Bilno
+                          })
+                          .ToList()
+                );
+
+            var byBilltino = voDetMatches
+                .Where(vd => vd.Billtino > 0)
+                .GroupBy(vd => vd.Billtino)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.GroupBy(vd => vd.VoucherId)
+                          .Select(vg => vg.First())
+                          .Select(vd => new BiltyVoucherItem
+                          {
+                              Id = vd.VoucherId,
+                              Vono = vd.Vono,
+                              Votype = vd.Votype,
+                              Vodate = vd.Vodate != null ? vd.Vodate.Value.ToString("dd-MMM-yyyy") : "",
+                              Bilno = vd.Bilno
+                          })
+                          .ToList()
+                );
+
+            // 3. Map extra vouchers from IssHead.VoucherId
+            var matchedVoHeadIds = new HashSet<int>(voDetMatches.Select(m => m.VoucherId));
+            var extraVoucherIds = voucherIds.Where(id => !matchedVoHeadIds.Contains(id)).Distinct().ToList();
+            var extraVoucherMap = extraVoucherIds.Any()
                 ? _context.VoHead
                     .AsNoTracking()
-                    .Where(v => voucherIds.Contains(v.Id))
-                    .Select(v => new { v.Id, v.Vono })
-                    .ToDictionary(v => v.Id, v => v.Vono ?? "")
-                : new Dictionary<int, string>();
+                    .Where(v => !v.IsDeleted && extraVoucherIds.Contains(v.Id))
+                    .ToDictionary(v => v.Id, v => v)
+                : new Dictionary<int, VoHead>();
 
             var data = rawData.Select(x =>
             {
-                int? matchedVoucherId = (x.VoucherId.HasValue && x.VoucherId.Value > 0) ? x.VoucherId : null;
-                string matchedVono = "";
+                var vouchersForThisBilty = new List<BiltyVoucherItem>();
+                var seenVoucherIds = new HashSet<int>();
 
-                if (matchedVoucherId.HasValue && voucherMap.TryGetValue(matchedVoucherId.Value, out var vNo))
+                // Fast O(1) lookup by BiltyId (exact match)
+                if (byBiltyId.TryGetValue(x.Id, out var itemsById))
                 {
-                    matchedVono = vNo;
+                    foreach (var v in itemsById)
+                    {
+                        if (seenVoucherIds.Add(v.Id))
+                            vouchersForThisBilty.Add(v);
+                    }
                 }
+
+                // Fast O(1) lookup by Billtino (verify BilNo if available to prevent wrong bill match)
+                int bNo = (int)(x.BillTiNo ?? 0);
+                if (bNo > 0 && byBilltino.TryGetValue(bNo, out var itemsByNo))
+                {
+                    foreach (var v in itemsByNo)
+                    {
+                        if (x.BilNo == null || x.BilNo == 0 || v.Bilno == null || v.Bilno == 0 || v.Bilno == (int)x.BilNo.Value)
+                        {
+                            if (seenVoucherIds.Add(v.Id))
+                                vouchersForThisBilty.Add(v);
+                        }
+                    }
+                }
+
+                // Verify IssHead.VoucherId only if VoDet actually contains this bilty or party
+                if (x.VoucherId.HasValue && x.VoucherId.Value > 0 && !seenVoucherIds.Contains(x.VoucherId.Value))
+                {
+                    if (extraVoucherMap.TryGetValue(x.VoucherId.Value, out var ev))
+                    {
+                        bool actuallyBelongs = _context.VoDet.AsNoTracking().Any(vd =>
+                            !vd.IsDeleted &&
+                            vd.VoHeadId == x.VoucherId.Value &&
+                            (vd.BiltyId == x.Id || (vd.Billtino == bNo && (x.CustomerId == null || vd.gl3Id == x.CustomerId))));
+
+                        if (actuallyBelongs && seenVoucherIds.Add(x.VoucherId.Value))
+                        {
+                            vouchersForThisBilty.Add(new BiltyVoucherItem
+                            {
+                                Id = ev.Id,
+                                Vono = ev.Vono ?? "",
+                                Votype = ev.Votype ?? "",
+                                Vodate = ev.Vodate != null ? ev.Vodate.Value.ToString("dd-MMM-yyyy") : ""
+                            });
+                        }
+                    }
+                }
+
+                var voucherCount = vouchersForThisBilty.Count;
+                var vonoList = vouchersForThisBilty
+                    .Select(v => v.Vono)
+                    .Where(v => !string.IsNullOrWhiteSpace(v))
+                    .Distinct()
+                    .ToList();
+                string combinedVono = string.Join(", ", vonoList);
+                int? primaryVoucherId = vouchersForThisBilty.FirstOrDefault()?.Id ?? x.VoucherId;
 
                 return (object)new
                 {
@@ -1192,9 +1367,11 @@ namespace Nskg.Controllers
                     bilNo = x.BilNo.HasValue ? x.BilNo.Value.ToString("0") : "",
                     billTiNo = x.BillTiNo.HasValue ? x.BillTiNo.Value.ToString("0") : "",
                     netAmt = x.NetAmt,
-                    voucherId = matchedVoucherId,
-                    vono = matchedVono,
-                    isUsed = (x.DescYN1 == "Y" || matchedVoucherId.HasValue)
+                    voucherId = primaryVoucherId,
+                    vono = combinedVono,
+                    voucherCount = voucherCount,
+                    vouchers = vouchersForThisBilty.Select(v => new { id = v.Id, vono = v.Vono, votype = v.Votype, vodate = v.Vodate }).ToList(),
+                    isUsed = (x.DescYN1 == "Y" || voucherCount > 0)
                 };
             }).ToList();
 
@@ -1226,14 +1403,17 @@ namespace Nskg.Controllers
                 string partyAcc = ((party.AC1 ?? "") + (party.AC3 ?? "")).Trim();
                 string accCode = (party.ACC ?? "").Trim();
 
+                var partyAccountIds = _context.GLChart3
+                    .AsNoTracking()
+                    .Where(x => x.Id == partyId ||
+                                (!string.IsNullOrEmpty(partyAcc) && (x.AC1 + x.AC3) == partyAcc) ||
+                                (!string.IsNullOrEmpty(accCode) && x.ACC == accCode))
+                    .Select(x => x.Id)
+                    .ToList();
+
                 var query = _context.IssHead
                     .AsNoTracking()
                     .Where(x => !x.IsDeleted);
-
-                // if (companyId > 0)
-                // {
-                //     query = query.Where(x => x.CompanyId == companyId || (!string.IsNullOrEmpty(companyCode) && companyCode != "0" && x.CoCode == companyCode));
-                // }
 
                 // Match by CustomerId or CusCode
                 query = query.Where(x => x.CustomerId == partyId ||
@@ -1255,11 +1435,12 @@ namespace Nskg.Controllers
                         BillTiNo = x.BillTiNo,
                         NetAmt = x.NetAmt ?? 0,
                         VoucherId = x.VoucherId,
-                        DescYN1 = x.DescYN1
+                        DescYN1 = x.DescYN1,
+                        CustomerId = x.CustomerId
                     })
                     .ToList();
 
-                var data = EnrichBiltisWithVoucherInfo(rawData);
+                var data = EnrichBiltisWithVoucherInfo(rawData, partyId, partyAccountIds);
 
                 return Json(new
                 {
@@ -1390,11 +1571,12 @@ namespace Nskg.Controllers
                         BillTiNo = x.BillTiNo,
                         NetAmt = x.NetAmt ?? 0,
                         VoucherId = x.VoucherId,
-                        DescYN1 = x.DescYN1
+                        DescYN1 = x.DescYN1,
+                        CustomerId = x.CustomerId
                     })
                     .ToList();
 
-                var data = EnrichBiltisWithVoucherInfo(rawData);
+                var data = EnrichBiltisWithVoucherInfo(rawData, partyId);
 
                 return Json(new { success = true, data = data });
             }
@@ -1420,12 +1602,16 @@ namespace Nskg.Controllers
                     }
                 }
 
-                // Also identify by BillTiNo and BilNo from details
+                // Also identify by BiltyId, BillTiNo and BilNo from details
                 if (details != null)
                 {
                     foreach (var d in details)
                     {
-                        if (d.Billtino.HasValue && d.Billtino.Value > 0)
+                        if (d.BiltyId.HasValue && d.BiltyId.Value > 0)
+                        {
+                            idsToMark.Add(d.BiltyId.Value);
+                        }
+                        else if (d.Billtino.HasValue && d.Billtino.Value > 0)
                         {
                             decimal bNo = d.Billtino.Value;
                             decimal? bilNo = d.Bilno;
@@ -1433,7 +1619,6 @@ namespace Nskg.Controllers
 
                             var matches = _context.IssHead
                                 .Where(b => !b.IsDeleted &&
-                                            (b.DescYN1 == null || b.DescYN1.Trim() == "" || b.DescYN1.Trim() != "Y" || b.VoucherId == null || (voucherId != null && b.VoucherId == voucherId)) &&
                                             b.BillTiNo == bNo &&
                                             (bilNo == null || bilNo == 0 || b.BilNo == bilNo) &&
                                             (partyGl3Id == null || b.CustomerId == partyGl3Id) &&
@@ -1491,7 +1676,11 @@ namespace Nskg.Controllers
                 {
                     foreach (var d in details)
                     {
-                        if (d.Billtino.HasValue && d.Billtino.Value > 0)
+                        if (d.BiltyId.HasValue && d.BiltyId.Value > 0)
+                        {
+                            idsToRelease.Add(d.BiltyId.Value);
+                        }
+                        else if (d.Billtino.HasValue && d.Billtino.Value > 0)
                         {
                             decimal bNo = d.Billtino.Value;
                             decimal? bilNo = d.Bilno;
@@ -1516,8 +1705,28 @@ namespace Nskg.Controllers
                     var biltis = _context.IssHead.Where(b => idsToRelease.Contains(b.Id)).ToList();
                     foreach (var b in biltis)
                     {
-                        b.DescYN1 = null;
-                        b.VoucherId = null;
+                        int bNoInt = (int)(b.BillTiNo ?? 0);
+                        var remainingVoucher = _context.VoDet
+                            .AsNoTracking()
+                            .Where(vd => !vd.IsDeleted &&
+                                         (!voucherId.HasValue || vd.VoHeadId != voucherId.Value) &&
+                                         vd.VoHead != null && !vd.VoHead.IsDeleted &&
+                                         (vd.BiltyId == b.Id ||
+                                          (vd.Billtino == bNoInt && (b.CustomerId == null || vd.gl3Id == b.CustomerId) && (b.BilNo == null || b.BilNo == 0 || vd.Bilno == b.BilNo))))
+                            .Select(vd => new { vd.VoHeadId })
+                            .FirstOrDefault();
+
+                        if (remainingVoucher != null)
+                        {
+                            b.DescYN1 = "Y";
+                            b.VoucherId = remainingVoucher.VoHeadId;
+                        }
+                        else
+                        {
+                            b.DescYN1 = null;
+                            b.VoucherId = null;
+                        }
+
                         b.ModifiedOn = DateTime.Now;
                         b.ModifiedBy = GetUser();
                         _context.Entry(b).State = EntityState.Modified;

@@ -1,4 +1,4 @@
-﻿namespace Nskg.Models
+namespace Nskg.Models
 {
     public class VoDet
     {
@@ -82,6 +82,7 @@
         public string? Transporter { get; set; }
 
         public int? gl3Id { get; set; }
+        public int? BiltyId { get; set; }
         // ✅ Soft Delete
         public bool IsDeleted { get; set; }
 
@@ -94,5 +95,6 @@
         // 🔗 NAVIGATION
         public VoHead? VoHead { get; set; }
         public GLChart3? gl3 { get; set; }
+        public IssHead? Bilty { get; set; }
     }
 }
