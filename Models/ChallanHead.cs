@@ -1,4 +1,4 @@
-﻿namespace Nskg.Models
+namespace Nskg.Models
 {
     public class ChallanHead
     {
@@ -69,7 +69,6 @@
         public DateTime? ModifiedOn { get; set; }
         public string? ModifiedBy { get; set; }
 
-        public long? commBookId { get; set; }
         // 🔗 Navigation
         public List<ChallanDet> Details { get; set; } = new();
     }

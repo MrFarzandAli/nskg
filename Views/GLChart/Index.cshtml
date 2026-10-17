@@ -189,7 +189,7 @@
             </div>
 
             <div class="modal-footer">
-                <button class="btn btn-primary w-100">
+                <button type="submit" id="btnSaveAccount" class="btn btn-primary w-100">
                     Save Account
                 </button>
             </div>
@@ -228,7 +228,7 @@
             </div>
 
             <div class="modal-footer">
-                <button type="submit" class="btn btn-success w-100">
+                <button type="submit" id="btnSaveDetail" class="btn btn-success w-100">
                     Save Detail
                 </button>
             </div>
@@ -280,7 +280,7 @@
             </div>
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-info text-white px-4 fw-bold" onclick="saveAccountLinks()">
+                <button type="button" id="btnSaveAccountLinks" class="btn btn-info text-white px-4 fw-bold" onclick="saveAccountLinks()">
                     <i class="fa fa-save me-1"></i> Save Links
                 </button>
             </div>
@@ -298,11 +298,15 @@
         function loadDetails(id, ac1, el) {
             currentAccountId = id;
 
-            $('.account-item').removeClass('active');
-            $(el).addClass('active');
+            if (el) {
+                $('.account-item').removeClass('active');
+                $(el).addClass('active');
+            }
 
             $('#selectedAccountId').val(id);
-            $('#selectedAC1').val(ac1);
+            if (ac1) {
+                $('#selectedAC1').val(ac1);
+            }
 
             $.get('/GLChart/GetDetails?accountId=' + id, function (data) {
                 $('#detailList').html(data);
@@ -317,23 +321,46 @@
         //         location.reload();
         //     });
         // });
-                $('#accountForm').submit(function (e) {
+                // ADD ACCOUNT
+        let isAccountSubmitting = false;
+        $('#accountForm').submit(function (e) {
             e.preventDefault();
 
-            $.post('/GLChart/AddAccount', $(this).serialize(), function (res) {
+            if (isAccountSubmitting) return false;
 
-                if (res.success) {
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    toastr.error(res.message);
-                }
+            let $btn = $('#btnSaveAccount');
+            let originalHtml = $btn.html();
+            isAccountSubmitting = true;
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
 
-            });
+            $.post('/GLChart/AddAccount', $(this).serialize())
+                .done(function (res) {
+                    if (res.success) {
+                        $('#accountModal').modal('hide');
+                        toastr.success(res.message || 'Account created successfully!');
+                        setTimeout(() => location.reload(), 500);
+                    } else {
+                        toastr.error(res.message || 'Failed to create account');
+                        isAccountSubmitting = false;
+                        $btn.prop('disabled', false).html(originalHtml);
+                    }
+                })
+                .fail(function () {
+                    toastr.error('Server error occurred while saving account.');
+                    isAccountSubmitting = false;
+                    $btn.prop('disabled', false).html(originalHtml);
+                });
+        });
+
+        $('#accountModal').on('show.bs.modal', function () {
+            $('#accountForm')[0].reset();
+            let $btn = $('#btnSaveAccount');
+            $btn.prop('disabled', false).html('Save Account');
+            isAccountSubmitting = false;
         });
 
         // OPEN DETAIL MODAL
         function openDetailModal() {
-
             if (currentAccountId === 0) {
                 alert("Select account first");
                 return;
@@ -343,37 +370,59 @@
             $('#detailId').val('');
             $('#detAllCompaniesCheckDiv').show();
 
+            let $btn = $('#btnSaveDetail');
+            $btn.prop('disabled', false).html('Save Detail');
+            isDetailSubmitting = false;
+
             $('#detailModal').modal('show');
         }
 
-        // ADD / UPDATE DETAIL (FIXED)
+        // ADD / UPDATE DETAIL
+        let isDetailSubmitting = false;
         $('#detailForm').submit(function (e) {
             e.preventDefault();
+
+            if (isDetailSubmitting) return false;
+
+            let $btn = $('#btnSaveDetail');
+            let originalHtml = $btn.html();
+
+            isDetailSubmitting = true;
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
 
             let id = $('#detailId').val();
             let url = id ? '/GLChart/UpdateDetail' : '/GLChart/AddDetail';
 
-            $.post(url, $(this).serialize(), function (res) {
-
-                if (res.success) {
-                    $('#detailModal').modal('hide');
-                    toastr.success(res.message);
-                    loadDetails(currentAccountId);
-                } else {
-                    toastr.error(res.message);
-                }
-
-            });
+            $.post(url, $(this).serialize())
+                .done(function (res) {
+                    if (res.success) {
+                        $('#detailModal').modal('hide');
+                        toastr.success(res.message);
+                        loadDetails(currentAccountId, $('#selectedAC1').val(), $('.account-item.active'));
+                    } else {
+                        toastr.error(res.message || 'Operation failed');
+                    }
+                })
+                .fail(function () {
+                    toastr.error('Server error occurred while saving.');
+                })
+                .always(function () {
+                    isDetailSubmitting = false;
+                    $btn.prop('disabled', false).html(originalHtml);
+                });
         });
 
-        // EDIT DETAIL (FIXED)
+        // EDIT DETAIL
         function editDetail(id) {
             $.get('/GLChart/GetDetail?id=' + id, function (data) {
-
                 $('#detailId').val(data.id);
                 $('#selectedAccountId').val(data.glChart1Id);
                 $('#detailName').val(data.name);
                 $('#detAllCompaniesCheckDiv').hide();
+
+                let $btn = $('#btnSaveDetail');
+                $btn.prop('disabled', false).html('Save Detail');
+                isDetailSubmitting = false;
 
                 $('#detailModal').modal('show');
             });
@@ -675,7 +724,10 @@
             }
         }
 
+        let isLinkingSubmitting = false;
         function saveAccountLinks() {
+            if (isLinkingSubmitting) return;
+
             var sourceId = parseInt($('#linkSourceDetailId').val());
             var targetIds = [];
 
@@ -693,6 +745,11 @@
             };
 
             var token = $('input[name="__RequestVerificationToken"]').val();
+
+            var $btn = $('#btnSaveAccountLinks');
+            var originalHtml = $btn.html();
+            isLinkingSubmitting = true;
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
 
             $.ajax({
                 url: '/GLChart/SaveAccountLinks',
@@ -716,6 +773,10 @@
                 },
                 error: function () {
                     toastr.error('Server error occurred while linking accounts.');
+                },
+                complete: function () {
+                    isLinkingSubmitting = false;
+                    $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         }

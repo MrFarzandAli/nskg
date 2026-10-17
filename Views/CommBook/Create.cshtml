@@ -416,7 +416,7 @@
                                 {
                                     var displayChalNo = chalno.ChalNo != null ? chalno.ChalNo.ToString() : "";
                                     var dateStr = chalno.DocDate != null ? ((DateTime)chalno.DocDate).ToString("dd/MM/yyyy") : "";
-                                    var isAssigned = (chalno.commBookId != null && chalno.commBookId > 0) || chalno.DescYn == "Y";
+                                    var isAssigned = chalno.DescYn == "Y";
                                     <tr data-id="@chalno.Id" data-docno="@chalno.DocNo" data-chalno="@displayChalNo" data-isassigned="@(isAssigned ? "true" : "false")">
                                         <td class="text-center p-1">
                                             <input type="checkbox"
@@ -935,7 +935,7 @@
 
                     var rowsHtml = '';
                     res.data.forEach(function (c) {
-                        var cid = (c.id || "").toString().trim();
+                        var cid = (c.id || c.Id || "").toString().trim();
                         var dno = (c.docNo || "").toString().trim().toLowerCase();
                         var cno = (c.chalNo || "").toString().trim().toLowerCase();
                         var stn = (c.station || "").toString().trim().toLowerCase();
@@ -951,12 +951,12 @@
                         var isMuted = isAssigned;
 
                         rowsHtml += `
-                            <tr data-id="${c.id}" data-docno="${escapeHtml(c.docNo)}" data-chalno="${escapeHtml(displayNo)}" class="${isMuted ? 'table-light text-muted' : ''}">
+                            <tr data-id="${c.id || c.Id}" data-docno="${escapeHtml(c.docNo)}" data-chalno="${escapeHtml(displayNo)}" class="${isMuted ? 'table-light text-muted' : ''}">
                                 <td class="text-center p-1">
                                     <input type="checkbox"
                                            class="bilty-check form-check-input mt-0"
                                            ${isMuted ? 'checked disabled' : ''}
-                                           data-id="${c.id}"
+                                           data-id="${c.id || c.Id}"
                                            data-docno="${escapeHtml(c.docNo)}"
                                            data-chalno="${escapeHtml(displayNo)}"
                                            data-vehicleno="${escapeHtml(c.vehicleNo)}"
@@ -1079,13 +1079,13 @@
                 const $checkbox = $(this);
 
                 // Read data attributes from modal row
-                const challanId = $checkbox.data("id") || "";
-                const chalno = $checkbox.data("chalno") || "";
-                const transporter = $checkbox.data("transporter") || "";
-                const driver = $checkbox.data("driver") || "";
-                const station = $checkbox.data("station") || "";
-                const stationCode = $checkbox.data("stationcode") || "";
-                const docNo = $checkbox.data("docno") || "";
+                const challanId = $checkbox.attr("data-id") || $checkbox.data("id") || $checkbox.closest("tr").attr("data-id") || "";
+                const chalno = $checkbox.attr("data-chalno") || $checkbox.data("chalno") || $checkbox.closest("tr").attr("data-chalno") || "";
+                const transporter = $checkbox.attr("data-transporter") || $checkbox.data("transporter") || "";
+                const driver = $checkbox.attr("data-driver") || $checkbox.data("driver") || "";
+                const station = $checkbox.attr("data-station") || $checkbox.data("station") || "";
+                const stationCode = $checkbox.attr("data-stationcode") || $checkbox.data("stationcode") || "";
+                const docNo = $checkbox.attr("data-docno") || $checkbox.data("docno") || $checkbox.closest("tr").attr("data-docno") || "";
 
                 // Get the amount values
                 const totBillti = parseFloat($checkbox.data("totbillti")) || 0;

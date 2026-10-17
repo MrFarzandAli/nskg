@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Nskg.Data
 {
@@ -42,6 +43,18 @@ namespace Nskg.Data
 
             // Seed Sample CommBook Data if empty
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF EXISTS (SELECT * FROM sys.columns WHERE Name = N'commBookId' AND Object_ID = Object_ID(N'ChallanHead'))
+                    BEGIN
+                        ALTER TABLE ChallanHead DROP COLUMN commBookId;
+                    END
+                ");
+            }
+            catch { }
+
             if (!context.CommHead.Any())
             {
                 var head1 = new Models.CommHead

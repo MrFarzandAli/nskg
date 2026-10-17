@@ -32,6 +32,7 @@ namespace Nskg.Controllers
             {
                 Accounts = _context.GLChart1
                     .Where(x => x.CompanyId == companyId || x.CoCode == companyCode)
+                    .OrderBy(x => x.AC1)
                     .ToList(),
                 Categories = _context.AccCat
                     .Where(x => !x.IsDeleted && (x.CompanyId == companyId || x.CoCode == companyCode))
@@ -51,6 +52,8 @@ namespace Nskg.Controllers
 
             var data = _context.GLChart3
                 .Where(x => x.GLChart1Id == accountId && (x.CompanyId == companyId || x.CoCode == companyCode))
+                .OrderBy(x => x.AC1)
+                .ThenBy(x => x.AC3)
                 .ToList();
 
             return PartialView("_GLChart3List", data);
@@ -65,8 +68,22 @@ namespace Nskg.Controllers
                 int currentCompanyId = User.GetCompanyId();
                 string currentCompanyCode = User.GetCompanyCode();
 
+                string trimmedName = model.Name?.Trim() ?? "";
+                if (string.IsNullOrEmpty(trimmedName))
+                    return Json(new { success = false, message = "Account name is required!" });
+
+                var existsInCurrent = _context.GLChart1.Any(x =>
+                    (x.CompanyId == currentCompanyId || x.CoCode == currentCompanyCode) &&
+                    x.Name.ToLower() == trimmedName.ToLower());
+
+                if (existsInCurrent)
+                {
+                    return Json(new { success = false, message = $"Account '{trimmedName}' already exists!" });
+                }
+
                 string ac1Code = GenerateAC1();
                 model.AC1 = ac1Code;
+                model.Name = trimmedName;
                 model.CompanyId = currentCompanyId;
                 model.CoCode = currentCompanyCode;
 
@@ -189,11 +206,26 @@ namespace Nskg.Controllers
                 if (account == null)
                     return Json(new { success = false, message = "Parent account not found!" });
 
+                string trimmedName = model.Name?.Trim() ?? "";
+                if (string.IsNullOrEmpty(trimmedName))
+                    return Json(new { success = false, message = "Detail name is required!" });
+
+                var existsInCurrent = _context.GLChart3.Any(x =>
+                    x.GLChart1Id == model.GLChart1Id &&
+                    (x.CompanyId == currentCompanyId || x.CoCode == currentCompanyCode) &&
+                    x.Name.ToLower() == trimmedName.ToLower());
+
+                if (existsInCurrent)
+                {
+                    return Json(new { success = false, message = $"Detail '{trimmedName}' already exists under this account!" });
+                }
+
                 string ac3Code = GenerateAC3(model.GLChart1Id);
 
                 model.AC1 = account.AC1;
                 model.AC3 = ac3Code;
                 model.ACC = account.AC1 + ac3Code;
+                model.Name = trimmedName;
                 model.AcType = account.AcType;
                 model.CType = account.CType;
                 model.CHName = account.Name;
@@ -345,7 +377,22 @@ namespace Nskg.Controllers
                 if (data == null)
                     return Json(new { success = false, message = "Not found!" });
 
-                data.Name = model.Name;
+                string trimmedName = model.Name?.Trim() ?? "";
+                if (string.IsNullOrEmpty(trimmedName))
+                    return Json(new { success = false, message = "Detail name is required!" });
+
+                var existsInCurrent = _context.GLChart3.Any(x =>
+                    x.Id != model.Id &&
+                    x.GLChart1Id == data.GLChart1Id &&
+                    (x.CompanyId == data.CompanyId || x.CoCode == data.CoCode) &&
+                    x.Name.ToLower() == trimmedName.ToLower());
+
+                if (existsInCurrent)
+                {
+                    return Json(new { success = false, message = $"Detail '{trimmedName}' already exists under this account!" });
+                }
+
+                data.Name = trimmedName;
                 _context.SaveChanges();
 
                 await _audit.LogAsync("Update", "GLChart3", model.Id.ToString(), $"Updated Detail: {model.Name}");
@@ -421,7 +468,8 @@ namespace Nskg.Controllers
                 // Prioritize accounts under the same AC1 head
                 var accounts = _context.GLChart3
                     .Where(x => (x.CompanyId == comp.companyId || x.CoCode == comp.coCode) && x.AC1 == source.AC1)
-                    .OrderBy(x => x.ACC)
+                    .OrderBy(x => x.AC1)
+                    .ThenBy(x => x.AC3)
                     .Select(x => new
                     {
                         id = x.Id,
@@ -435,7 +483,8 @@ namespace Nskg.Controllers
                 {
                     accounts = _context.GLChart3
                         .Where(x => (x.CompanyId == comp.companyId || x.CoCode == comp.coCode))
-                        .OrderBy(x => x.Name)
+                        .OrderBy(x => x.AC1)
+                        .ThenBy(x => x.AC3)
                         .Select(x => new
                         {
                             id = x.Id,
@@ -559,16 +608,24 @@ namespace Nskg.Controllers
 
         private string GenerateAC3(int accountId)
         {
-            var last = _context.GLChart3
+            var list = _context.GLChart3
                 .Where(x => x.GLChart1Id == accountId)
-                .OrderByDescending(x => x.Id)
-                .FirstOrDefault();
+                .Select(x => x.AC3)
+                .ToList();
 
-            if (last == null)
+            if (list == null || !list.Any())
                 return "001";
 
-            int next = int.Parse(last.AC3) + 1;
-            return next.ToString("D3");
+            int max = 0;
+            foreach (var code in list)
+            {
+                if (int.TryParse(code?.Trim(), out int current) && current > max)
+                {
+                    max = current;
+                }
+            }
+
+            return (max + 1).ToString("D3");
         }
     }
 }

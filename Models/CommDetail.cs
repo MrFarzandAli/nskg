@@ -1,4 +1,4 @@
-﻿namespace Nskg.Models
+namespace Nskg.Models
 {
     public class CommDetail
     {
@@ -114,6 +114,8 @@
         public string? FooderCode { get; set; }
 
         public decimal? DeliveryAmt2 { get; set; }
+
+        public int? ChallanId { get; set; }
 
         // Common ERP Fields
         public int CompanyId { get; set; }

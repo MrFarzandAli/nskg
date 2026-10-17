@@ -534,7 +534,11 @@ namespace Nskg.Controllers
                     // If commBookId provided, check if any matched this commBook
                     if (commBookId.HasValue && commBookId.Value > 0)
                     {
-                        var commMatch = query.FirstOrDefault(x => x.commBookId == commBookId.Value);
+                        var commChallanIds = _context.CommDetail.AsNoTracking()
+                            .Where(cd => cd.CommHeadId == commBookId.Value && cd.ChallanId.HasValue)
+                            .Select(cd => cd.ChallanId!.Value)
+                            .ToList();
+                        var commMatch = query.FirstOrDefault(x => commChallanIds.Contains(x.Id));
                         if (commMatch != null) return Json(new { success = true, id = commMatch.Id });
                     }
 

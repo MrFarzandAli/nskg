@@ -389,6 +389,8 @@ namespace Nskg.Controllers
                 // SAVE DETAILS
                 // Map ViewModel -> Entity
                 // =========================
+                var assignedChallanIds = new HashSet<int>();
+
                 foreach (var item in model.Details)
                 {
                     var det = new CommDetail
@@ -408,7 +410,13 @@ namespace Nskg.Controllers
                         ToPaidAmt = item.ToPaidAmt,
                         DeliveryAmt = item.DeliveryAmt,
                         LocalAmt = item.LocalAmt,
-                        NetAmt = item.NetAmt
+                        NetAmt = item.NetAmt,
+                        DcNo = item.DCNo,
+                        FooderCode = item.FooderCode,
+                        PartyExAmt = item.PartyEx,
+                        Lifter2Amt = item.Lifter2,
+                        OtherExAmt = item.OtherEx,
+                        ChallanId = (item.ChallanId.HasValue && item.ChallanId.Value > 0) ? item.ChallanId.Value : null
                     };
 
                     // Try to parse BillTiNo into int? (CommDetail uses int? BillTiNo)
@@ -418,29 +426,27 @@ namespace Nskg.Controllers
                         det.BillTiNo = billTiInt;
                     }
 
-                    _context.CommDetail.Add(det);
-
                     // =========================
                     // UPDATE ORIGINAL BILTY TABLE (IssHead)
                     // Mark as used (DescYN = "Y")
                     // =========================
-                    if (!string.IsNullOrWhiteSpace(item.BillTiNo))
+                    if (!string.IsNullOrWhiteSpace(item.BillTiNo) || det.ChallanId.HasValue)
                     {
                         ChallanHead? originalBilty = null;
 
-                        if (item.ChallanId.HasValue && item.ChallanId.Value > 0)
+                        if (det.ChallanId.HasValue && det.ChallanId.Value > 0 && !assignedChallanIds.Contains(det.ChallanId.Value))
                         {
-                            originalBilty = _context.ChallanHead.FirstOrDefault(b => b.Id == item.ChallanId.Value);
+                            originalBilty = _context.ChallanHead.FirstOrDefault(b => b.Id == det.ChallanId.Value);
                         }
 
                         if (originalBilty == null && !string.IsNullOrWhiteSpace(item.DCNo))
                         {
-                            originalBilty = _context.ChallanHead.FirstOrDefault(b => b.DocNo == item.DCNo.Trim());
+                            originalBilty = _context.ChallanHead.FirstOrDefault(b => !assignedChallanIds.Contains(b.Id) && b.DocNo == item.DCNo.Trim());
                         }
 
                         if (originalBilty == null && int.TryParse(item.BillTiNo, out var billTiIntVal))
                         {
-                            var candidates = _context.ChallanHead.Where(b => b.ChalNo == billTiIntVal).ToList();
+                            var candidates = _context.ChallanHead.Where(b => !assignedChallanIds.Contains(b.Id) && b.ChalNo == billTiIntVal).ToList();
                             originalBilty = candidates.FirstOrDefault(b =>
                                 (string.IsNullOrEmpty(item.Fooder) || b.Station == item.Fooder || b.StationCode == item.FooderCode) &&
                                 (string.IsNullOrEmpty(item.CusName) || b.Transporter == item.CusName) &&
@@ -453,11 +459,19 @@ namespace Nskg.Controllers
 
                         if (originalBilty != null)
                         {
+                            det.ChallanId = originalBilty.Id;
+                            assignedChallanIds.Add(originalBilty.Id);
                             originalBilty.DescYn = "Y";
-                            originalBilty.commBookId = model.Head.Id;
                             _context.Entry(originalBilty).State = EntityState.Modified;
                         }
                     }
+
+                    if (det.ChallanId.HasValue && det.ChallanId.Value > 0)
+                    {
+                        assignedChallanIds.Add(det.ChallanId.Value);
+                    }
+
+                    _context.CommDetail.Add(det);
                 }
 
                 _context.SaveChanges();
@@ -533,7 +547,11 @@ namespace Nskg.Controllers
                     // If commBookId provided, check if any matched this commBook
                     if (commBookId.HasValue && commBookId.Value > 0)
                     {
-                        var commMatch = query.FirstOrDefault(x => x.commBookId == commBookId.Value);
+                        var commChallanIds = _context.CommDetail.AsNoTracking()
+                            .Where(cd => cd.CommHeadId == commBookId.Value && cd.ChallanId.HasValue)
+                            .Select(cd => cd.ChallanId!.Value)
+                            .ToList();
+                        var commMatch = query.FirstOrDefault(x => commChallanIds.Contains(x.Id));
                         if (commMatch != null) return Json(new { success = true, id = commMatch.Id });
                     }
 
@@ -738,17 +756,34 @@ namespace Nskg.Controllers
                      FooderCode = x.FooderCode,
                      PartyEx = x.PartyExAmt,
                      Lifter2 = x.Lifter2Amt,
-                     OtherEx = x.OtherExAmt
+                     OtherEx = x.OtherExAmt,
+                     ChallanId = x.ChallanId
                  })
                  .ToList();
 
+            var challanIds = details.Where(d => d.ChallanId.HasValue).Select(d => d.ChallanId!.Value).ToList();
             var linkedChallans = _context.ChallanHead
-                .Where(c => c.commBookId == id || (!string.IsNullOrEmpty(c.DocNo) && details.Select(d => d.DCNo).Contains(c.DocNo)))
+                .Where(c => challanIds.Contains(c.Id) || (!string.IsNullOrEmpty(c.DocNo) && details.Select(d => d.DCNo).Contains(c.DocNo)))
                 .ToList();
 
             var usedChallanIds = new HashSet<int>();
             foreach (var det in details)
             {
+                if (det.ChallanId.HasValue && det.ChallanId.Value > 0)
+                {
+                    usedChallanIds.Add(det.ChallanId.Value);
+                    if (string.IsNullOrEmpty(det.DCNo))
+                    {
+                        var matchChall = linkedChallans.FirstOrDefault(c => c.Id == det.ChallanId.Value)
+                            ?? _context.ChallanHead.FirstOrDefault(c => c.Id == det.ChallanId.Value);
+                        if (matchChall != null && !string.IsNullOrEmpty(matchChall.DocNo))
+                        {
+                            det.DCNo = matchChall.DocNo;
+                        }
+                    }
+                    continue;
+                }
+
                 int.TryParse(det.BillTiNo, out var chalNoInt);
 
                 // Priority 1: Match within linkedChallans by DocNo
@@ -869,8 +904,13 @@ namespace Nskg.Controllers
                     return NotFound();
 
                 // Unlink previously linked challans that are NOT present in the updated details
+                var prevChallanIds = head.Details
+                    .Where(x => x.ChallanId.HasValue)
+                    .Select(x => x.ChallanId!.Value)
+                    .ToList();
+
                 var previouslyLinked = _context.ChallanHead
-                    .Where(ch => ch.commBookId == head.Id)
+                    .Where(ch => prevChallanIds.Contains(ch.Id))
                     .ToList();
 
                 // Collect BillTiNo values from submitted details for comparison
@@ -906,7 +946,6 @@ namespace Nskg.Controllers
                     if (!stillLinked)
                     {
                         ch.DescYn = "N";
-                        ch.commBookId = null;
                         ch.ModifiedOn = DateTime.Now;
                         ch.ModifiedBy = User?.Identity?.Name;
                         _context.Entry(ch).State = EntityState.Modified;
@@ -1003,6 +1042,8 @@ namespace Nskg.Controllers
                 _context.SaveChanges();
 
                 // Insert new details and link challans
+                var assignedChallanIds = new HashSet<int>();
+
                 foreach (var item in model.Details)
                 {
                     var det = new CommDetail
@@ -1025,31 +1066,34 @@ namespace Nskg.Controllers
                         DeliveryAmt = item.DeliveryAmt,
                         LocalAmt = item.LocalAmt,
                         NetAmt = item.NetAmt,
-                        DcNo = item.DCNo
+                        DcNo = item.DCNo,
+                        FooderCode = item.FooderCode,
+                        PartyExAmt = item.PartyEx,
+                        Lifter2Amt = item.Lifter2,
+                        OtherExAmt = item.OtherEx,
+                        ChallanId = (item.ChallanId.HasValue && item.ChallanId.Value > 0) ? item.ChallanId.Value : null
                     };
 
                     if (!string.IsNullOrWhiteSpace(item.BillTiNo) && int.TryParse(item.BillTiNo, out var billTiInt))
                         det.BillTiNo = billTiInt;
 
-                    _context.CommDetail.Add(det);
-
                     // Link to ChallanHead if BillTiNo provided
-                    if (!string.IsNullOrWhiteSpace(item.BillTiNo))
+                    if (!string.IsNullOrWhiteSpace(item.BillTiNo) || det.ChallanId.HasValue)
                     {
                         ChallanHead? chall = null;
-                        if (item.ChallanId.HasValue && item.ChallanId.Value > 0)
+                        if (det.ChallanId.HasValue && det.ChallanId.Value > 0 && !assignedChallanIds.Contains(det.ChallanId.Value))
                         {
-                            chall = _context.ChallanHead.FirstOrDefault(c => c.Id == item.ChallanId.Value);
+                            chall = _context.ChallanHead.FirstOrDefault(c => c.Id == det.ChallanId.Value);
                         }
 
                         if (chall == null && !string.IsNullOrWhiteSpace(item.DCNo))
                         {
-                            chall = _context.ChallanHead.FirstOrDefault(c => c.DocNo == item.DCNo.Trim());
+                            chall = _context.ChallanHead.FirstOrDefault(c => !assignedChallanIds.Contains(c.Id) && c.DocNo == item.DCNo.Trim());
                         }
 
                         if (chall == null && int.TryParse(item.BillTiNo, out var asInt))
                         {
-                            var candidates = _context.ChallanHead.Where(c => c.ChalNo == asInt).ToList();
+                            var candidates = _context.ChallanHead.Where(c => !assignedChallanIds.Contains(c.Id) && c.ChalNo == asInt).ToList();
                             chall = candidates.FirstOrDefault(c =>
                                 (string.IsNullOrEmpty(item.Fooder) || c.Station == item.Fooder || c.StationCode == item.FooderCode) &&
                                 (string.IsNullOrEmpty(item.CusName) || c.Transporter == item.CusName) &&
@@ -1062,13 +1106,21 @@ namespace Nskg.Controllers
 
                         if (chall != null)
                         {
+                            det.ChallanId = chall.Id;
+                            assignedChallanIds.Add(chall.Id);
                             chall.DescYn = "Y";
-                            chall.commBookId = head.Id;
                             chall.ModifiedOn = DateTime.Now;
                             chall.ModifiedBy = User?.Identity?.Name;
                             _context.Entry(chall).State = EntityState.Modified;
                         }
                     }
+
+                    if (det.ChallanId.HasValue && det.ChallanId.Value > 0)
+                    {
+                        assignedChallanIds.Add(det.ChallanId.Value);
+                    }
+
+                    _context.CommDetail.Add(det);
                 }
 
                 _context.SaveChanges();
@@ -1116,14 +1168,17 @@ namespace Nskg.Controllers
                 _context.GLTrans.RemoveRange(gl);
 
                 // Before soft-deleting CommHead, unlink related ChallanHead entries
+                var challanIds = (v.Details != null && v.Details.Any())
+                    ? v.Details.Where(d => d.ChallanId.HasValue).Select(d => d.ChallanId!.Value).ToList()
+                    : _context.CommDetail.Where(cd => cd.CommHeadId == v.Id && cd.ChallanId.HasValue).Select(cd => cd.ChallanId!.Value).ToList();
+
                 var linkedChallans = _context.ChallanHead
-                    .Where(ch => ch.commBookId == v.Id)
+                    .Where(ch => challanIds.Contains(ch.Id))
                     .ToList();
 
                 foreach (var ch in linkedChallans)
                 {
                     ch.DescYn = "N"; // mark challan as not described/available
-                    ch.commBookId = null;
                     ch.ModifiedOn = DateTime.Now;
                     ch.ModifiedBy = User?.Identity?.Name;
                     _context.Entry(ch).State = EntityState.Modified;
@@ -1319,7 +1374,11 @@ namespace Nskg.Controllers
 
                 if (commBookId.HasValue && commBookId.Value > 0)
                 {
-                    challanQuery = challanQuery.Where(x => (x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn)) || x.commBookId == commBookId.Value);
+                    var commChallanIds = _context.CommDetail
+                        .Where(cd => cd.CommHeadId == commBookId.Value && cd.ChallanId.HasValue)
+                        .Select(cd => cd.ChallanId!.Value)
+                        .ToList();
+                    challanQuery = challanQuery.Where(x => (x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn)) || commChallanIds.Contains(x.Id));
                 }
                 else
                 {
@@ -1349,7 +1408,6 @@ namespace Nskg.Controllers
                         x.TotPartyEx,
                         x.TotLifter2,
                         x.TotOtherEx,
-                        x.commBookId,
                         x.DescYn
                     })
                     .ToList();
@@ -1535,7 +1593,8 @@ namespace Nskg.Controllers
                     .Take(100)
                     .Select(x => new
                     {
-                        x.Id,
+                        id = x.Id,
+                        Id = x.Id,
                         docNo = x.DocNo ?? "",
                         chalNo = x.ChalNo.HasValue ? x.ChalNo.Value.ToString() : "",
                         docDate = x.DocDate.HasValue ? x.DocDate.Value.ToString("dd/MM/yyyy") : "",
@@ -1555,8 +1614,7 @@ namespace Nskg.Controllers
                         totLifter2 = x.TotLifter2 ?? 0,
                         totOtherEx = x.TotOtherEx ?? 0,
                         descYn = x.DescYn ?? "",
-                        commBookId = x.commBookId,
-                        isInCommBook = (x.commBookId != null && x.commBookId > 0) || x.DescYn == "Y"
+                        isInCommBook = x.DescYn == "Y"
                     })
                     .ToList();
 

@@ -187,6 +187,7 @@ namespace Nskg.Controllers
             {
                 var data = _context.GLChart1
                     .Where(x => x.CompanyId == companyId || x.CoCode == companyCode)
+                    .OrderBy(x => x.AC1)
                     .Select(x => new
                     {
                         accode = x.AC1,     // ✅ normalize name
@@ -201,6 +202,8 @@ namespace Nskg.Controllers
             {
                 var data = _context.GLChart3
                     .Where(x => x.CoCode == companyCode || x.CoCode == companyId.ToString())
+                    .OrderBy(x => x.AC1)
+                    .ThenBy(x => x.AC3)
                     .Select(x => new
                     {
                         accode = x.ACC,     // ✅ normalize name
