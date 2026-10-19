@@ -446,7 +446,8 @@ namespace Nskg.Controllers
                             // Qty in entity is int? while VM uses decimal? - convert safely
                             Qty = item.Qty.HasValue ? (int?)Convert.ToInt32(item.Qty.Value) : null,
                             DCNo = resolvedDcNo,
-                            BilNo = resolvedBilNo
+                            BilNo = resolvedBilNo,
+                            BiltyId = (item.BiltyId.HasValue && item.BiltyId.Value > 0) ? item.BiltyId.Value : originalBilty?.Id
                         };
 
                         _context.ChallanDet.Add(det);
@@ -697,7 +698,8 @@ namespace Nskg.Controllers
                      BillTiNo = x.BillTiNo,
                      BillTiAmt = x.BillTiAmt,
                      PaidAmt = x.PaidAmt,
-                     Qty = x.Qty
+                     Qty = x.Qty,
+                     BiltyId = x.BiltyId
                  })
                  .ToList();
 
@@ -714,21 +716,31 @@ namespace Nskg.Controllers
 
             foreach (var det in details)
             {
+                if (det.BiltyId.HasValue && det.BiltyId.Value > 0)
+                {
+                    if (string.IsNullOrEmpty(det.DCNo))
+                    {
+                        var match = biltyMap.FirstOrDefault(b => b.Id == det.BiltyId.Value);
+                        if (match != null && !string.IsNullOrEmpty(match.DocNo)) det.DCNo = match.DocNo;
+                    }
+                    continue;
+                }
+
                 decimal.TryParse(det.BillTiNo, out var parsedBiltyNo);
                 decimal.TryParse(det.BilNo, out var parsedBilNo);
 
-                var match = biltyMap.FirstOrDefault(b => 
+                var matchFallback = biltyMap.FirstOrDefault(b => 
                     (!string.IsNullOrEmpty(det.DCNo) && b.DocNo == det.DCNo)
                     || (parsedBiltyNo > 0 && b.BillTiNo.HasValue && b.BillTiNo.Value == parsedBiltyNo)
                     || (parsedBiltyNo > 0 && b.BilNo.HasValue && b.BilNo.Value == parsedBiltyNo)
                     || (parsedBilNo > 0 && b.BilNo.HasValue && b.BilNo.Value == parsedBilNo)
                     || (det.BillTiNo != null && b.BillTiNo.HasValue && b.BillTiNo.Value.ToString() == det.BillTiNo));
 
-                if (match != null)
+                if (matchFallback != null)
                 {
-                    det.BiltyId = match.Id;
-                    if (string.IsNullOrEmpty(det.DCNo)) det.DCNo = match.DocNo;
-                    if (string.IsNullOrEmpty(det.BilNo) && match.BilNo.HasValue) det.BilNo = match.BilNo.Value.ToString();
+                    det.BiltyId = matchFallback.Id;
+                    if (string.IsNullOrEmpty(det.DCNo)) det.DCNo = matchFallback.DocNo;
+                    if (string.IsNullOrEmpty(det.BilNo) && matchFallback.BilNo.HasValue) det.BilNo = matchFallback.BilNo.Value.ToString();
                 }
             }
 
@@ -988,7 +1000,8 @@ namespace Nskg.Controllers
                         Transporter = head.Transporter,
                         TrName = head.Driver,
                         DCNo = resolvedDcNo,
-                        BilNo = resolvedBilNo
+                        BilNo = resolvedBilNo,
+                        BiltyId = (detail.BiltyId.HasValue && detail.BiltyId.Value > 0) ? detail.BiltyId.Value : bilty?.Id
                     };
 
                     _context.ChallanDet.Add(challanDet);

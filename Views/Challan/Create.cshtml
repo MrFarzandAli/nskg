@@ -261,6 +261,7 @@
                 <table class="table table-bordered table-hover mb-0" id="tblItems">
                     <thead class="table-light text-center" style="position: sticky; top: 0; z-index: 2;">
                         <tr>
+                            <th width="100"><i class="fa fa-id-badge text-primary me-1"></i> Bilty Id</th>
                             <th><i class="fa fa-barcode text-primary me-1"></i> Bilty No</th>
                             <th><i class="fa fa-user text-primary me-1"></i> Party Name</th>
                             <th><i class="fa fa-share text-primary me-1"></i> Send To</th>
@@ -270,7 +271,7 @@
                             <th width="65"><i class="fa fa-cog text-primary me-1"></i></th>
                         </tr>
                         <tr class="total-row bg-light">
-                            <td colspan="3" class="text-end fw-bold align-middle">Total:</td>
+                            <td colspan="4" class="text-end fw-bold align-middle">Total:</td>
                             <td><input type="text" id="totalBiltyQty" class="form-control form-control-sm text-end bg-light fw-bold" readonly /></td>
                             <td><input type="text" id="totalBiltyAmt" class="form-control form-control-sm text-end bg-light fw-bold" readonly /></td>
                             <td><input type="text" id="totalBiltyPaidAmt" class="form-control form-control-sm text-end bg-light fw-bold" readonly /></td>
@@ -279,7 +280,7 @@
                     </thead>
                     <tbody id="tbodyItems">
                         <tr id="noDataRow">
-                            <td colspan="7" class="text-center text-muted py-2">No Records Added</td>
+                            <td colspan="8" class="text-center text-muted py-2">No Records Added</td>
                         </tr>
                         <!-- Rows will be added dynamically -->
                     </tbody>
@@ -1343,6 +1344,12 @@
                 <tr data-row-index="${currentIndex}">
                     <td>
                         <input type="text"
+                               name="Details[${currentIndex}].BiltyId"
+                               class="form-control form-control-sm bilty-id bg-light text-center"
+                               readonly />
+                    </td>
+                    <td>
+                        <input type="text"
                                name="Details[${currentIndex}].BillTiNo"
                                class="form-control form-control-sm billti-no"
                                tabindex="${baseTabIndex}" />
@@ -1383,7 +1390,6 @@
                     <td class="text-center">
                         <input type="hidden" name="Details[${currentIndex}].DCNo" class="dc-no" value="" />
                         <input type="hidden" name="Details[${currentIndex}].BilNo" class="bil-no" value="" />
-                        <input type="hidden" name="Details[${currentIndex}].BiltyId" class="bilty-id" value="" />
                         <div class="d-flex justify-content-center gap-1">
                             <button type="button" class="btn btn-info btn-sm text-white" title="View Bilty in Edit mode" onclick="viewBilty(this)">
                                 <i class="fa fa-eye"></i>
@@ -1422,7 +1428,7 @@
             const tbody = $("#tbodyItems");
             tbody.html(`
                 <tr id="noDataRow">
-                    <td colspan="7" class="text-center text-muted py-3">
+                    <td colspan="8" class="text-center text-muted py-3">
                         No Records Added
                     </td>
                 </tr>
@@ -1508,6 +1514,13 @@
                     <tr data-row-index="${currentIndex}">
                         <td>
                             <input type="text"
+                                   name="Details[${currentIndex}].BiltyId"
+                                   value="${biltyId}"
+                                   class="form-control form-control-sm bilty-id bg-light fw-semibold text-center"
+                                   readonly />
+                        </td>
+                        <td>
+                            <input type="text"
                                    name="Details[${currentIndex}].BillTiNo"
                                    value="${escapeHtml(billTiNoValue)}"
                                    class="form-control form-control-sm billti-no"
@@ -1553,7 +1566,6 @@
                         <td class="text-center">
                             <input type="hidden" name="Details[${currentIndex}].DCNo" class="dc-no" value="${escapeHtml(docNo)}" />
                             <input type="hidden" name="Details[${currentIndex}].BilNo" class="bil-no" value="${escapeHtml(bilNo)}" />
-                            <input type="hidden" name="Details[${currentIndex}].BiltyId" class="bilty-id" value="${biltyId}" />
                             <div class="d-flex justify-content-center gap-1">
                                 <button type="button" class="btn btn-info btn-sm text-white" title="View Bilty in Edit mode" onclick="viewBilty(this)">
                                     <i class="fa fa-eye"></i>

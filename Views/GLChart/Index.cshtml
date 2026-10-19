@@ -179,11 +179,38 @@
                     </select>
                 </div>
 
-                <div class="form-check mt-3 mb-1">
-                    <input class="form-check-input" type="checkbox" name="createInAllCompanies" id="accCreateInAllCompanies" value="true">
-                    <label class="form-check-label fw-bold text-primary" for="accCreateInAllCompanies">
-                        <i class="fa fa-building me-1"></i> Create in All Companies / Branches
-                    </label>
+                <div class="mt-3 mb-1" id="accAllCompaniesCheckDiv">
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded bg-light border">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="createInOtherCompanies" id="accCreateInOtherCompanies" value="true">
+                            <label class="form-check-label fw-bold text-primary cursor-pointer" for="accCreateInOtherCompanies">
+                                <i class="fa fa-building me-1"></i> Create in Other Companies / Branches
+                            </label>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1" id="accSelectedCompanyCountBadge" style="display:none;">@Model.Companies.Count Selected</span>
+                    </div>
+
+                    <div id="accCompanyCheckboxesList" class="mt-2 p-2 border rounded bg-white shadow-sm" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                            <span class="small fw-bold text-muted"><i class="fa fa-check-square me-1 text-primary"></i> Select Companies:</span>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" onclick="toggleAllAccountCompanies(true)">Select All</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" style="font-size: 0.75rem;" onclick="toggleAllAccountCompanies(false)">Clear</button>
+                            </div>
+                        </div>
+
+                        <div style="max-height: 180px; overflow-y: auto;">
+                            @foreach (var comp in Model.Companies)
+                            {
+                                <div class="form-check form-switch py-1 px-3 mb-1 d-flex align-items-center">
+                                    <input class="form-check-input acc-target-comp-check me-2" type="checkbox" name="targetCompanyIds" value="@comp.Id" id="accComp_@comp.Id" checked onchange="onAccountCompanySelectionChanged()">
+                                    <label class="form-check-label w-100 cursor-pointer" for="accComp_@comp.Id">
+                                        <b class="text-primary me-1">@comp.Cocode</b> - @comp.Name
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -203,8 +230,8 @@
     <div class="modal-dialog modal-dialog-centered">
         <form id="detailForm" class="modal-content shadow-lg border-0">
 
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">Add Detail</h5>
+            <div class="modal-header bg-success text-white" id="detailModalHeader">
+                <h5 class="modal-title" id="detailModalTitle"><i class="fa fa-plus-circle me-1"></i> Add Detail</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
@@ -213,16 +240,62 @@
                 <input type="hidden" name="Id" id="detailId" />
                 <input type="hidden" name="GLChart1Id" id="selectedAccountId" />
 
-                <div class="mb-2">
-                    <label class="form-label">Detail Name</label>
+                <!-- Account Code Input with AC1 Prefix & ACC Preview -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold small text-muted mb-0" id="detCodeLabel">
+                            <i class="fa fa-barcode me-1 text-success" id="detCodeIcon"></i> Account Code (AC3):
+                        </label>
+                        <span class="badge bg-light text-dark border font-monospace px-2 py-1" id="detAccPreview" title="Full Combined Account Code (ACC)">ACC: -</span>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light fw-bold font-monospace px-3" id="detAc1Prefix" title="Parent Account Head (AC1)">002 -</span>
+                        <input type="text" name="AC3" id="detailAc3" class="form-control fw-bold font-monospace" placeholder="001" maxlength="10" required />
+                    </div>
+                    <div class="form-text text-muted small" id="detCodeHelpText">
+                        Enter or edit the detail code (AC3). Auto-formatted to 3 digits (e.g. 002).
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-muted">Detail Name</label>
                     <input id="detailName" name="Name" class="form-control" placeholder="Enter detail name" required />
                 </div>
 
-                <div class="form-check mt-3 mb-1" id="detAllCompaniesCheckDiv">
-                    <input class="form-check-input" type="checkbox" name="createInAllCompanies" id="detCreateInAllCompanies" value="true">
-                    <label class="form-check-label fw-bold text-success" for="detCreateInAllCompanies">
-                        <i class="fa fa-building me-1"></i> Create in All Companies / Branches
-                    </label>
+                <div class="mt-3 mb-1" id="detAllCompaniesCheckDiv">
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded bg-light border">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="createInOtherCompanies" id="detCreateInOtherCompanies" value="true">
+                            <label class="form-check-label fw-bold text-success cursor-pointer" for="detCreateInOtherCompanies">
+                                <i class="fa fa-building me-1"></i> Create & Link in Other Companies / Branches
+                            </label>
+                        </div>
+                        <span class="badge bg-success-subtle text-success border border-success px-2 py-1" id="detSelectedCompanyCountBadge" style="display:none;">@Model.Companies.Count Selected</span>
+                    </div>
+
+                    <!-- Collapsible Company Selection List -->
+                    <div id="detCompanyCheckboxesList" class="mt-2 p-2 border rounded bg-white shadow-sm" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                            <span class="small fw-bold text-muted"><i class="fa fa-check-square me-1 text-success"></i> Select Companies to Create & Link:</span>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 0.75rem;" onclick="toggleAllDetailCompanies(true)">Select All</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" style="font-size: 0.75rem;" onclick="toggleAllDetailCompanies(false)">Clear</button>
+                            </div>
+                        </div>
+
+                        <div style="max-height: 180px; overflow-y: auto;">
+                            @foreach (var comp in Model.Companies)
+                            {
+                                <div class="form-check form-switch py-1 px-3 mb-1 d-flex align-items-center">
+                                    <input class="form-check-input det-target-comp-check me-2" type="checkbox" name="targetCompanyIds" value="@comp.Id" id="detComp_@comp.Id" checked onchange="onDetailCompanySelectionChanged()">
+                                    <label class="form-check-label w-100 cursor-pointer d-flex justify-content-between align-items-center" for="detComp_@comp.Id">
+                                        <span><b class="text-success me-1">@comp.Cocode</b> - @comp.Name</span>
+                                        <span class="badge bg-light text-success border">Link</span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -352,27 +425,133 @@
                 });
         });
 
+        function toggleAllAccountCompanies(checked) {
+            $('.acc-target-comp-check').prop('checked', checked);
+            onAccountCompanySelectionChanged();
+        }
+
+        function onAccountCompanySelectionChanged() {
+            let count = $('.acc-target-comp-check:checked').length;
+            $('#accSelectedCompanyCountBadge').text(count + ' Selected');
+        }
+
+        $('#accCreateInOtherCompanies').on('change', function () {
+            if ($(this).is(':checked')) {
+                $('#accCompanyCheckboxesList').slideDown(200);
+                $('#accSelectedCompanyCountBadge').show();
+                onAccountCompanySelectionChanged();
+            } else {
+                $('#accCompanyCheckboxesList').slideUp(200);
+                $('#accSelectedCompanyCountBadge').hide();
+            }
+        });
+
         $('#accountModal').on('show.bs.modal', function () {
             $('#accountForm')[0].reset();
+            $('#accCreateInOtherCompanies').prop('checked', false);
+            $('#accCompanyCheckboxesList').hide();
+            $('#accSelectedCompanyCountBadge').hide();
+            $('.acc-target-comp-check').prop('checked', true);
             let $btn = $('#btnSaveAccount');
             $btn.prop('disabled', false).html('Save Account');
             isAccountSubmitting = false;
         });
 
         // OPEN DETAIL MODAL
+        function toggleAllDetailCompanies(checked) {
+            $('.det-target-comp-check').prop('checked', checked);
+            onDetailCompanySelectionChanged();
+        }
+
+        function onDetailCompanySelectionChanged() {
+            let count = $('.det-target-comp-check:checked').length;
+            $('#detSelectedCompanyCountBadge').text(count + ' Selected');
+            updateNextDetailCodePreview();
+        }
+
+        $('#detCreateInOtherCompanies').on('change', function () {
+            if ($(this).is(':checked')) {
+                $('#detCompanyCheckboxesList').slideDown(200);
+                $('#detSelectedCompanyCountBadge').show();
+                onDetailCompanySelectionChanged();
+            } else {
+                $('#detCompanyCheckboxesList').slideUp(200);
+                $('#detSelectedCompanyCountBadge').hide();
+                updateNextDetailCodePreview();
+            }
+        });
+
+        function updateNextDetailCodePreview() {
+            let accountId = $('#selectedAccountId').val() || currentAccountId;
+            if (!accountId || accountId == 0) return;
+            let createInOther = $('#detCreateInOtherCompanies').is(':checked');
+
+            let selectedIds = [];
+            if (createInOther) {
+                $('.det-target-comp-check:checked').each(function () {
+                    selectedIds.push($(this).val());
+                });
+            }
+
+            $.get('/GLChart/GetNextDetailCode', {
+                accountId: accountId,
+                createInOtherCompanies: createInOther && selectedIds.length > 0,
+                targetCompanyIds: selectedIds.join(',')
+            }, function (res) {
+                if (res.success) {
+                    let ac1 = (res.ac1 || '').trim();
+                    let ac3 = (res.ac3 || '').trim();
+                    let acc = (res.acc || (ac1 + ac3)).trim();
+                    $('#detAc1Prefix').text(ac1 + ' - ');
+                    $('#detailAc3').val(ac3);
+                    $('#detAccPreview').text('ACC: ' + acc);
+                }
+            });
+        }
+
+        $('#detailAc3').on('input', function () {
+            let rawAc1 = ($('#detAc1Prefix').text() || '').replace(/[^0-9]/g, '');
+            let val = $(this).val().trim();
+            let previewAc3 = val;
+            if (/^\d+$/.test(val) && val.length < 3) {
+                previewAc3 = val.padStart(3, '0');
+            }
+            $('#detAccPreview').text('ACC: ' + rawAc1 + previewAc3);
+        });
+
         function openDetailModal() {
             if (currentAccountId === 0) {
                 alert("Select account first");
                 return;
             }
 
+            $('#detailModalHeader').removeClass('bg-primary').addClass('bg-success');
+            $('#detailModalTitle').html('<i class="fa fa-plus-circle me-1"></i> Add Detail');
             $('#detailForm')[0].reset();
             $('#detailId').val('');
+            $('#selectedAccountId').val(currentAccountId);
+
+            $('#detCodeIcon').removeClass('text-primary').addClass('text-success');
+            let curAc1 = ($('#selectedAC1').val() || '').trim();
+            if (curAc1) {
+                $('#detAc1Prefix').text(curAc1 + ' - ');
+            }
+            $('#detailAc3').val('');
+            $('#detAccPreview').text('ACC: -');
+
+            $('#detCreateInOtherCompanies').prop('checked', false);
+            $('#detCompanyCheckboxesList').hide();
+            $('#detSelectedCompanyCountBadge').hide();
+            $('.det-target-comp-check').prop('checked', true);
+
             $('#detAllCompaniesCheckDiv').show();
 
             let $btn = $('#btnSaveDetail');
-            $btn.prop('disabled', false).html('Save Detail');
+            $btn.removeClass('btn-primary').addClass('btn-success');
+            $btn.prop('disabled', false).html('<i class="fa fa-save me-1"></i> Save Detail');
             isDetailSubmitting = false;
+
+            updateNextDetailCodePreview();
 
             $('#detailModal').modal('show');
         }
@@ -415,13 +594,29 @@
         // EDIT DETAIL
         function editDetail(id) {
             $.get('/GLChart/GetDetail?id=' + id, function (data) {
+                if (!data || !data.id) return;
+
+                $('#detailModalHeader').removeClass('bg-success').addClass('bg-primary');
+                $('#detailModalTitle').html('<i class="fa fa-pencil me-1"></i> Edit Detail');
                 $('#detailId').val(data.id);
                 $('#selectedAccountId').val(data.glChart1Id);
                 $('#detailName').val(data.name);
+
+                let ac1 = (data.ac1 || '').trim();
+                let ac3 = (data.ac3 || '').trim();
+                let acc = (data.acc || (ac1 + ac3)).trim();
+
+                $('#detCodeIcon').removeClass('text-success').addClass('text-primary');
+                $('#detAc1Prefix').text(ac1 + ' - ');
+                $('#detailAc3').val(ac3);
+                $('#detAccPreview').text('ACC: ' + acc);
+
+                // Hide company creation checklist when editing existing detail
                 $('#detAllCompaniesCheckDiv').hide();
 
                 let $btn = $('#btnSaveDetail');
-                $btn.prop('disabled', false).html('Save Detail');
+                $btn.removeClass('btn-success').addClass('btn-primary');
+                $btn.prop('disabled', false).html('<i class="fa fa-save me-1"></i> Update Detail');
                 isDetailSubmitting = false;
 
                 $('#detailModal').modal('show');

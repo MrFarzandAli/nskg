@@ -7,6 +7,7 @@ namespace Nskg.Models.ViewModels
         public List<GLChart1> Accounts { get; set; }
         public List<GLChart3> Details { get; set; }
         public List<SelectListItem> Categories { get; set; }
+        public List<Company> Companies { get; set; } = new();
     }
 
     public class SaveAccountLinksViewModel

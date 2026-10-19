@@ -1,4 +1,4 @@
-﻿namespace Nskg.Models
+namespace Nskg.Models
 {
     public class ChallanDet
     {
@@ -108,6 +108,7 @@
         public decimal? OtherEx { get; set; }
 
         public DateTime? BillTiDate { get; set; }
+        public int? BiltyId { get; set; }
 
         // 🔗 Navigation
         public ChallanHead ChallanHead { get; set; }
