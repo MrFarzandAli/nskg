@@ -711,28 +711,36 @@
                     }));
 
                 if (hasActiveSearch) {
-                    // Actively searching: Always show matching row, mark as Selected if already added
+                    // Actively searching: Always show matching row
                     $tr.removeClass("already-in-grid").show();
-                    if (isAlreadyInCurrentGrid || isAssignedDb) {
+                    if (isAlreadyInCurrentGrid) {
                         $chk.prop("disabled", true).prop("checked", true);
                         $tr.addClass("table-light text-muted");
-                        if ($tr.find(".inchallan-badge").length === 0) {
-                            var label = isAlreadyInCurrentGrid ? '(Current CommBook)' : '(Assigned)';
-                            $tr.find("td:eq(1)").append(`<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected ${label}</span>`);
-                        }
+                        $tr.find(".inchallan-badge").remove();
+                        $tr.find("td:eq(1)").append(`<span class="badge bg-success ms-1 inchallan-badge" title="Already added to this Commission Book"><i class="fa fa-check me-1"></i>Current CommBook</span>`);
+                    } else if (isAssignedDb) {
+                        $chk.prop("disabled", true).prop("checked", false);
+                        $tr.addClass("table-light text-muted");
+                        $tr.find(".inchallan-badge").remove();
+                        $tr.find("td:eq(1)").append(`<span class="badge bg-secondary ms-1 inchallan-badge" title="Already assigned to another Commission Book"><i class="fa fa-lock me-1"></i>Assigned (Other CommBook)</span>`);
                     } else {
                         $chk.prop("disabled", false).prop("checked", false);
                         $tr.removeClass("table-light text-muted");
                         $tr.find(".inchallan-badge").remove();
                     }
                 } else {
-                    // Default state (no search text): Hide challans already added to current grid
+                    // Default state (no search text):
                     if (isAlreadyInCurrentGrid) {
-                        $chk.prop("checked", false).prop("disabled", false);
+                        $chk.prop("disabled", true).prop("checked", true);
+                        $tr.removeClass("already-in-grid").addClass("table-light text-muted").show();
+                        $tr.find(".inchallan-badge").remove();
+                        $tr.find("td:eq(1)").append(`<span class="badge bg-success ms-1 inchallan-badge" title="Already added to this Commission Book"><i class="fa fa-check me-1"></i>Current CommBook</span>`);
+                    } else if (isAssignedDb) {
+                        $chk.prop("disabled", true).prop("checked", false);
                         $tr.addClass("already-in-grid").hide();
                         $tr.find(".inchallan-badge").remove();
                     } else {
-                        $chk.prop("checked", false).prop("disabled", false);
+                        $chk.prop("disabled", false).prop("checked", false);
                         $tr.removeClass("already-in-grid table-light text-muted").show();
                         $tr.find(".inchallan-badge").remove();
                     }
@@ -946,7 +954,8 @@
                                               (manualRows.some(function (m) {
                                                   return m.cno === cno && (!m.stn || m.stn === stn) && (!m.trn || m.trn === trn);
                                               }));
-                        var isAssigned = c.isInCommBook || isAlreadyInGrid;
+                        var isOtherAssigned = (c.isInCommBook === true || c.isInCommBook === "true");
+                        var isAssigned = isOtherAssigned || isAlreadyInGrid;
                         var displayNo = (c.chalNo !== null && c.chalNo !== undefined && c.chalNo !== '') ? c.chalNo : '';
                         var isMuted = isAssigned;
 
@@ -955,7 +964,7 @@
                                 <td class="text-center p-1">
                                     <input type="checkbox"
                                            class="bilty-check form-check-input mt-0"
-                                           ${isMuted ? 'checked disabled' : ''}
+                                           ${isAlreadyInGrid ? 'checked disabled' : (isOtherAssigned ? 'disabled' : '')}
                                            data-id="${c.id || c.Id}"
                                            data-docno="${escapeHtml(c.docNo)}"
                                            data-chalno="${escapeHtml(displayNo)}"
@@ -973,11 +982,11 @@
                                            data-totpartyex="${c.totPartyEx || 0}"
                                            data-totlifter2="${c.totLifter2 || 0}"
                                            data-tototherex="${c.totOtherEx || 0}"
-                                           data-isassigned="${isAssigned ? 'true' : 'false'}" />
+                                           data-isassigned="${isOtherAssigned ? 'true' : 'false'}" />
                                 </td>
                                 <td class="p-1 fw-semibold text-primary">
                                     ${escapeHtml(displayNo)}
-                                    ${isAssigned ? `<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected</span>` : ''}
+                                    ${isAlreadyInGrid ? `<span class="badge bg-success ms-1 inchallan-badge" title="Already added to this Commission Book"><i class="fa fa-check me-1"></i>Current CommBook</span>` : (isOtherAssigned ? `<span class="badge bg-secondary ms-1 inchallan-badge" title="Already assigned to another Commission Book"><i class="fa fa-lock me-1"></i>Assigned (Other CommBook)</span>` : '')}
                                 </td>
                                 <td class="p-1 text-nowrap">${escapeHtml(c.docDate)}</td>
                                 <td class="p-1 text-nowrap">${escapeHtml(c.vehicleNo)}</td>

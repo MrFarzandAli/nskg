@@ -1365,29 +1365,68 @@ namespace Nskg.Controllers
                 ViewBag.PartyExps = PartyExpAccounts;
 
 
-                // Load challans (both unassigned and those belonging to the current CommBook if in Edit mode)
+                // Load challans (unassigned and those belonging to the current CommBook if in Edit mode)
+                var otherCommChallanQuery = _context.CommDetail
+                    .Where(cd => cd.CommHead != null && !cd.CommHead.IsDeleted && (commBookId == null || cd.CommHeadId != commBookId.Value));
+
+                var otherLinkedChallanIds = otherCommChallanQuery
+                    .Where(cd => cd.ChallanId.HasValue && cd.ChallanId.Value > 0)
+                    .Select(cd => cd.ChallanId!.Value)
+                    .ToHashSet();
+
+                var otherLinkedDocNos = otherCommChallanQuery
+                    .Where(cd => !string.IsNullOrEmpty(cd.DcNo))
+                    .Select(cd => cd.DcNo!.Trim().ToLower())
+                    .ToHashSet();
+
                 var challanQuery = _context.ChallanHead.AsQueryable();
                 if (compId > 0)
                 {
                     challanQuery = challanQuery.Where(x => x.CompanyId == compId || x.CompanyId == 0);
                 }
 
-                if (commBookId.HasValue && commBookId.Value > 0)
+                challanQuery = challanQuery.Where(x => !x.IsDeleted);
+
+                if (otherLinkedChallanIds.Any())
                 {
-                    var commChallanIds = _context.CommDetail
-                        .Where(cd => cd.CommHeadId == commBookId.Value && cd.ChallanId.HasValue)
-                        .Select(cd => cd.ChallanId!.Value)
-                        .ToList();
-                    challanQuery = challanQuery.Where(x => (x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn)) || commChallanIds.Contains(x.Id));
+                    var oIds = otherLinkedChallanIds.ToList();
+                    challanQuery = challanQuery.Where(x => !oIds.Contains(x.Id));
                 }
-                else
+                if (otherLinkedDocNos.Any())
                 {
-                    challanQuery = challanQuery.Where(x => x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn));
+                    var oDocs = otherLinkedDocNos.ToList();
+                    challanQuery = challanQuery.Where(x => x.DocNo == null || !oDocs.Contains(x.DocNo.ToLower()));
                 }
 
-                ViewBag.ChallanList = challanQuery
+                var topChallans = challanQuery
                     .OrderByDescending(x => x.DocDate)
                     .ThenByDescending(x => x.Id)
+                    .Take(500)
+                    .ToList();
+
+                // If in Edit mode, make sure challans belonging to this CommBook are also included in the list
+                if (commBookId.HasValue && commBookId.Value > 0)
+                {
+                    var currentCommDetails = _context.CommDetail
+                        .Where(cd => cd.CommHeadId == commBookId.Value)
+                        .ToList();
+
+                    var curChallanIds = currentCommDetails.Where(cd => cd.ChallanId.HasValue).Select(cd => cd.ChallanId!.Value).ToHashSet();
+                    var curDocNos = currentCommDetails.Where(cd => !string.IsNullOrEmpty(cd.DcNo)).Select(cd => cd.DcNo!.Trim().ToLower()).ToHashSet();
+
+                    var existingIds = topChallans.Select(c => c.Id).ToHashSet();
+                    var missingCurrentChallans = _context.ChallanHead
+                        .Where(ch => !existingIds.Contains(ch.Id) && (curChallanIds.Contains(ch.Id) || (ch.DocNo != null && curDocNos.Contains(ch.DocNo.ToLower()))))
+                        .ToList();
+
+                    if (missingCurrentChallans.Any())
+                    {
+                        topChallans.AddRange(missingCurrentChallans);
+                        topChallans = topChallans.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id).ToList();
+                    }
+                }
+
+                ViewBag.ChallanList = topChallans
                     .Select(x => new
                     {
                         x.Id,
@@ -1408,7 +1447,7 @@ namespace Nskg.Controllers
                         x.TotPartyEx,
                         x.TotLifter2,
                         x.TotOtherEx,
-                        x.DescYn
+                        DescYn = (otherLinkedChallanIds.Contains(x.Id) || (!string.IsNullOrEmpty(x.DocNo) && otherLinkedDocNos.Contains(x.DocNo.ToLower()))) ? "Y" : "N"
                     })
                     .ToList();
             }
@@ -1419,7 +1458,7 @@ namespace Nskg.Controllers
             }
         }
 
-        [HttpGet]
+                [HttpGet]
         public IActionResult SearchChallans(
             string? chalNo,
             string? docDate,
@@ -1432,7 +1471,8 @@ namespace Nskg.Controllers
             string? billti,
             string? delivery,
             string? localAmt,
-            string? netAmt)
+            string? netAmt,
+            int? commBookId)
         {
             try
             {
@@ -1443,158 +1483,118 @@ namespace Nskg.Controllers
                     query = query.Where(x => x.CompanyId == compId || x.CompanyId == 0);
                 }
 
-                bool hasFilter = false;
+                query = query.Where(x => !x.IsDeleted);
 
                 if (!string.IsNullOrWhiteSpace(chalNo))
                 {
                     var val = chalNo.Trim();
                     if (int.TryParse(val, out var cVal))
                     {
-                        query = query.Where(x => x.ChalNo == cVal);
+                        query = query.Where(x => x.ChalNo == cVal || (x.DocNo != null && x.DocNo.Contains(val)));
                     }
                     else
                     {
-                        query = query.Where(x => x.ChalNo != null && x.ChalNo.ToString() == val);
+                        query = query.Where(x => (x.ChalNo != null && x.ChalNo.ToString().Contains(val)) || (x.DocNo != null && x.DocNo.Contains(val)));
                     }
-                    hasFilter = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(docDate))
                 {
                     var val = docDate.Trim();
-                    if (DateTime.TryParse(val, out var parsedDate))
+                    string[] formats = { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "yyyy/MM/dd", "dd-MM-yyyy" };
+                    if (DateTime.TryParseExact(val, formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var targetDate) ||
+                        DateTime.TryParse(val, out targetDate))
                     {
-                        var targetDate = parsedDate.Date;
-                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.Date == targetDate);
-                        hasFilter = true;
+                        var d = targetDate.Date;
+                        query = query.Where(x => x.DocDate.HasValue && x.DocDate.Value.Date == d);
                     }
                 }
 
                 if (!string.IsNullOrWhiteSpace(vehicleNo))
                 {
-                    var val = vehicleNo.Trim().ToLower();
-                    query = query.Where(x => x.VehicleNo != null && (x.VehicleNo.ToLower() == val || x.VehicleNo.ToLower().StartsWith(val)));
-                    hasFilter = true;
+                    var val = vehicleNo.Trim();
+                    query = query.Where(x => x.VehicleNo != null && x.VehicleNo.Contains(val));
                 }
 
                 if (!string.IsNullOrWhiteSpace(transporter))
                 {
-                    var val = transporter.Trim().ToLower();
-                    query = query.Where(x => x.Transporter != null && (x.Transporter.ToLower() == val || x.Transporter.ToLower().StartsWith(val)));
-                    hasFilter = true;
+                    var val = transporter.Trim();
+                    query = query.Where(x => x.Transporter != null && x.Transporter.Contains(val));
                 }
 
                 if (!string.IsNullOrWhiteSpace(driver))
                 {
-                    var val = driver.Trim().ToLower();
-                    query = query.Where(x => x.Driver != null && (x.Driver.ToLower() == val || x.Driver.ToLower().StartsWith(val)));
-                    hasFilter = true;
+                    var val = driver.Trim();
+                    query = query.Where(x => x.Driver != null && x.Driver.Contains(val));
                 }
 
                 if (!string.IsNullOrWhiteSpace(station))
                 {
-                    var val = station.Trim().ToLower();
-                    query = query.Where(x => x.Station != null && (x.Station.ToLower() == val || x.Station.ToLower().StartsWith(val)));
-                    hasFilter = true;
+                    var val = station.Trim();
+                    query = query.Where(x => x.Station != null && x.Station.Contains(val));
                 }
 
-                if (!string.IsNullOrWhiteSpace(paid))
+                if (!string.IsNullOrWhiteSpace(paid) && decimal.TryParse(paid.Trim(), out var pVal))
                 {
-                    var val = paid.Trim();
-                    if (decimal.TryParse(val, out var pVal))
-                    {
-                        query = query.Where(x => x.TotPaid == pVal);
-                    }
-                    else
-                    {
-                        query = query.Where(x => x.TotPaid != null && x.TotPaid.ToString() == val);
-                    }
-                    hasFilter = true;
+                    query = query.Where(x => x.TotPaid == pVal);
                 }
 
-                if (!string.IsNullOrWhiteSpace(toPaid))
+                if (!string.IsNullOrWhiteSpace(toPaid) && decimal.TryParse(toPaid.Trim(), out var tpVal))
                 {
-                    var val = toPaid.Trim();
-                    if (decimal.TryParse(val, out var tpVal))
-                    {
-                        query = query.Where(x => x.TotToPaid == tpVal);
-                    }
-                    else
-                    {
-                        query = query.Where(x => x.TotToPaid != null && x.TotToPaid.ToString() == val);
-                    }
-                    hasFilter = true;
+                    query = query.Where(x => x.TotToPaid == tpVal);
                 }
 
-                if (!string.IsNullOrWhiteSpace(billti))
+                if (!string.IsNullOrWhiteSpace(billti) && decimal.TryParse(billti.Trim(), out var btVal))
                 {
-                    var val = billti.Trim();
-                    if (decimal.TryParse(val, out var btVal))
-                    {
-                        query = query.Where(x => x.TotBillTi == btVal);
-                    }
-                    else
-                    {
-                        query = query.Where(x => x.TotBillTi != null && x.TotBillTi.ToString() == val);
-                    }
-                    hasFilter = true;
+                    query = query.Where(x => x.TotBillTi == btVal);
                 }
 
-                if (!string.IsNullOrWhiteSpace(delivery))
+                if (!string.IsNullOrWhiteSpace(delivery) && decimal.TryParse(delivery.Trim(), out var delVal))
                 {
-                    var val = delivery.Trim();
-                    if (decimal.TryParse(val, out var delVal))
-                    {
-                        query = query.Where(x => x.DeliveryAmt == delVal);
-                    }
-                    else
-                    {
-                        query = query.Where(x => x.DeliveryAmt != null && x.DeliveryAmt.ToString() == val);
-                    }
-                    hasFilter = true;
+                    query = query.Where(x => x.DeliveryAmt == delVal);
                 }
 
-                if (!string.IsNullOrWhiteSpace(localAmt))
+                if (!string.IsNullOrWhiteSpace(localAmt) && decimal.TryParse(localAmt.Trim(), out var locVal))
                 {
-                    var val = localAmt.Trim();
-                    if (decimal.TryParse(val, out var locVal))
-                    {
-                        query = query.Where(x => x.LocalAmt == locVal);
-                    }
-                    else
-                    {
-                        query = query.Where(x => x.LocalAmt != null && x.LocalAmt.ToString() == val);
-                    }
-                    hasFilter = true;
+                    query = query.Where(x => x.LocalAmt == locVal);
                 }
 
-                if (!string.IsNullOrWhiteSpace(netAmt))
+                if (!string.IsNullOrWhiteSpace(netAmt) && decimal.TryParse(netAmt.Trim(), out var netVal))
                 {
-                    var val = netAmt.Trim();
-                    if (decimal.TryParse(val, out var netVal))
-                    {
-                        query = query.Where(x => x.NetAmt == netVal);
-                    }
-                    else
-                    {
-                        query = query.Where(x => x.NetAmt != null && x.NetAmt.ToString() == val);
-                    }
-                    hasFilter = true;
+                    query = query.Where(x => x.NetAmt == netVal);
                 }
 
-                if (!hasFilter)
-                {
-                    query = query.Where(x => x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn));
-                }
-
-                var results = query
+                var list = query
                     .OrderByDescending(x => x.DocDate)
                     .ThenByDescending(x => x.Id)
-                    .Take(100)
-                    .Select(x => new
+                    .Take(200)
+                    .ToList();
+
+                var listIds = list.Select(x => x.Id).ToList();
+                var listDocNos = list.Where(x => !string.IsNullOrEmpty(x.DocNo)).Select(x => x.DocNo!.Trim().ToLower()).ToList();
+
+                var otherAssignedChallanQuery = _context.CommDetail
+                    .Where(cd => cd.CommHead != null && !cd.CommHead.IsDeleted &&
+                                 (commBookId == null || cd.CommHeadId != commBookId.Value));
+
+                var otherAssignedChallanIds = otherAssignedChallanQuery
+                    .Where(cd => cd.ChallanId.HasValue && listIds.Contains(cd.ChallanId.Value))
+                    .Select(cd => cd.ChallanId!.Value)
+                    .ToHashSet();
+
+                var otherAssignedDocNos = otherAssignedChallanQuery
+                    .Where(cd => !string.IsNullOrEmpty(cd.DcNo) && listDocNos.Contains(cd.DcNo.ToLower()))
+                    .Select(cd => cd.DcNo!.Trim().ToLower())
+                    .ToHashSet();
+
+                var results = list.Select(x =>
+                {
+                    bool isOtherAssigned = otherAssignedChallanIds.Contains(x.Id) ||
+                                           (!string.IsNullOrEmpty(x.DocNo) && otherAssignedDocNos.Contains(x.DocNo.ToLower()));
+
+                    return new
                     {
                         id = x.Id,
-                        Id = x.Id,
                         docNo = x.DocNo ?? "",
                         chalNo = x.ChalNo.HasValue ? x.ChalNo.Value.ToString() : "",
                         docDate = x.DocDate.HasValue ? x.DocDate.Value.ToString("dd/MM/yyyy") : "",
@@ -1613,10 +1613,10 @@ namespace Nskg.Controllers
                         totPartyEx = x.TotPartyEx ?? 0,
                         totLifter2 = x.TotLifter2 ?? 0,
                         totOtherEx = x.TotOtherEx ?? 0,
-                        descYn = x.DescYn ?? "",
-                        isInCommBook = x.DescYn == "Y"
-                    })
-                    .ToList();
+                        descYn = isOtherAssigned ? "Y" : "N",
+                        isInCommBook = isOtherAssigned
+                    };
+                }).ToList();
 
                 return Json(new { success = true, data = results });
             }
@@ -1626,6 +1626,7 @@ namespace Nskg.Controllers
             }
         }
         private string GenerateDocNo()
+
         {
             var fy = _context.FinancialYears
                 .FirstOrDefault(x =>
