@@ -126,64 +126,61 @@ namespace Nskg.Controllers
                     }
                     else
                     {
-                        var activeCompanies = _context.Companies.Where(c => !c.IsDeleted).Select(c => c.Id).ToList();
-                        if (activeCompanies.Count > 0)
+                        // Process all companies in a single T-SQL batch to avoid temp table loss and roundtrip latency
+                        string allProcSql = @"
+                            IF OBJECT_ID('tempdb..##AllAdvanceSession') IS NOT NULL DROP TABLE ##AllAdvanceSession;
+                            SELECT TOP 0 * INTO ##AllAdvanceSession FROM ACCUMULATED;
+
+                            DECLARE @CurCompId INT;
+                            DECLARE comp_cursor CURSOR LOCAL FAST_FORWARD FOR
+                                SELECT Id FROM Companies WHERE IsDeleted = 0 ORDER BY Id;
+
+                            OPEN comp_cursor;
+                            FETCH NEXT FROM comp_cursor INTO @CurCompId;
+
+                            WHILE @@FETCH_STATUS = 0
+                            BEGIN
+                                EXEC dbo.PROCESSDETAIL_Advance @CompanyId = @CurCompId, @TDATE = @TDate, @ACCODE = @Accode;
+                                INSERT INTO ##AllAdvanceSession SELECT * FROM ACCUMULATED;
+                                FETCH NEXT FROM comp_cursor INTO @CurCompId;
+                            END
+
+                            CLOSE comp_cursor;
+                            DEALLOCATE comp_cursor;
+
+                            DELETE FROM ACCUMULATED;
+
+                            ;WITH DistinctAcc AS
+                            (
+                                SELECT *,
+                                       ROW_NUMBER() OVER(
+                                           PARTITION BY VONO, VOTYPE, CAST(VODATE AS DATE), DRAMT, CRAMT, ISNULL(BILLTINO, 0), ISNULL(BILNO, 0), ISNULL(VEHICLENO, ''), ISNULL(NARRATION, '')
+                                           ORDER BY COCODE
+                                       ) AS rn
+                                FROM ##AllAdvanceSession
+                            )
+                            INSERT INTO ACCUMULATED (
+                                COCODE, VONO, VODATE, VOTYPE, AC1, AC2, AC3, ACTYPE, DRAMT, CRAMT, NARRATION,
+                                CANCEL, PAY, INVNO, INVDATE, ACC, NDRAMT, NCRAMT, RATE, AMOUNT, CHQNO,
+                                CHQDATE, STAXAMT, DUEDATE, INAME, QTY, BILLTINO, BILNO, DELIVERYAMT, DELIVERYAMT2,
+                                STATION, VEHICLENO
+                            )
+                            SELECT 
+                                COCODE, VONO, VODATE, VOTYPE, AC1, AC2, AC3, ACTYPE, DRAMT, CRAMT, NARRATION,
+                                CANCEL, PAY, INVNO, INVDATE, ACC, NDRAMT, NCRAMT, RATE, AMOUNT, CHQNO,
+                                CHQDATE, STAXAMT, DUEDATE, INAME, QTY, BILLTINO, BILNO, DELIVERYAMT, DELIVERYAMT2,
+                                STATION, VEHICLENO
+                            FROM DistinctAcc
+                            WHERE rn = 1;
+
+                            IF OBJECT_ID('tempdb..##AllAdvanceSession') IS NOT NULL DROP TABLE ##AllAdvanceSession;";
+
+                        using (SqlCommand cmdAll = new SqlCommand(allProcSql, con))
                         {
-                            using (SqlCommand cmdSetup = new SqlCommand(@"
-                                IF OBJECT_ID('tempdb..#AllAcc') IS NOT NULL DROP TABLE #AllAcc;
-                                SELECT TOP 0 * INTO #AllAcc FROM ACCUMULATED;", con))
-                            {
-                                cmdSetup.ExecuteNonQuery();
-                            }
-
-                            foreach (var cId in activeCompanies)
-                            {
-                                using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_Advance", con))
-                                {
-                                    cmdProc.CommandType = CommandType.StoredProcedure;
-                                    cmdProc.CommandTimeout = 180;
-                                    cmdProc.Parameters.AddWithValue("@CompanyId", cId);
-                                    cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
-                                    cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                                    cmdProc.ExecuteNonQuery();
-                                }
-
-                                using (SqlCommand cmdCopy = new SqlCommand("INSERT INTO #AllAcc SELECT * FROM ACCUMULATED;", con))
-                                {
-                                    cmdCopy.ExecuteNonQuery();
-                                }
-                            }
-
-                            using (SqlCommand cmdMerge = new SqlCommand(@"
-                                DELETE FROM ACCUMULATED;
-
-                                ;WITH DistinctAcc AS
-                                (
-                                    SELECT *,
-                                           ROW_NUMBER() OVER(
-                                               PARTITION BY VONO, VOTYPE, CAST(VODATE AS DATE), DRAMT, CRAMT, ISNULL(BILLTINO, 0), ISNULL(BILNO, 0), ISNULL(VEHICLENO, ''), ISNULL(NARRATION, '')
-                                               ORDER BY COCODE
-                                           ) AS rn
-                                    FROM #AllAcc
-                                )
-                                INSERT INTO ACCUMULATED (
-                                    COCODE, VONO, VODATE, VOTYPE, AC1, AC2, AC3, ACTYPE, DRAMT, CRAMT, NARRATION,
-                                    CANCEL, PAY, INVNO, INVDATE, ACC, NDRAMT, NCRAMT, RATE, AMOUNT, CHQNO,
-                                    CHQDATE, STAXAMT, DUEDATE, INAME, QTY, BILLTINO, BILNO, DELIVERYAMT, DELIVERYAMT2,
-                                    STATION, VEHICLENO
-                                )
-                                SELECT 
-                                    COCODE, VONO, VODATE, VOTYPE, AC1, AC2, AC3, ACTYPE, DRAMT, CRAMT, NARRATION,
-                                    CANCEL, PAY, INVNO, INVDATE, ACC, NDRAMT, NCRAMT, RATE, AMOUNT, CHQNO,
-                                    CHQDATE, STAXAMT, DUEDATE, INAME, QTY, BILLTINO, BILNO, DELIVERYAMT, DELIVERYAMT2,
-                                    STATION, VEHICLENO
-                                FROM DistinctAcc
-                                WHERE rn = 1;
-
-                                DROP TABLE #AllAcc;", con))
-                            {
-                                cmdMerge.ExecuteNonQuery();
-                            }
+                            cmdAll.CommandTimeout = 180;
+                            cmdAll.Parameters.AddWithValue("@TDate", toDate.Date);
+                            cmdAll.Parameters.AddWithValue("@Accode", accode?.Trim() ?? "");
+                            cmdAll.ExecuteNonQuery();
                         }
                     }
                 }
@@ -255,11 +252,7 @@ namespace Nskg.Controllers
                             ISNULL(a.VOTYPE, '') AS Votype,
                             CASE 
                                 WHEN a.VOTYPE = 'AD' THEN 
-                                    COALESCE(
-                                        CAST((SELECT TOP 1 ch.ChalNo FROM CommHead ch WHERE ch.DocNo = a.VONO AND (@CompanyId = 0 OR ch.CompanyId = @CompanyId)) AS VARCHAR(50)),
-                                        CAST((SELECT TOP 1 ch.ChalNo FROM CommHead ch WHERE ch.DocDate = a.VODATE AND ch.AdvanceAmt = a.DRAMT AND (@CompanyId = 0 OR ch.CompanyId = @CompanyId)) AS VARCHAR(50)),
-                                        ''
-                                    )
+                                    COALESCE(CAST(chk.ChalNo AS VARCHAR(50)), CAST(chk2.ChalNo AS VARCHAR(50)), '')
                                 ELSE ''
                             END AS CommNo,
                             CASE 
@@ -267,7 +260,7 @@ namespace Nskg.Controllers
                                 ELSE COALESCE(
                                     NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''),
                                     NULLIF(RTRIM(LTRIM(a.NARRATION)), ''),
-                                    (SELECT TOP 1 ch.VehicleNo FROM CommHead ch WHERE ch.DocNo = a.VONO AND (@CompanyId = 0 OR ch.CompanyId = @CompanyId)),
+                                    chk.VehicleNo,
                                     ''
                                 )
                             END AS VehicleNo,
@@ -279,6 +272,20 @@ namespace Nskg.Controllers
                             ) AS Balance,
                             ROW_NUMBER() OVER (ORDER BY a.VODATE, a.VONO) AS RowNum
                         FROM ACCUMULATED a
+                        OUTER APPLY (
+                            SELECT TOP 1 ch.ChalNo, ch.VehicleNo 
+                            FROM CommHead ch 
+                            WHERE ch.DocNo = a.VONO 
+                              AND (@CompanyId = 0 OR ch.CompanyId = @CompanyId)
+                        ) chk
+                        OUTER APPLY (
+                            SELECT TOP 1 ch2.ChalNo
+                            FROM CommHead ch2
+                            WHERE a.VOTYPE = 'AD' AND chk.ChalNo IS NULL
+                              AND ch2.DocDate = a.VODATE 
+                              AND ch2.AdvanceAmt = a.DRAMT 
+                              AND (@CompanyId = 0 OR ch2.CompanyId = @CompanyId)
+                        ) chk2
                         WHERE a.VODATE >= @FromDate AND a.VODATE <= @ToDate
                     )
                     SELECT 

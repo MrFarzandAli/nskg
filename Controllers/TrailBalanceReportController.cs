@@ -389,7 +389,7 @@ namespace Nskg.Controllers
                             CAST(SUM(ISNULL(d.Dramt,0)) AS DECIMAL(18,2)) AS Debit,
                             CAST(0 AS DECIMAL(18,2)) AS Credit
                         FROM VoDet d
-                        WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '073'
+                        WHERE d.IsDeleted = 0 AND (d.Ac1 = '073' OR d.Ac1 = '073 ')
                           AND (@YearEndDate IS NULL OR d.Vodate <= @YearEndDate)
                         GROUP BY d.Cocode
 
@@ -409,8 +409,8 @@ namespace Nskg.Controllers
                             CAST(SUM(ISNULL(d.Dramt,0)) AS DECIMAL(18,2)) AS Debit,
                             CAST(0 AS DECIMAL(18,2)) AS Credit
                         FROM VoDet d
-                        LEFT JOIN GLChart3 g ON RTRIM(d.Ac1) = RTRIM(g.Ac1) AND RTRIM(d.Ac3) = RTRIM(g.Ac3) AND d.Cocode = g.Cocode
-                        WHERE ISNULL(d.IsDeleted,0) = 0 AND RTRIM(d.Ac1) = '040'
+                        LEFT JOIN GLChart3 g ON d.Ac1 = g.Ac1 AND d.Ac3 = g.Ac3 AND d.Cocode = g.Cocode
+                        WHERE d.IsDeleted = 0 AND (d.Ac1 = '040' OR d.Ac1 = '040 ')
                           AND (@YearEndDate IS NULL OR d.Vodate <= @YearEndDate)
                         GROUP BY d.Cocode, RTRIM(COALESCE(g.Name, d.Name))
 

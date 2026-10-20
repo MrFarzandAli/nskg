@@ -45,42 +45,31 @@ namespace Nskg.Controllers
         private List<dynamic> FetchPartyAccounts(int selectedCompanyId)
         {
             var query = _context.GLChart3
-                .Where(x => (selectedCompanyId == 0 || x.CompanyId == selectedCompanyId || x.CompanyId == 0 || x.CompanyId == null) && !string.IsNullOrEmpty(x.Name));
+                .Where(x => !string.IsNullOrEmpty(x.Name)
+                         && x.CType != "4"
+                         && x.AC1 == "066");
 
             var rawAccounts = query
                 .Select(x => new
                 {
-                    Code = x.ACC ?? (x.AC1 + x.AC3),
-                    Name = x.Name,
-                    LinkedGroupId = x.LinkedGroupId,
-                    IsParty = (x.AC1 == "040" || x.AC1 == "075" || x.AC1 == "030" || x.Name.Contains("EXP") || x.Name.Contains("PARTY"))
+                    Code = (x.ACC ?? (x.AC1 + x.AC3)).Trim(),
+                    Name = x.Name.Trim()
                 })
+                .Where(x => !string.IsNullOrEmpty(x.Code))
                 .ToList();
 
             var accounts = new List<dynamic>();
-            var seenGroups = new HashSet<Guid>();
-            var seenKeys = new HashSet<string>();
+            var seenCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var a in rawAccounts.OrderByDescending(x => x.IsParty).ThenBy(x => x.Code))
+            foreach (var a in rawAccounts.OrderBy(x => x.Name))
             {
-                if (a.LinkedGroupId.HasValue)
+                if (seenCodes.Add(a.Code))
                 {
-                    if (seenGroups.Add(a.LinkedGroupId.Value))
-                    {
-                        accounts.Add(new { Code = a.Code, Name = a.Name, IsParty = a.IsParty });
-                    }
-                }
-                else
-                {
-                    string key = $"{a.Code}_{a.Name}";
-                    if (seenKeys.Add(key))
-                    {
-                        accounts.Add(new { Code = a.Code, Name = a.Name, IsParty = a.IsParty });
-                    }
+                    accounts.Add(new { Code = a.Code, Name = a.Name });
                 }
             }
 
-            return accounts;
+            return accounts.OrderBy(x => ((string)x.Name)).ToList();
         }
 
         [HttpGet]
@@ -132,27 +121,10 @@ namespace Nskg.Controllers
             // Load Party accounts / Party Expense accounts and all active GL accounts
             var accounts = FetchPartyAccounts(selectedCompanyId);
 
-            var vehicles = _context.VoDet
-                .Where(v => v.Vehicleno != null && v.Vehicleno.Trim() != "" && (selectedCompanyId == 0 || v.VoHead == null || v.VoHead.CompanyId == selectedCompanyId || v.VoHead.CompanyId == 0))
-                .Select(v => v.Vehicleno!.Trim())
-                .Union(_context.ChallanHead
-                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (selectedCompanyId == 0 || c.CompanyId == selectedCompanyId || c.CompanyId == 0))
-                    .Select(c => c.VehicleNo!.Trim()))
-                .Union(_context.CommHead
-                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (selectedCompanyId == 0 || c.CompanyId == selectedCompanyId || c.CompanyId == 0))
-                    .Select(c => c.VehicleNo!.Trim()))
-                .Union(_context.ChallanDet
-                    .Where(c => c.VehicleNo != null && c.VehicleNo.Trim() != "" && (selectedCompanyId == 0 || c.CompanyId == selectedCompanyId || c.CompanyId == 0))
-                    .Select(c => c.VehicleNo!.Trim()))
-                .Where(v => v != "")
-                .Distinct()
-                .OrderBy(v => v)
-                .ToList();
-
             ViewBag.CompanyList = companies;
             ViewBag.SelectedCompanyId = selectedCompanyId;
             ViewBag.AccountList = accounts;
-            ViewBag.VehicleList = vehicles;
+            ViewBag.VehicleList = new List<string>();
             ViewBag.Accode = accode;
             ViewBag.FromDate = string.IsNullOrEmpty(fromDate) ? "2010-01-01" : fromDate;
             ViewBag.ToDate = string.IsNullOrEmpty(toDate) ? DateTime.Now.ToString("yyyy-MM-dd") : toDate;
@@ -167,95 +139,6 @@ namespace Nskg.Controllers
             DataTable dt = new DataTable();
             string connString = _config.GetConnectionString("DefaultConnection");
 
-            // Determine user context company
-            int userCompId = 0;
-            var compClaim = User.FindFirst("CompanyId")?.Value;
-            int.TryParse(compClaim, out userCompId);
-
-            int contextCompanyId = companyId > 0 ? companyId : userCompId;
-
-            // Fetch matching accounts for the given code
-            var accountRecords = _context.GLChart3
-                .Where(x => !string.IsNullOrEmpty(accode) && (x.ACC == accode || (x.AC1 + x.AC3) == accode))
-                .ToList();
-
-            var currentAccount = (contextCompanyId > 0 ? accountRecords.FirstOrDefault(x => x.CompanyId == contextCompanyId) : null)
-                              ?? accountRecords.FirstOrDefault();
-
-            Guid? linkedGroupId = currentAccount?.LinkedGroupId;
-
-            List<(int CompId, string AccCode)> targetAccounts = new List<(int CompId, string AccCode)>();
-
-            if (companyId > 0)
-            {
-                // Single company selected in filter
-                if (linkedGroupId.HasValue)
-                {
-                    var compAcc = _context.GLChart3.FirstOrDefault(x => x.LinkedGroupId == linkedGroupId.Value && x.CompanyId == companyId);
-                    if (compAcc != null)
-                    {
-                        string code = compAcc.ACC ?? (compAcc.AC1 + compAcc.AC3);
-                        targetAccounts.Add((companyId, code));
-                    }
-                }
-                else
-                {
-                    var compAcc = accountRecords.FirstOrDefault(x => x.CompanyId == companyId);
-                    if (compAcc != null)
-                    {
-                        string code = compAcc.ACC ?? (compAcc.AC1 + compAcc.AC3);
-                        targetAccounts.Add((companyId, code));
-                    }
-                    else if (accountRecords.Count == 0 && !string.IsNullOrWhiteSpace(accode))
-                    {
-                        targetAccounts.Add((companyId, accode));
-                    }
-                    else if (string.IsNullOrWhiteSpace(accode))
-                    {
-                        targetAccounts.Add((companyId, ""));
-                    }
-                }
-            }
-            else
-            {
-                // All Companies selected in filter
-                if (linkedGroupId.HasValue)
-                {
-                    // ONLY include companies that currently share this LinkedGroupId!
-                    var linkedInGroup = _context.GLChart3
-                        .Where(x => x.LinkedGroupId == linkedGroupId.Value && x.CompanyId.HasValue && x.CompanyId.Value > 0)
-                        .ToList();
-
-                    foreach (var la in linkedInGroup)
-                    {
-                        string code = la.ACC ?? (la.AC1 + la.AC3);
-                        targetAccounts.Add((la.CompanyId.Value, code));
-                    }
-                }
-                else
-                {
-                    if (currentAccount != null && currentAccount.CompanyId.HasValue && currentAccount.CompanyId.Value > 0)
-                    {
-                        string code = currentAccount.ACC ?? (currentAccount.AC1 + currentAccount.AC3);
-                        targetAccounts.Add((currentAccount.CompanyId.Value, code));
-                    }
-                    else if (string.IsNullOrWhiteSpace(accode))
-                    {
-                        // Vehicle-only search across all companies
-                        var activeCompanies = _context.Companies.Where(c => !c.IsDeleted).ToList();
-                        foreach (var c in activeCompanies)
-                        {
-                            targetAccounts.Add((c.Id, ""));
-                        }
-                    }
-                }
-            }
-
-            if (targetAccounts.Count == 0 && !string.IsNullOrWhiteSpace(accode))
-            {
-                return dt; // Nothing linked or found for this company/account
-            }
-
             using (SqlConnection con = new SqlConnection(connString))
             {
                 con.Open();
@@ -263,57 +146,20 @@ namespace Nskg.Controllers
                 // 1. Run dbo.PROCESSDETAIL_PartyExp to populate ACCUMULATED & ACCOPEN
                 try
                 {
-                    if (targetAccounts.Count <= 1)
+                    using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_PartyExp", con))
                     {
-                        int targetCompId = targetAccounts.Count == 1 ? targetAccounts[0].CompId : companyId;
-                        string targetCode = targetAccounts.Count == 1 ? targetAccounts[0].AccCode : (accode?.Trim() ?? "");
-                        using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_PartyExp", con))
-                        {
-                            cmdProc.CommandType = CommandType.StoredProcedure;
-                            cmdProc.CommandTimeout = 180;
-                            cmdProc.Parameters.AddWithValue("@CompanyId", targetCompId);
-                            cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
-                            cmdProc.Parameters.AddWithValue("@ACCODE", targetCode);
-                            cmdProc.Parameters.AddWithValue("@VehicleNo", vehicleNo?.Trim() ?? "");
-                            cmdProc.ExecuteNonQuery();
-                        }
-                    }
-                    else
-                    {
-                        // Multiple companies (All Companies): aggregate ACCUMULATED across each target company
-                        using (SqlCommand cmdInit = new SqlCommand("SELECT TOP 0 * INTO #TempAllAcc FROM ACCUMULATED;", con))
-                        {
-                            cmdInit.ExecuteNonQuery();
-                        }
-
-                        foreach (var target in targetAccounts)
-                        {
-                            using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_PartyExp", con))
-                            {
-                                cmdProc.CommandType = CommandType.StoredProcedure;
-                                cmdProc.CommandTimeout = 180;
-                                cmdProc.Parameters.AddWithValue("@CompanyId", target.CompId);
-                                cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
-                                cmdProc.Parameters.AddWithValue("@ACCODE", target.AccCode ?? "");
-                                cmdProc.Parameters.AddWithValue("@VehicleNo", vehicleNo?.Trim() ?? "");
-                                cmdProc.ExecuteNonQuery();
-                            }
-
-                            using (SqlCommand cmdCopy = new SqlCommand("INSERT INTO #TempAllAcc SELECT * FROM ACCUMULATED;", con))
-                            {
-                                cmdCopy.ExecuteNonQuery();
-                            }
-                        }
-
-                        using (SqlCommand cmdFinal = new SqlCommand("DELETE FROM ACCUMULATED; INSERT INTO ACCUMULATED SELECT * FROM #TempAllAcc; DROP TABLE #TempAllAcc;", con))
-                        {
-                            cmdFinal.ExecuteNonQuery();
-                        }
+                        cmdProc.CommandType = CommandType.StoredProcedure;
+                        cmdProc.CommandTimeout = 180;
+                        cmdProc.Parameters.AddWithValue("@CompanyId", companyId);
+                        cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
+                        cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                        cmdProc.Parameters.AddWithValue("@VehicleNo", vehicleNo?.Trim() ?? "");
+                        cmdProc.ExecuteNonQuery();
                     }
                 }
-                catch
+                catch (Exception exProc)
                 {
-                    // Fallback if needed
+                    Console.WriteLine("[PartyExpenseReport] Warning: PROCESSDETAIL_PartyExp failed: " + exProc.Message);
                 }
 
                 // 2. Fetch Account Name & Company Name
@@ -321,7 +167,7 @@ namespace Nskg.Controllers
                 if (!string.IsNullOrWhiteSpace(accode))
                 {
                     using (SqlCommand cmdAcc = new SqlCommand(
-                        "SELECT TOP 1 Name FROM GLCHART3 WHERE (CompanyId = @CompanyId OR @CompanyId = 0 OR CompanyId = 0 OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
+                        "SELECT TOP 1 Name FROM GLCHART3 WHERE (@CompanyId = 0 OR CompanyId = @CompanyId OR CompanyId IS NULL) AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@Accode) OR ACC = RTRIM(@Accode))", con))
                     {
                         cmdAcc.Parameters.AddWithValue("@CompanyId", companyId);
                         cmdAcc.Parameters.AddWithValue("@Accode", accode.Trim());
@@ -376,11 +222,6 @@ namespace Nskg.Controllers
                               OR (a.VOTYPE = 'CL' AND RTRIM(LTRIM(ISNULL(a.NARRATION, ''))) = RTRIM(LTRIM(@VehicleNo)))
                               OR a.VEHICLENO LIKE '%' + @VehicleNo + '%'
                               OR (a.VOTYPE = 'CL' AND a.NARRATION LIKE '%' + @VehicleNo + '%')
-                              OR REPLACE(REPLACE(ISNULL(a.VEHICLENO, ''), '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', '')
-                              OR (a.VOTYPE = 'CL' AND REPLACE(REPLACE(ISNULL(a.NARRATION, ''), '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', ''))
-                              OR (a.VOTYPE <> 'CL' AND EXISTS (SELECT 1 FROM CommDetail cmd INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id WHERE cmd.BillTiNo = a.BILLTINO AND (cm.VehicleNo LIKE '%' + @VehicleNo + '%' OR REPLACE(REPLACE(cm.VehicleNo, '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', ''))))
-                              OR (a.VOTYPE <> 'CL' AND EXISTS (SELECT 1 FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND (ch.VehicleNo LIKE '%' + @VehicleNo + '%' OR REPLACE(REPLACE(ch.VehicleNo, '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', ''))))
-                              OR (a.VOTYPE <> 'CL' AND EXISTS (SELECT 1 FROM ISSHEAD ish WHERE (ish.BillTiNo = a.BILLTINO OR ish.BilNo = a.BILNO) AND (ish.VehicleNo LIKE '%' + @VehicleNo + '%' OR REPLACE(REPLACE(ish.VehicleNo, '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', ''))))
                           );
                     END
 
@@ -430,13 +271,7 @@ namespace Nskg.Controllers
                             CASE WHEN a.BILNO IS NOT NULL AND a.BILNO <> 0 THEN CAST(CAST(a.BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BilNo,
                             CASE 
                                 WHEN a.VOTYPE = 'CL' THEN COALESCE(NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''), NULLIF(RTRIM(LTRIM(a.NARRATION)), ''), '')
-                                WHEN NULLIF(RTRIM(LTRIM(a.VEHICLENO)), '') IS NOT NULL THEN RTRIM(LTRIM(a.VEHICLENO))
-                                ELSE COALESCE(
-                                    (SELECT TOP 1 cm.VehicleNo FROM CommDetail cmd INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id WHERE cmd.BillTiNo = a.BILLTINO AND NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') IS NOT NULL),
-                                    (SELECT TOP 1 ch.VehicleNo FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL),
-                                    (SELECT TOP 1 ish.VehicleNo FROM ISSHEAD ish WHERE (ish.BillTiNo = a.BILLTINO OR ish.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ish.VehicleNo)), '') IS NOT NULL),
-                                    ''
-                                )
+                                ELSE ISNULL(RTRIM(LTRIM(a.VEHICLENO)), '')
                             END AS VehicleNo,
                             ISNULL(a.STATION, '') AS Station,
                             CASE 
@@ -460,11 +295,6 @@ namespace Nskg.Controllers
                               OR (a.VOTYPE = 'CL' AND RTRIM(LTRIM(ISNULL(a.NARRATION, ''))) = RTRIM(LTRIM(@VehicleNo)))
                               OR a.VEHICLENO LIKE '%' + @VehicleNo + '%'
                               OR (a.VOTYPE = 'CL' AND a.NARRATION LIKE '%' + @VehicleNo + '%')
-                              OR REPLACE(REPLACE(ISNULL(a.VEHICLENO, ''), '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', '')
-                              OR (a.VOTYPE = 'CL' AND REPLACE(REPLACE(ISNULL(a.NARRATION, ''), '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', ''))
-                              OR (a.VOTYPE <> 'CL' AND EXISTS (SELECT 1 FROM CommDetail cmd INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id WHERE cmd.BillTiNo = a.BILLTINO AND (cm.VehicleNo LIKE '%' + @VehicleNo + '%' OR REPLACE(REPLACE(cm.VehicleNo, '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', ''))))
-                              OR (a.VOTYPE <> 'CL' AND EXISTS (SELECT 1 FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND (ch.VehicleNo LIKE '%' + @VehicleNo + '%' OR REPLACE(REPLACE(ch.VehicleNo, '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', ''))))
-                              OR (a.VOTYPE <> 'CL' AND EXISTS (SELECT 1 FROM ISSHEAD ish WHERE (ish.BillTiNo = a.BILLTINO OR ish.BilNo = a.BILNO) AND (ish.VehicleNo LIKE '%' + @VehicleNo + '%' OR REPLACE(REPLACE(ish.VehicleNo, '-', ''), ' ', '') = REPLACE(REPLACE(@VehicleNo, '-', ''), ' ', ''))))
                           )
                           AND (
                               @BiltyNo = '' 

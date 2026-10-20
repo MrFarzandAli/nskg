@@ -129,84 +129,19 @@ namespace Nskg.Controllers
                 // 1. Run dbo.PROCESSDETAIL_Station to populate ACCUMULATED & ACCOPEN
                 try
                 {
-                    if (companyId > 0)
+                    using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_Station", con))
                     {
-                        using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_Station", con))
-                        {
-                            cmdProc.CommandType = CommandType.StoredProcedure;
-                            cmdProc.CommandTimeout = 180;
-                            cmdProc.Parameters.AddWithValue("@CompanyId", companyId);
-                            cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
-                            cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                            cmdProc.ExecuteNonQuery();
-                        }
-                    }
-                    else
-                    {
-                        var activeCompanies = _context.Companies.Where(c => !c.IsDeleted).Select(c => c.Id).ToList();
-                        if (activeCompanies.Count > 0)
-                        {
-                            using (SqlCommand cmdSetup = new SqlCommand(@"
-                                IF OBJECT_ID('tempdb..#AllAcc') IS NOT NULL DROP TABLE #AllAcc;
-                                SELECT TOP 0 * INTO #AllAcc FROM ACCUMULATED;", con))
-                            {
-                                cmdSetup.ExecuteNonQuery();
-                            }
-
-                            foreach (var cId in activeCompanies)
-                            {
-                                using (SqlCommand cmdProc = new SqlCommand("dbo.PROCESSDETAIL_Station", con))
-                                {
-                                    cmdProc.CommandType = CommandType.StoredProcedure;
-                                    cmdProc.CommandTimeout = 180;
-                                    cmdProc.Parameters.AddWithValue("@CompanyId", cId);
-                                    cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
-                                    cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
-                                    cmdProc.ExecuteNonQuery();
-                                }
-
-                                using (SqlCommand cmdCopy = new SqlCommand("INSERT INTO #AllAcc SELECT * FROM ACCUMULATED;", con))
-                                {
-                                    cmdCopy.ExecuteNonQuery();
-                                }
-                            }
-
-                            using (SqlCommand cmdMerge = new SqlCommand(@"
-                                DELETE FROM ACCUMULATED;
-
-                                ;WITH DistinctAcc AS
-                                (
-                                    SELECT *,
-                                           ROW_NUMBER() OVER(
-                                               PARTITION BY VONO, VOTYPE, CAST(VODATE AS DATE), DRAMT, CRAMT, ISNULL(BILLTINO, 0), ISNULL(BILNO, 0), ISNULL(VEHICLENO, ''), ISNULL(NARRATION, '')
-                                               ORDER BY COCODE
-                                           ) AS rn
-                                    FROM #AllAcc
-                                )
-                                INSERT INTO ACCUMULATED (
-                                    COCODE, VONO, VODATE, VOTYPE, AC1, AC2, AC3, ACTYPE, DRAMT, CRAMT, NARRATION,
-                                    CANCEL, PAY, INVNO, INVDATE, ACC, NDRAMT, NCRAMT, RATE, AMOUNT, CHQNO,
-                                    CHQDATE, STAXAMT, DUEDATE, INAME, QTY, BILLTINO, BILNO, DELIVERYAMT, DELIVERYAMT2,
-                                    STATION, VEHICLENO
-                                )
-                                SELECT 
-                                    COCODE, VONO, VODATE, VOTYPE, AC1, AC2, AC3, ACTYPE, DRAMT, CRAMT, NARRATION,
-                                    CANCEL, PAY, INVNO, INVDATE, ACC, NDRAMT, NCRAMT, RATE, AMOUNT, CHQNO,
-                                    CHQDATE, STAXAMT, DUEDATE, INAME, QTY, BILLTINO, BILNO, DELIVERYAMT, DELIVERYAMT2,
-                                    STATION, VEHICLENO
-                                FROM DistinctAcc
-                                WHERE rn = 1;
-
-                                DROP TABLE #AllAcc;", con))
-                            {
-                                cmdMerge.ExecuteNonQuery();
-                            }
-                        }
+                        cmdProc.CommandType = CommandType.StoredProcedure;
+                        cmdProc.CommandTimeout = 180;
+                        cmdProc.Parameters.AddWithValue("@CompanyId", companyId);
+                        cmdProc.Parameters.AddWithValue("@TDATE", toDate.Date);
+                        cmdProc.Parameters.AddWithValue("@ACCODE", accode?.Trim() ?? "");
+                        cmdProc.ExecuteNonQuery();
                     }
                 }
-                catch
+                catch (Exception exProc)
                 {
-                    // Fallback
+                    Console.WriteLine("[StationLedgerReport] Warning: PROCESSDETAIL_Station execution failed: " + exProc.Message);
                 }
 
                 // 2. Fetch Account Name & Company Name
@@ -287,19 +222,11 @@ namespace Nskg.Controllers
                             END AS DocNo,
                             ISNULL(a.VOTYPE, '') AS Votype,
                             CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS Comm,
-                            CASE 
-                                WHEN NULLIF(RTRIM(LTRIM(a.VEHICLENO)), '') IS NOT NULL THEN RTRIM(LTRIM(a.VEHICLENO))
-                                ELSE COALESCE(
-                                    (SELECT TOP 1 vd.Vehicleno FROM VoDet vd WHERE vd.Vono = a.VONO AND vd.Votype = a.VOTYPE AND NULLIF(RTRIM(LTRIM(vd.Vehicleno)), '') IS NOT NULL),
-                                    (SELECT TOP 1 ish.VehicleNo FROM ISSHEAD ish WHERE (ish.BillTiNo = a.BILLTINO OR ish.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ish.VehicleNo)), '') IS NOT NULL),
-                                    (SELECT TOP 1 ch.VehicleNo FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL),
-                                    (SELECT TOP 1 cm.VehicleNo FROM CommDetail cmd INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id WHERE cmd.BillTiNo = a.BILLTINO AND NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') IS NOT NULL),
-                                    (SELECT TOP 1 ch.VehicleNo FROM ChallanHead ch WHERE ch.ChalNo = a.BILLTINO AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL),
-                                    (SELECT TOP 1 cm.VehicleNo FROM CommHead cm WHERE cm.DocNo = a.VONO AND NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') IS NOT NULL),
-                                    CASE WHEN a.VOTYPE = 'CL' THEN NULLIF(RTRIM(LTRIM(a.NARRATION)), '') ELSE NULL END,
-                                    ''
-                                )
-                            END AS VehicleNo,
+                            COALESCE(
+                                NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''),
+                                CASE WHEN a.VOTYPE = 'CL' THEN NULLIF(RTRIM(LTRIM(a.NARRATION)), '') ELSE NULL END,
+                                ''
+                            ) AS VehicleNo,
                             ISNULL(a.INAME, '') AS Station,
                             ISNULL(a.NARRATION, '') AS Narration,
                             CASE 

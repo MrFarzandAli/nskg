@@ -69,12 +69,20 @@ namespace Nskg.Controllers
             DataTable dt = new DataTable();
             resolvedType = "Godown"; 
 
+            string? stationName = null;
+            int? stationId = null;
+
             if (!string.IsNullOrEmpty(accode))
             {
                 var ac = _context.GLChart3.FirstOrDefault(x => (x.ACC == accode || (x.AC1 + x.AC3) == accode));
-                if (ac != null && ac.Name != null && ac.Name.IndexOf("Adda", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (ac != null)
                 {
-                    resolvedType = "Adda";
+                    stationName = ac.Name;
+                    stationId = ac.Id;
+                    if (ac.Name != null && ac.Name.IndexOf("Adda", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        resolvedType = "Adda";
+                    }
                 }
             }
 
@@ -114,8 +122,8 @@ namespace Nskg.Controllers
                 {
                     query += @" AND (
                         ch.StationCode = @Accode 
-                        OR ch.Station = (SELECT TOP 1 Name FROM GLChart3 WHERE ACC = @Accode OR (AC1 + AC3) = @Accode)
-                        OR ch.StationId IN (SELECT Id FROM GLChart3 WHERE ACC = @Accode OR (AC1 + AC3) = @Accode)
+                        OR (@StationName IS NOT NULL AND ch.Station = @StationName)
+                        OR (@StationId IS NOT NULL AND ch.StationId = @StationId)
                     ) ";
                 }
                 
@@ -130,7 +138,12 @@ namespace Nskg.Controllers
                 {
                     if (fromDate.HasValue) cmd.Parameters.AddWithValue("@FromDate", fromDate.Value);
                     if (toDate.HasValue) cmd.Parameters.AddWithValue("@ToDate", toDate.Value);
-                    if (!string.IsNullOrWhiteSpace(accode)) cmd.Parameters.AddWithValue("@Accode", accode);
+                    if (!string.IsNullOrWhiteSpace(accode))
+                    {
+                        cmd.Parameters.AddWithValue("@Accode", accode);
+                        cmd.Parameters.AddWithValue("@StationName", (object?)stationName ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@StationId", (object?)stationId ?? DBNull.Value);
+                    }
                     if (companyId > 0) cmd.Parameters.AddWithValue("@CompanyId", companyId);
 
                     using (SqlDataAdapter sda = new SqlDataAdapter(cmd))

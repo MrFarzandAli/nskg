@@ -289,9 +289,6 @@ namespace Nskg.Controllers
                           OR RTRIM(LTRIM(ISNULL(a.VEHICLENO, ''))) = RTRIM(LTRIM(@VehicleNo))
                           OR a.VEHICLENO LIKE '%' + @VehicleNo + '%'
                           OR (a.VOTYPE = 'CL' AND a.NARRATION LIKE '%' + @VehicleNo + '%')
-                          OR EXISTS (SELECT 1 FROM ISSHEAD ish WHERE (ish.BillTiNo = a.BILLTINO OR ish.BilNo = a.BILNO) AND ish.VehicleNo LIKE '%' + @VehicleNo + '%')
-                          OR EXISTS (SELECT 1 FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND ch.VehicleNo LIKE '%' + @VehicleNo + '%')
-                          OR EXISTS (SELECT 1 FROM CommDetail cmd INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id WHERE cmd.BillTiNo = a.BILLTINO AND cm.VehicleNo LIKE '%' + @VehicleNo + '%')
                       );
 
                     ;WITH RawData AS
@@ -324,16 +321,7 @@ namespace Nskg.Controllers
                             ISNULL(a.VOTYPE, '') AS Votype,
                             CASE WHEN a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 THEN CAST(CAST(a.BILLTINO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BillTiNo,
                             CASE WHEN a.BILNO IS NOT NULL AND a.BILNO <> 0 THEN CAST(CAST(a.BILNO AS BIGINT) AS VARCHAR(50)) ELSE NULL END AS BilNo,
-                            CASE 
-                                WHEN NULLIF(RTRIM(LTRIM(a.VEHICLENO)), '') IS NOT NULL THEN RTRIM(LTRIM(a.VEHICLENO))
-                                ELSE COALESCE(
-                                    (SELECT TOP 1 ish.VehicleNo FROM ISSHEAD ish WHERE (ish.BillTiNo = a.BILLTINO OR ish.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ish.VehicleNo)), '') IS NOT NULL),
-                                    (SELECT TOP 1 ch.VehicleNo FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND NULLIF(RTRIM(LTRIM(ch.VehicleNo)), '') IS NOT NULL),
-                                    (SELECT TOP 1 cm.VehicleNo FROM CommDetail cmd INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id WHERE cmd.BillTiNo = a.BILLTINO AND NULLIF(RTRIM(LTRIM(cm.VehicleNo)), '') IS NOT NULL),
-                                    CASE WHEN a.VOTYPE = 'CL' THEN NULLIF(RTRIM(LTRIM(a.NARRATION)), '') ELSE NULL END,
-                                    ''
-                                )
-                            END AS VehicleNo,
+                            COALESCE(NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''), CASE WHEN a.VOTYPE = 'CL' THEN NULLIF(RTRIM(LTRIM(a.NARRATION)), '') ELSE NULL END, '') AS VehicleNo,
                             ISNULL(a.STATION, '') AS Station,
                             CASE 
                                 WHEN a.VOTYPE = 'CL' THEN ISNULL(a.INAME, '')
@@ -356,9 +344,6 @@ namespace Nskg.Controllers
                               OR RTRIM(LTRIM(ISNULL(a.VEHICLENO, ''))) = RTRIM(LTRIM(@VehicleNo))
                               OR a.VEHICLENO LIKE '%' + @VehicleNo + '%'
                               OR (a.VOTYPE = 'CL' AND a.NARRATION LIKE '%' + @VehicleNo + '%')
-                              OR EXISTS (SELECT 1 FROM ISSHEAD ish WHERE (ish.BillTiNo = a.BILLTINO OR ish.BilNo = a.BILNO) AND ish.VehicleNo LIKE '%' + @VehicleNo + '%')
-                              OR EXISTS (SELECT 1 FROM ChallanDet cd INNER JOIN ChallanHead ch ON cd.ChallanHeadId = ch.Id WHERE (cd.BillTiNo = a.BILLTINO OR cd.BilNo = a.BILNO) AND ch.VehicleNo LIKE '%' + @VehicleNo + '%')
-                              OR EXISTS (SELECT 1 FROM CommDetail cmd INNER JOIN CommHead cm ON cmd.CommHeadId = cm.Id WHERE cmd.BillTiNo = a.BILLTINO AND cm.VehicleNo LIKE '%' + @VehicleNo + '%')
                           )
                     )
                     SELECT 

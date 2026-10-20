@@ -1,7 +1,7 @@
-﻿-- dbo.PROCESSDETAIL_Station 1006,'2026-08-23','067003'
-CREATE   PROCEDURE [dbo].[PROCESSDETAIL_Station]  
+-- dbo.PROCESSDETAIL_Station 1006,'2026-08-23','067003'
+CREATE OR ALTER PROCEDURE [dbo].[PROCESSDETAIL_Station]  
 (
-    @CompanyId int,
+    @CompanyId int = 0,
     @TDATE  DATE,
     @ACCODE VARCHAR(50)
 )
@@ -98,8 +98,8 @@ BEGIN
             ACTYPE,
             CompanyId
         FROM GLCHART3
-        WHERE CompanyId = @CompanyId
-          AND RTRIM(AC1) + RTRIM(AC3) = RTRIM(@ACCODE)
+        WHERE (@CompanyId = 0 OR CompanyId = @CompanyId)
+          AND (RTRIM(AC1) + RTRIM(AC3) = RTRIM(@ACCODE) OR RTRIM(ACC) = RTRIM(@ACCODE))
           AND CTYPE <> '4';
 
 
@@ -107,45 +107,52 @@ BEGIN
            SALES / PURCHASE CONTROL ACCOUNTS FROM ACCOUNT PARAMETER TABLE
            ========================================================= */
 
-        -- Update ISSHEAD with Sales account (ACTYPE = 'S')
-        UPDATE ISSHEAD
-        SET ACcCODE =
-        (
-            SELECT TOP 1 RTRIM(ACCODE)
-            FROM ACPARA
-            WHERE ACTYPE = 'S'
-              AND CompanyId = @CompanyId
-        );
+        IF @CompanyId > 0
+        BEGIN
+            -- Update ISSHEAD with Sales account (ACTYPE = 'S')
+            UPDATE ISSHEAD
+            SET ACcCODE =
+            (
+                SELECT TOP 1 RTRIM(ACCODE)
+                FROM ACPARA
+                WHERE ACTYPE = 'S'
+                  AND CompanyId = @CompanyId
+            )
+            WHERE CompanyId = @CompanyId;
 
-        -- Update COMMHEAD with account (ACTYPE = 'D')
-        UPDATE COMMHEAD
-        SET ACCODE =
-        (
-            SELECT TOP 1 RTRIM(ACCODE)
-            FROM ACPARA
-            WHERE ACTYPE = 'D'
-              AND CompanyId = @CompanyId
-        );
+            -- Update COMMHEAD with account (ACTYPE = 'D')
+            UPDATE COMMHEAD
+            SET ACCODE =
+            (
+                SELECT TOP 1 RTRIM(ACCODE)
+                FROM ACPARA
+                WHERE ACTYPE = 'D'
+                  AND CompanyId = @CompanyId
+            )
+            WHERE CompanyId = @CompanyId;
 
-        -- Update ISSDETAIL with Sales account (ACTYPE = 'S')
-        UPDATE ISSDETAIL
-        SET ACcCODE =
-        (
-            SELECT TOP 1 RTRIM(ACCODE)
-            FROM ACPARA
-            WHERE ACTYPE = 'S'
-              AND CompanyId = @CompanyId
-        );
+            -- Update ISSDETAIL with Sales account (ACTYPE = 'S')
+            UPDATE ISSDETAIL
+            SET ACcCODE =
+            (
+                SELECT TOP 1 RTRIM(ACCODE)
+                FROM ACPARA
+                WHERE ACTYPE = 'S'
+                  AND CompanyId = @CompanyId
+            )
+            WHERE CompanyId = @CompanyId;
 
-        -- Update CommDetail with account (ACTYPE = 'D')
-        UPDATE CommDetail
-        SET ACCODE =
-        (
-            SELECT TOP 1 RTRIM(ACCODE)
-            FROM ACPARA
-            WHERE ACTYPE = 'D'
-              AND CompanyId = @CompanyId
-        );
+            -- Update CommDetail with account (ACTYPE = 'D')
+            UPDATE CommDetail
+            SET ACCODE =
+            (
+                SELECT TOP 1 RTRIM(ACCODE)
+                FROM ACPARA
+                WHERE ACTYPE = 'D'
+                  AND CompanyId = @CompanyId
+            )
+            WHERE CompanyId = @CompanyId;
+        END;
 
        
 
@@ -213,7 +220,7 @@ BEGIN
             BILNO
         FROM VODET d
         JOIN VOHEAD h ON h.Id = d.VOHEADId
-        WHERE h.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR h.CompanyId = @CompanyId)
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') = '0'
           AND ISNULL(HACC, '999999') = @ACCODE
@@ -255,7 +262,7 @@ BEGIN
             '2'
         FROM VODET d
         JOIN VOHEAD h ON h.Id = d.VOHEADId
-        WHERE h.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR h.CompanyId = @CompanyId)
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') <> '0'
           AND ISNULL(HACC, '999999') = @ACCODE
@@ -317,7 +324,7 @@ BEGIN
             RTRIM(NAME)
         FROM VODET d
         JOIN VOHEAD h ON h.Id = d.VOHEADId
-        WHERE h.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR h.CompanyId = @CompanyId)
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') = '0'
           AND ISNULL(HACC, '999999') <> @ACCODE
@@ -370,7 +377,7 @@ BEGIN
             RTRIM(NAME)
         FROM VODET d
         JOIN VOHEAD h ON h.Id = d.VOHEADId
-        WHERE h.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR h.CompanyId = @CompanyId)
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') = '0'
           AND ISNULL(HACC, '999999') <> @ACCODE
@@ -413,7 +420,7 @@ BEGIN
             '2'
         FROM VODET d
         JOIN VOHEAD h ON h.Id = d.VOHEADId
-        WHERE h.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR h.CompanyId = @CompanyId)
           AND d.VODATE <= @TDATE
           AND ISNULL(d.INVNO, '0') <> '0'
           AND ISNULL(HACC, '999999') <> @ACCODE
@@ -470,11 +477,11 @@ BEGIN
         INNER JOIN ISSHEAD H
             ON RTRIM(D.DOCNO) = RTRIM(H.DOCNO)
            AND D.CompanyId = H.CompanyId
-        WHERE H.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR H.CompanyId = @CompanyId)
           AND RTRIM(H.CUSCODE) = RTRIM(@ACCODE)
           AND RTRIM(D.CUSCODE) = RTRIM(@ACCODE)
           AND H.DOCDATE <= @TDATE
-          AND D.CompanyId = @CompanyId
+          AND (@CompanyId = 0 OR D.CompanyId = @CompanyId)
           and ISNULL(h.IsDeleted, 0) = 0;
 
 
@@ -508,9 +515,9 @@ BEGIN
             H.DOCNO,
             H.DOCDATE,
             'ST',
-            SUBSTRING(H.STATIONCODE, 1, 3),
-            SUBSTRING(H.STATIONCODE, 4, 3),
-            ISNULL(H.TOTAMT, 0),
+            SUBSTRING(LTRIM(RTRIM(H.STATIONCODE)), 1, 3),
+            SUBSTRING(LTRIM(RTRIM(H.STATIONCODE)), 4, 3),
+            ISNULL(H.STATIONAMT, 0),
             '3',
             H.NARRATION,
             H.VEHICLENO,
@@ -521,7 +528,7 @@ BEGIN
             H.DELIVERYAMT1,
             H.DELIVERYAMT2
         FROM COMMHEAD H
-        WHERE H.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR H.CompanyId = @CompanyId)
           AND RTRIM(H.STATIONCODE) = RTRIM(@ACCODE)
           AND ISNULL(H.STATIONAMT, 0) > 0
           AND LEFT(CAST(ISNULL(H.STATIONAMT, 0) AS VARCHAR(50)), 1) <> '-'
@@ -559,8 +566,8 @@ BEGIN
             H.DOCNO,
             H.DOCDATE,
             'ST',
-            SUBSTRING(H.STATIONCODE, 1, 3),
-            SUBSTRING(H.STATIONCODE, 4, 3),
+            SUBSTRING(LTRIM(RTRIM(H.STATIONCODE)), 1, 3),
+            SUBSTRING(LTRIM(RTRIM(H.STATIONCODE)), 4, 3),
             ABS(ISNULL(H.STATIONAMT, 0)),
             '3',
             H.NARRATION,
@@ -572,9 +579,9 @@ BEGIN
             H.DELIVERYAMT1,
             H.DELIVERYAMT2
         FROM COMMHEAD H
-        WHERE H.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR H.CompanyId = @CompanyId)
           AND RTRIM(H.STATIONCODE) = RTRIM(@ACCODE)
-          AND LEFT(CAST(ISNULL(H.STATIONAMT, 0) AS VARCHAR(50)), 1) = '-'
+          AND (ISNULL(H.STATIONAMT, 0) < 0 OR LEFT(CAST(ISNULL(H.STATIONAMT, 0) AS VARCHAR(50)), 1) = '-')
           AND H.DOCDATE <= @TDATE
           and ISNULL(h.IsDeleted, 0) = 0;
 
@@ -613,9 +620,9 @@ BEGIN
         INNER JOIN ISSDETAIL D
             ON RTRIM(D.DOCNO) = RTRIM(H.DOCNO)
            AND D.CompanyId = H.CompanyId
-        WHERE H.CompanyId = @CompanyId
+        WHERE (@CompanyId = 0 OR H.CompanyId = @CompanyId)
           AND H.ACcCODE = @ACCODE
-          AND D.CompanyId = @CompanyId
+          AND (@CompanyId = 0 OR D.CompanyId = @CompanyId)
           and ISNULL(h.IsDeleted, 0) = 0;
 
 
@@ -650,16 +657,16 @@ BEGIN
             'CARTAGE on Inv #: ' + ISNULL(CONVERT(VARCHAR(50), H.INVNO), '') + ' Customer: ' + RTRIM(H.CUSNAME)
         FROM ISSHEAD H
         WHERE
-            CASE
+            (@CompanyId = 0 OR CASE
                 WHEN H.CompanyId IN (1008,1009) THEN 1007
                 ELSE H.CompanyId
-            END = @CompanyId
+            END = @CompanyId)
           AND RTRIM(@ACCODE) =
               (
                   SELECT TOP 1 RTRIM(ACCODE)
                   FROM ACPARA
                   WHERE ACTYPE = 'E'
-                    AND CompanyId = @CompanyId
+                    AND (@CompanyId = 0 OR CompanyId = @CompanyId)
               )
           AND H.DOCDATE <= @TDATE
           AND (ISNULL(H.CARTAGE1, 0) + ISNULL(H.CARTAGE2, 0) + ISNULL(H.CARTAGE3, 0)) > 0
@@ -698,10 +705,10 @@ BEGIN
             'CARTAGE on Inv #: ' + ISNULL(CONVERT(VARCHAR(50), H.INVNO), '') + ' ' + RTRIM(H.CARTTYPE) + ' Trip to Customer: ' + RTRIM(H.CUSNAME)
         FROM ISSHEAD H
         WHERE
-            CASE
+            (@CompanyId = 0 OR CASE
                 WHEN H.CompanyId IN (1008,1009) THEN 1007
                 ELSE H.CompanyId
-            END = @CompanyId
+            END = @CompanyId)
           AND RTRIM(H.TRANSPORTER) = RTRIM(@ACCODE)
           AND H.DOCDATE <= @TDATE
           AND ISNULL(H.CARTAGE1, 0) > 0
@@ -735,10 +742,10 @@ BEGIN
             'CARTAGE on Inv #: ' + ISNULL(CONVERT(VARCHAR(50), H.INVNO), '') + ' ' + RTRIM(H.CARTTYPE2) + ' Trip to Customer: ' + RTRIM(H.CUSNAME)
         FROM ISSHEAD H
         WHERE
-            CASE
+            (@CompanyId = 0 OR CASE
                 WHEN H.CompanyId IN (1008,1009) THEN 1007
                 ELSE H.CompanyId
-            END = @CompanyId
+            END = @CompanyId)
           AND RTRIM(H.TRANSPORTER2) = RTRIM(@ACCODE)
           AND H.DOCDATE <= @TDATE
           AND ISNULL(H.CARTAGE2, 0) > 0
@@ -772,10 +779,10 @@ BEGIN
             'CARTAGE on Inv #: ' + ISNULL(CONVERT(VARCHAR(50), H.INVNO), '') + ' ' + RTRIM(H.CARTTYPE3) + ' Trip to Customer: ' + RTRIM(H.CUSNAME)
         FROM ISSHEAD H
         WHERE
-            CASE
+            (@CompanyId = 0 OR CASE
                 WHEN H.CompanyId IN (1008,1009) THEN 1007
                 ELSE H.CompanyId
-            END = @CompanyId
+            END = @CompanyId)
           AND RTRIM(H.TRANSPORTER3) = RTRIM(@ACCODE)
           AND H.DOCDATE <= @TDATE
           AND ISNULL(H.CARTAGE3, 0) > 0
@@ -788,7 +795,7 @@ BEGIN
            COMPANY 01 ONLY - WITHHOLDING TAX
            ========================================================= */
 
-        IF @CompanyId = 1006
+        IF @CompanyId = 1006 OR @CompanyId = 0
         BEGIN
 
             -- Income Tax - Customer Credit
@@ -808,7 +815,7 @@ BEGIN
                 '3',
                 'WITH-HOLDING INCOME TAX ON SALES INVOICE # ' + ISNULL(CONVERT(VARCHAR(50), H.INVNO), '') + ' @ ' + ISNULL(CONVERT(VARCHAR(50),H.WH_IT), '') + ' %'
             FROM ISSHEAD H
-            WHERE H.CompanyId = @CompanyId
+            WHERE H.CompanyId = 1006
               AND ISNULL(H.WH_IT_REC, '3000-12-31') <= @TDATE
               AND ISNULL(H.WH_IT_AMT, 0) > 0
               AND H.WH_IT_REC IS NOT NULL
@@ -832,7 +839,7 @@ BEGIN
                 '3',
                 'W/H I.TAX ON INV.# ' + ISNULL(CONVERT(VARCHAR(50), H.INVNO), '') + ' @ ' + ISNULL(CONVERT(VARCHAR(50),H.WH_IT), '') + ' % Cus. ' + LEFT(RTRIM(H.CUSNAME), 30)
             FROM ISSHEAD H
-            WHERE H.CompanyId = @CompanyId
+            WHERE H.CompanyId = 1006
               AND ISNULL(H.WH_IT_REC, '3000-12-31') <= @TDATE
               AND ISNULL(H.WH_IT_AMT, 0) > 0
               AND H.WH_IT_REC IS NOT NULL
@@ -856,7 +863,7 @@ BEGIN
                 '3',
                 'WITH-HOLDING SALES TAX ON SALES INVOICE # ' + ISNULL(CONVERT(VARCHAR(50), H.INVNO), '') + ' @ ' + ISNULL(CONVERT(VARCHAR(50),H.WH_ST), '') + ' %'
             FROM ISSHEAD H
-            WHERE H.CompanyId = @CompanyId
+            WHERE H.CompanyId = 1006
               AND ISNULL(H.WH_ST_REC, '3000-12-31') <= @TDATE
               AND ISNULL(H.WH_ST_AMT, 0) > 0
               AND H.WH_ST_REC IS NOT NULL
@@ -880,7 +887,7 @@ BEGIN
                 '3',
                 'WITH-HOLDING SALES TAX ON SALES INVOICE # ' + ISNULL(CONVERT(VARCHAR(50), H.INVNO), '') + ' @ ' + ISNULL(CONVERT(VARCHAR(50),H.WH_ST), '') + ' %'
             FROM ISSHEAD H
-            WHERE H.CompanyId = @CompanyId
+            WHERE H.CompanyId = 1006
               AND ISNULL(H.WH_ST_REC, '3000-12-31') <= @TDATE
               AND ISNULL(H.WH_ST_AMT, 0) > 0
               AND H.WH_ST_REC IS NOT NULL
