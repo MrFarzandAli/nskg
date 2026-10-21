@@ -127,9 +127,7 @@ namespace Nskg.Controllers
             if (ac1Trim == "059" || upper.Contains("ADVANCE") || upper.Contains("(ADV)") || upper.Contains(" ADV ") || upper.EndsWith("(ADV)") || upper.Contains("ADV."))
                 return true;
 
-            // Exclude Party Exp accounts
-            if (ac1Trim == "075" || upper.Contains("PARTY EXP") || upper.Contains("(PARTY EXP)") || (upper.Contains("PARTY") && upper.Contains("EXP")))
-                return true;
+
 
             // Exclude Broker accounts
             if (upper.Contains("BROKER") || upper.Contains("(ROKER)") || upper.Contains("BROKERY"))
@@ -316,6 +314,7 @@ namespace Nskg.Controllers
                             ) AS VehicleNo,
                             COALESCE(
                                 NULLIF(RTRIM(LTRIM(a.STATION)), ''),
+                                CASE WHEN a.VOTYPE = 'BL' THEN NULLIF(RTRIM(LTRIM(ish.Fooder)), '') ELSE NULL END,
                                 ''
                             ) AS Station,
                             ISNULL(a.INAME, ISNULL(a.NARRATION, '')) AS IName,
@@ -343,7 +342,7 @@ namespace Nskg.Controllers
                             ISNULL(a.CRAMT, 0) AS Credit
                         FROM FilteredAcc a
                         OUTER APPLY (
-                            SELECT TOP 1 ish.BillTiNo, ish.BilNo, ish.VehicleNo, ish.Qty, ish.CompanyId, ish.Cocode
+                            SELECT TOP 1 ish.BillTiNo, ish.BilNo, ish.VehicleNo, ish.Qty, ish.CompanyId, ish.Cocode, ish.Fooder
                             FROM IssHead ish 
                             WHERE a.VOTYPE = 'BL'
                               AND (ish.DocNo = a.VONO OR (a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 AND ish.BillTiNo = a.BILLTINO))
@@ -544,7 +543,7 @@ namespace Nskg.Controllers
                 sb.Append($"</div>");
 
                 sb.Append("<table><thead><tr>");
-                sb.Append("<th>Date</th><th>Doc #</th><th>Typ</th><th>Bilty #</th><th>Bill #</th><th>Vehicle No</th><th>Party / Item</th><th class='num'>Qty</th><th>Initials</th><th class='num'>Debit</th><th class='num'>Credit</th><th class='num'>Balance</th>");
+                sb.Append("<th>Date</th><th>Doc #</th><th>Typ</th><th>Bilty #</th><th>Bill #</th><th>Vehicle No</th><th>Station</th><th>Party / Item</th><th class='num'>Qty</th><th>Initials</th><th class='num'>Debit</th><th class='num'>Credit</th><th class='num'>Balance</th>");
                 sb.Append("</tr></thead><tbody>");
 
                 foreach (DataRow row in dt.Rows)
@@ -555,6 +554,7 @@ namespace Nskg.Controllers
                     string biltiNo = row["BillTiNo"]?.ToString() ?? "";
                     string bilNo = row["BilNo"]?.ToString() ?? "";
                     string vNo = row["VehicleNo"]?.ToString() ?? "";
+                    string station = row["Station"]?.ToString() ?? "";
                     string iname = row["IName"]?.ToString() ?? "";
                     string qty = row["Qty"] != DBNull.Value && row["Qty"] != null ? (row["Qty"]?.ToString() ?? "") : "";
                     string initials = row["Initials"]?.ToString() ?? "";
@@ -575,12 +575,12 @@ namespace Nskg.Controllers
                     string creditStr = credit != 0 ? credit.ToString("#,##0.00") : "";
 
                     sb.Append($"<tr {rowClass}>");
-                    sb.Append($"<td>{docDate}</td><td>{docNo}</td><td>{votype}</td><td>{biltiNo}</td><td>{bilNo}</td><td>{vNo}</td><td>{iname}</td><td class='num'>{qty}</td><td>{initials}</td><td class='num'>{debitStr}</td><td class='num'>{creditStr}</td><td class='num bold'>{balance:#,##0.00}</td>");
+                    sb.Append($"<td>{docDate}</td><td>{docNo}</td><td>{votype}</td><td>{biltiNo}</td><td>{bilNo}</td><td>{vNo}</td><td>{station}</td><td>{iname}</td><td class='num'>{qty}</td><td>{initials}</td><td class='num'>{debitStr}</td><td class='num'>{creditStr}</td><td class='num bold'>{balance:#,##0.00}</td>");
                     sb.Append($"</tr>");
                 }
 
                 sb.Append("</tbody><tfoot><tr>");
-                sb.Append($"<td colspan='9' style='text-align:right;' class='bold'>TOTALS:</td><td class='num bold'>{totalDebit:#,##0.00}</td><td class='num bold'>{totalCredit:#,##0.00}</td><td></td>");
+                sb.Append($"<td colspan='10' style='text-align:right;' class='bold'>TOTALS:</td><td class='num bold'>{totalDebit:#,##0.00}</td><td class='num bold'>{totalCredit:#,##0.00}</td><td></td>");
                 sb.Append("</tr></tfoot></table>");
                 sb.Append(Nskg.Helpers.ReportPaginationHelper.GetPaginationScript());
                 sb.Append("</body></html>");
@@ -619,7 +619,7 @@ namespace Nskg.Controllers
                 sb.AppendLine();
 
                 // Table Header
-                sb.AppendLine("Doc.Date,Doc. #,Typ,BilltiNo,Bill. No,Vehicle No,Party name / Item,Qty,Initials,DEBIT,CREDIT,BALANCE");
+                sb.AppendLine("Doc.Date,Doc. #,Typ,BilltiNo,Bill. No,Vehicle No,Station,Party name / Item,Qty,Initials,DEBIT,CREDIT,BALANCE");
 
                 foreach (DataRow row in dt.Rows)
                 {
@@ -629,6 +629,7 @@ namespace Nskg.Controllers
                     string billtiNo = EscapeCsv(row["BillTiNo"]?.ToString() ?? "");
                     string bilNo = EscapeCsv(row["BilNo"]?.ToString() ?? "");
                     string vehicleNo = EscapeCsv(row["VehicleNo"]?.ToString() ?? "");
+                    string station = EscapeCsv(row["Station"]?.ToString() ?? "");
                     string iname = EscapeCsv(row["IName"]?.ToString() ?? "");
                     string qty = row["Qty"] != DBNull.Value && row["Qty"] != null ? (row["Qty"]?.ToString() ?? "") : "";
                     string initials = EscapeCsv(row["Initials"]?.ToString() ?? "");
@@ -636,7 +637,7 @@ namespace Nskg.Controllers
                     string credit = row["Credit"] != DBNull.Value && Convert.ToDecimal(row["Credit"]) != 0 ? Convert.ToDecimal(row["Credit"]).ToString("F2") : "";
                     string balance = row["Balance"] != DBNull.Value ? Convert.ToDecimal(row["Balance"]).ToString("F2") : "";
 
-                    sb.AppendLine($"{docDate},{docNo},{votype},{billtiNo},{bilNo},{vehicleNo},{iname},{qty},{initials},{debit},{credit},{balance}");
+                    sb.AppendLine($"{docDate},{docNo},{votype},{billtiNo},{bilNo},{vehicleNo},{station},{iname},{qty},{initials},{debit},{credit},{balance}");
                 }
 
                 byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());

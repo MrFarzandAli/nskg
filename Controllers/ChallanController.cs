@@ -363,6 +363,7 @@ namespace Nskg.Controllers
 
                 model.Head.Transporter = transporter?.Name;
                 model.Head.TransCode = transporter?.ACC;
+                model.Head.DescYn = "N";
 
                 // =========================
                 // SAVE HEAD

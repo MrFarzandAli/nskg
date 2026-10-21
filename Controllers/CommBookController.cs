@@ -1385,17 +1385,12 @@ namespace Nskg.Controllers
                     challanQuery = challanQuery.Where(x => x.CompanyId == compId || x.CompanyId == 0);
                 }
 
-                challanQuery = challanQuery.Where(x => !x.IsDeleted);
+                challanQuery = challanQuery.Where(x => !x.IsDeleted && (x.DescYn == "N" || string.IsNullOrEmpty(x.DescYn)));
 
                 if (otherLinkedChallanIds.Any())
                 {
                     var oIds = otherLinkedChallanIds.ToList();
                     challanQuery = challanQuery.Where(x => !oIds.Contains(x.Id));
-                }
-                if (otherLinkedDocNos.Any())
-                {
-                    var oDocs = otherLinkedDocNos.ToList();
-                    challanQuery = challanQuery.Where(x => x.DocNo == null || !oDocs.Contains(x.DocNo.ToLower()));
                 }
 
                 var topChallans = challanQuery
@@ -1411,12 +1406,11 @@ namespace Nskg.Controllers
                         .Where(cd => cd.CommHeadId == commBookId.Value)
                         .ToList();
 
-                    var curChallanIds = currentCommDetails.Where(cd => cd.ChallanId.HasValue).Select(cd => cd.ChallanId!.Value).ToHashSet();
-                    var curDocNos = currentCommDetails.Where(cd => !string.IsNullOrEmpty(cd.DcNo)).Select(cd => cd.DcNo!.Trim().ToLower()).ToHashSet();
+                    var curChallanIds = currentCommDetails.Where(cd => cd.ChallanId.HasValue && cd.ChallanId.Value > 0).Select(cd => cd.ChallanId!.Value).ToHashSet();
 
                     var existingIds = topChallans.Select(c => c.Id).ToHashSet();
                     var missingCurrentChallans = _context.ChallanHead
-                        .Where(ch => !existingIds.Contains(ch.Id) && (curChallanIds.Contains(ch.Id) || (ch.DocNo != null && curDocNos.Contains(ch.DocNo.ToLower()))))
+                        .Where(ch => !existingIds.Contains(ch.Id) && curChallanIds.Contains(ch.Id))
                         .ToList();
 
                     if (missingCurrentChallans.Any())
@@ -1447,7 +1441,7 @@ namespace Nskg.Controllers
                         x.TotPartyEx,
                         x.TotLifter2,
                         x.TotOtherEx,
-                        DescYn = (otherLinkedChallanIds.Contains(x.Id) || (!string.IsNullOrEmpty(x.DocNo) && otherLinkedDocNos.Contains(x.DocNo.ToLower()))) ? "Y" : "N"
+                        DescYn = x.DescYn ?? "N"
                     })
                     .ToList();
             }
@@ -1589,8 +1583,8 @@ namespace Nskg.Controllers
 
                 var results = list.Select(x =>
                 {
-                    bool isOtherAssigned = otherAssignedChallanIds.Contains(x.Id) ||
-                                           (!string.IsNullOrEmpty(x.DocNo) && otherAssignedDocNos.Contains(x.DocNo.ToLower()));
+                    bool isOtherAssigned = otherAssignedChallanIds.Contains(x.Id);
+                    bool isAssigned = (x.DescYn == "Y" || isOtherAssigned);
 
                     return new
                     {
@@ -1613,12 +1607,34 @@ namespace Nskg.Controllers
                         totPartyEx = x.TotPartyEx ?? 0,
                         totLifter2 = x.TotLifter2 ?? 0,
                         totOtherEx = x.TotOtherEx ?? 0,
-                        descYn = isOtherAssigned ? "Y" : "N",
-                        isInCommBook = isOtherAssigned
+                        descYn = x.DescYn ?? "N",
+                        isInCommBook = isAssigned
                     };
                 }).ToList();
 
                 return Json(new { success = true, data = results });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult UpdateChallanDescYn(int challanId, string descYn)
+        {
+            try
+            {
+                var chall = _context.ChallanHead.FirstOrDefault(x => x.Id == challanId);
+                if (chall != null)
+                {
+                    chall.DescYn = (descYn?.Trim().ToUpper() == "Y") ? "Y" : "N";
+                    chall.ModifiedOn = DateTime.Now;
+                    chall.ModifiedBy = User?.Identity?.Name;
+                    _context.SaveChanges();
+                    return Json(new { success = true, challanId = chall.Id, descYn = chall.DescYn });
+                }
+                return Json(new { success = false, message = "Challan not found" });
             }
             catch (Exception ex)
             {
