@@ -45,6 +45,8 @@
                                 <th>Bil No</th>
                                 <th>Date</th>
                                 <th>Customer</th>
+                                <th>Station</th>
+                                <th class="text-end">Net Amount</th>
                                 <th class="text-end">Action</th>
                             </tr>
                             <tr class="filters">
@@ -53,6 +55,8 @@
                                 <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Bil No" data-column="2" /></th>
                                 <th><input type="date" class="form-control form-control-sm column-search" placeholder="Search Date" data-column="3" /></th>
                                 <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Customer" data-column="4" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search" placeholder="Search Station" data-column="5" /></th>
+                                <th><input type="text" class="form-control form-control-sm column-search text-end" placeholder="Search Net Amt" data-column="6" /></th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -95,6 +99,11 @@
                     { "data": "bilNo" },
                     { "data": "docDate" },
                     { "data": "cusName" },
+                    { "data": "station" },
+                    {
+                        "data": "netAmt",
+                        "className": "text-end fw-bold"
+                    },
                     {
                         "data": "id",
                         "orderable": false,

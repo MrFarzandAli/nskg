@@ -70,8 +70,10 @@ namespace Nskg.Controllers
                     query = query.Where(x =>
                         (x.DocNo != null && x.DocNo.ToLower().Contains(searchValue)) ||
                         (x.CusName != null && x.CusName.ToLower().Contains(searchValue)) ||
+                        (x.Fooder != null && x.Fooder.ToLower().Contains(searchValue)) ||
                         (x.BillTiNo != null && x.BillTiNo.ToString().Contains(searchValue)) ||
-                        (x.BilNo != null && x.BilNo.ToString().Contains(searchValue))
+                        (x.BilNo != null && x.BilNo.ToString().Contains(searchValue)) ||
+                        (x.NetAmt != null && x.NetAmt.ToString().Contains(searchValue))
                     );
                 }
 
@@ -81,6 +83,8 @@ namespace Nskg.Controllers
                 var col2Search = Request.Form["columns[2][search][value]"].FirstOrDefault();
                 var col3Search = Request.Form["columns[3][search][value]"].FirstOrDefault();
                 var col4Search = Request.Form["columns[4][search][value]"].FirstOrDefault();
+                var col5Search = Request.Form["columns[5][search][value]"].FirstOrDefault();
+                var col6Search = Request.Form["columns[6][search][value]"].FirstOrDefault();
 
                 if (!string.IsNullOrWhiteSpace(col0Search))
                 {
@@ -120,6 +124,18 @@ namespace Nskg.Controllers
                     query = query.Where(x => x.CusName != null && x.CusName.ToLower().Contains(val4));
                 }
 
+                if (!string.IsNullOrWhiteSpace(col5Search))
+                {
+                    var val5 = col5Search.Trim().ToLower();
+                    query = query.Where(x => x.Fooder != null && x.Fooder.ToLower().Contains(val5));
+                }
+
+                if (!string.IsNullOrWhiteSpace(col6Search))
+                {
+                    var val6 = col6Search.Trim();
+                    query = query.Where(x => x.NetAmt != null && x.NetAmt.ToString().Contains(val6));
+                }
+
                 int filterRecords = query.Count();
 
                 // Sorting
@@ -140,6 +156,12 @@ namespace Nskg.Controllers
                     case "4":
                         query = sortColumnDir == "asc" ? query.OrderBy(x => x.CusName) : query.OrderByDescending(x => x.CusName);
                         break;
+                    case "5":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.Fooder) : query.OrderByDescending(x => x.Fooder);
+                        break;
+                    case "6":
+                        query = sortColumnDir == "asc" ? query.OrderBy(x => x.NetAmt) : query.OrderByDescending(x => x.NetAmt);
+                        break;
                     default:
                         query = query.OrderByDescending(x => x.DocDate).ThenByDescending(x => x.Id);
                         break;
@@ -153,7 +175,9 @@ namespace Nskg.Controllers
                         b.BillTiNo,
                         b.BilNo,
                         b.DocDate,
-                        b.CusName
+                        b.CusName,
+                        b.Fooder,
+                        b.NetAmt
                     })
                     .ToList();
 
@@ -164,7 +188,9 @@ namespace Nskg.Controllers
                     biltyNo = b.BillTiNo.HasValue ? (b.BillTiNo.Value % 1 == 0 ? b.BillTiNo.Value.ToString("0") : b.BillTiNo.Value.ToString()) : "",
                     bilNo = b.BilNo.HasValue ? (b.BilNo.Value % 1 == 0 ? b.BilNo.Value.ToString("0") : b.BilNo.Value.ToString()) : "",
                     docDate = b.DocDate.HasValue ? b.DocDate.Value.ToString("dd-MMM-yyyy") : "",
-                    cusName = b.CusName ?? ""
+                    cusName = b.CusName ?? "",
+                    station = b.Fooder ?? "",
+                    netAmt = b.NetAmt.HasValue ? b.NetAmt.Value.ToString("N2") : "0.00"
                 }).ToList();
 
                 return Json(new
