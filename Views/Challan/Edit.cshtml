@@ -580,6 +580,7 @@
                                     data-stationid="@bilty.StationId"
                                     data-fooder="@bilty.Fooder"
                                     data-inchallan="@(isInChallanDb ? "true" : "false")"
+                                    data-descyn="@bilty.DescYN"
                                     data-is-old="@(isOverdue ? "true" : "false")"
                                     data-days-old="@daysOld"
                                     data-docdate-raw="@(bilty.DocDate != null ? ((DateTime)bilty.DocDate).ToString("yyyy-MM-dd") : "")"
@@ -588,6 +589,7 @@
                                         <input type="checkbox"
                                                class="bilty-check"
                                                data-id="@bilty.Id"
+                                               data-descyn="@bilty.DescYN"
                                                data-stationid="@bilty.StationId"
                                                data-fooder="@bilty.Fooder"
                                                data-inchallan="@(isInChallanDb ? "true" : "false")"
@@ -904,16 +906,10 @@
             });
 
             var selectedBiltyIds = [];
-            var selectedDocNos = [];
-            var selectedBiltyNos = [];
 
             $("#tbodyItems tr").not("#noDataRow").each(function() {
                 var bid = ($(this).find(".bilty-id").val() || "").toString().trim();
-                var dno = ($(this).find(".dc-no").val() || $(this).find('input[name*="DCNo"]').val() || "").toString().trim().toLowerCase();
-                var bno = ($(this).find(".billti-no").val() || $(this).find('input[name*="BillTiNo"]').val() || "").toString().trim().toLowerCase();
                 if (bid && bid !== "0") selectedBiltyIds.push(bid);
-                if (dno) selectedDocNos.push(dno);
-                if (bno) selectedBiltyNos.push(bno);
             });
 
             $("#biltyModal tbody tr").each(function() {
@@ -923,17 +919,13 @@
                 if (!$chk.length) return;
 
                 var bid = ($chk.data("id") || "").toString().trim();
-                var dno = ($chk.data("docno") || "").toString().trim().toLowerCase();
-                var bno = ($chk.data("billtino") || "").toString().trim().toLowerCase();
                 var isInChallanDb = ($chk.data("inchallan") === true || $chk.data("inchallan") === "true");
                 var challanDocNo = ($chk.data("challandocno") || "").toString().trim();
+                var descYn = ($chk.data("descyn") || $tr.data("descyn") || $tr.attr("data-descyn") || "").toString().trim().toUpperCase();
 
-                var isAlreadyInCurrentChallan = 
-                    (bid && bid !== "0" && selectedBiltyIds.indexOf(bid) !== -1) ||
-                    (dno && dno !== "" && selectedDocNos.indexOf(dno) !== -1) ||
-                    (bno && bno !== "" && selectedBiltyNos.indexOf(bno) !== -1);
-
-                var isSelected = isAlreadyInCurrentChallan || isInChallanDb;
+                // Strict matching by BiltyId only
+                var isAlreadyInCurrentChallan = (bid && bid !== "0" && selectedBiltyIds.indexOf(bid) !== -1);
+                var isSelected = isAlreadyInCurrentChallan || isInChallanDb || descYn === 'Y';
 
                 var rawDate = $tr.attr("data-docdate-raw") || ($chk.data("docdate") || "").toString().trim();
                 if (!rawDate) {
@@ -946,19 +938,29 @@
                 $tr.attr("data-is-old", isOverdue ? "true" : "false");
                 $chk.attr("data-is-old", isOverdue ? "true" : "false");
 
+                // Checkboxes are NEVER disabled - allow manual check/uncheck
+                $chk.prop("disabled", false);
+
                 if (hasActiveSearch) {
                     // When actively searching, always show the row even if already selected
                     $tr.removeClass("already-in-grid").show();
-                    if (isSelected) {
-                        $chk.prop("disabled", true).prop("checked", true);
+                    if (isAlreadyInCurrentChallan) {
+                        $chk.prop("checked", true);
                         $tr.addClass("table-light text-muted").removeClass("bilty-row-overdue");
                         $tr.find(".bilty-overdue-badge, .bilty-overdue-dot").remove();
                         if ($tr.find(".inchallan-badge").length === 0) {
-                            var label = challanDocNo ? `(${escapeHtml(challanDocNo)})` : (isAlreadyInCurrentChallan ? '(Current Challan)' : '');
-                            $tr.find("td:eq(1)").append(`<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected ${label}</span>`);
+                            $tr.find("td:eq(1)").append('<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected (Current Challan)</span>');
+                        }
+                    } else if (descYn === 'Y' || isInChallanDb) {
+                        $chk.prop("checked", true);
+                        $tr.addClass("table-light text-muted").removeClass("bilty-row-overdue");
+                        $tr.find(".bilty-overdue-badge, .bilty-overdue-dot").remove();
+                        if ($tr.find(".inchallan-badge").length === 0) {
+                            var label = challanDocNo ? `(${escapeHtml(challanDocNo)})` : '(DescYN: Y)';
+                            $tr.find("td:eq(1)").append(`<span class="badge bg-warning text-dark ms-1 inchallan-badge" title="DescYN: Y"><i class="fa fa-tag me-1"></i>DescYN: Y ${label}</span>`);
                         }
                     } else {
-                        $chk.prop("disabled", false).prop("checked", false);
+                        $chk.prop("checked", false);
                         $tr.removeClass("table-light text-muted");
                         $tr.find(".inchallan-badge, .already-selected-badge").remove();
                         if (isOverdue) {
@@ -977,20 +979,20 @@
                 } else {
                     // Default modal view (no search text entered): hide bilties already in current grid
                     if (isAlreadyInCurrentChallan) {
-                        $chk.prop("checked", false).prop("disabled", false);
+                        $chk.prop("checked", false);
                         $tr.addClass("already-in-grid").hide().removeClass("bilty-row-overdue");
                         $tr.find(".already-selected-badge, .inchallan-badge, .bilty-overdue-badge, .bilty-overdue-dot").remove();
-                    } else if (isInChallanDb) {
-                        $chk.prop("disabled", true).prop("checked", true);
+                    } else if (descYn === 'Y' || isInChallanDb) {
+                        $chk.prop("checked", true);
                         $tr.addClass("table-light text-muted").removeClass("bilty-row-overdue").show();
                         $tr.find(".bilty-overdue-badge, .bilty-overdue-dot").remove();
                         if ($tr.find(".inchallan-badge").length === 0) {
-                            var label = challanDocNo ? `(${escapeHtml(challanDocNo)})` : '';
-                            $tr.find("td:eq(1)").append(`<span class="badge bg-secondary ms-1 inchallan-badge" title="Already in Challan"><i class="fa fa-check me-1"></i>Selected ${label}</span>`);
+                            var label = challanDocNo ? `(${escapeHtml(challanDocNo)})` : '(DescYN: Y)';
+                            $tr.find("td:eq(1)").append(`<span class="badge bg-warning text-dark ms-1 inchallan-badge" title="DescYN: Y"><i class="fa fa-tag me-1"></i>DescYN: Y ${label}</span>`);
                         }
                     } else {
                         // Unselected bilty: highlight if 3+ days old!
-                        $chk.prop("checked", false).prop("disabled", false);
+                        $chk.prop("checked", false);
                         $tr.removeClass("already-in-grid table-primary table-light fw-semibold text-muted").show();
                         $tr.find(".already-selected-badge, .inchallan-badge").remove();
                         if (isOverdue) {
@@ -1235,38 +1237,32 @@
                 $("#searchingRow").remove();
                 if (res && res.success && res.data && res.data.length > 0) {
                     var selectedBiltyIds = [];
-                    var selectedDocNos = [];
-                    var selectedBiltyNos = [];
                     $("#tbodyItems tr").not("#noDataRow").each(function() {
                         var bid = ($(this).find(".bilty-id").val() || "").toString().trim();
-                        var dno = ($(this).find(".dc-no").val() || $(this).find('input[name*="DCNo"]').val() || "").toString().trim().toLowerCase();
-                        var bno = ($(this).find(".billti-no").val() || $(this).find('input[name*="BillTiNo"]').val() || "").toString().trim().toLowerCase();
                         if (bid && bid !== "0") selectedBiltyIds.push(bid);
-                        if (dno) selectedDocNos.push(dno);
-                        if (bno) selectedBiltyNos.push(bno);
                     });
 
                     var html = '';
                     res.data.forEach(function(bilty) {
                         var bidStr = (bilty.id || "").toString().trim();
-                        var dnoStr = (bilty.docNo || "").toString().trim().toLowerCase();
-                        var bnoStr = (bilty.billTiNo || "").toString().trim().toLowerCase();
+                        var isCurrentChallan = (bidStr && selectedBiltyIds.indexOf(bidStr) !== -1);
+                        var isDescYn = (bilty.descYN === 'Y');
+                        var isSelected = isCurrentChallan || bilty.isInChallan || isDescYn;
+                        var isChecked = isSelected ? 'checked' : '';
 
-                        var isCurrentChallan = 
-                            (bidStr && selectedBiltyIds.indexOf(bidStr) !== -1) ||
-                            (dnoStr && selectedDocNos.indexOf(dnoStr) !== -1) ||
-                            (bnoStr && selectedBiltyNos.indexOf(bnoStr) !== -1);
-
-                        var isSelected = bilty.isInChallan || isCurrentChallan;
                         var challanInfo = bilty.challanDocNo ? bilty.challanDocNo : (isCurrentChallan ? 'Current Challan' : '');
-                        var challanBadge = isSelected ? 
-                            `<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected ${escapeHtml(challanInfo)}"><i class="fa fa-check me-1"></i>Selected ${challanInfo ? '(' + escapeHtml(challanInfo) + ')' : ''}</span>` : '';
+                        var challanBadge = '';
+                        if (isCurrentChallan) {
+                            challanBadge = '<span class="badge bg-secondary ms-1 inchallan-badge" title="Already Selected"><i class="fa fa-check me-1"></i>Selected (Current Challan)</span>';
+                        } else if (isDescYn || bilty.isInChallan) {
+                            var descLabel = bilty.challanDocNo ? '(' + escapeHtml(bilty.challanDocNo) + ')' : '';
+                            challanBadge = `<span class="badge bg-warning text-dark ms-1 inchallan-badge" title="DescYN: Y"><i class="fa fa-tag me-1"></i>DescYN: Y ${descLabel}</span>`;
+                        }
                         
                         var daysOld = bilty.daysOld !== undefined ? bilty.daysOld : getDaysOld(bilty.docDateRaw || bilty.docDate);
                         var isOverdue = !isSelected && (bilty.isOld === true || daysOld >= 3);
 
                         var rowClass = isSelected ? 'table-light text-muted' : (isOverdue ? 'bilty-row-overdue' : '');
-                        var chkDisabled = isSelected ? 'disabled checked' : '';
 
                         var overdueBadge = isOverdue ? 
                             `<span class="badge bg-warning text-dark ms-1 bilty-overdue-badge" title="Bilty is ${daysOld} days old!"><i class="fa fa-clock-o me-1 text-danger"></i>${daysOld}d Old</span>` : '';
@@ -1278,6 +1274,7 @@
                                 data-stationid="${bilty.stationId || ''}"
                                 data-fooder="${escapeHtml(bilty.fooder || '')}"
                                 data-inchallan="${isSelected ? 'true' : 'false'}"
+                                data-descyn="${escapeHtml(bilty.descYN || '')}"
                                 data-is-old="${isOverdue ? 'true' : 'false'}"
                                 data-days-old="${daysOld}"
                                 data-docdate-raw="${escapeHtml(bilty.docDateRaw || '')}"
@@ -1285,8 +1282,9 @@
                                 <td>
                                     <input type="checkbox"
                                            class="bilty-check"
-                                           ${chkDisabled}
+                                           ${isChecked}
                                            data-id="${bilty.id}"
+                                           data-descyn="${escapeHtml(bilty.descYN || '')}"
                                            data-stationid="${bilty.stationId || ''}"
                                            data-fooder="${escapeHtml(bilty.fooder || '')}"
                                            data-inchallan="${isSelected ? 'true' : 'false'}"
@@ -1458,18 +1456,12 @@
 
             // Collect existing bilty identifiers already in challan
             var existingBiltyIds = [];
-            var existingDocNos = [];
-            var existingBiltyNos = [];
             $("#tbodyItems tr").not("#noDataRow").each(function() {
                 var bid = ($(this).find(".bilty-id").val() || "").toString().trim();
-                var dno = ($(this).find(".dc-no").val() || $(this).find('input[name*="DCNo"]').val() || "").toString().trim().toLowerCase();
-                var bno = ($(this).find(".billti-no").val() || $(this).find('input[name*="BillTiNo"]').val() || "").toString().trim().toLowerCase();
                 if (bid && bid !== "0") existingBiltyIds.push(bid);
-                if (dno) existingDocNos.push(dno);
-                if (bno) existingBiltyNos.push(bno);
             });
 
-            $(".bilty-check:checked:not(:disabled)").each(function() {
+            $(".bilty-check:checked").each(function() {
                 hasSelected = true;
                 const $checkbox = $(this);
                 const biltyId = ($checkbox.attr("data-id") || $checkbox.data("id") || "").toString().trim();
@@ -1477,11 +1469,7 @@
                 const billTiNoValue = ($checkbox.attr("data-billtino") || $checkbox.data("billtino") || "").toString().trim();
 
                 // If this bilty is already in the table, don't duplicate it
-                const isDuplicate = (biltyId && existingBiltyIds.indexOf(biltyId) !== -1) ||
-                    (docNo && existingDocNos.indexOf(docNo.toLowerCase()) !== -1) ||
-                    (billTiNoValue && existingBiltyNos.some(function(b) {
-                        return b === billTiNoValue.toLowerCase() || (parseFloat(b) > 0 && parseFloat(b) === parseFloat(billTiNoValue));
-                    }));
+                const isDuplicate = (biltyId && existingBiltyIds.indexOf(biltyId) !== -1);
                 if (isDuplicate) {
                     return;
                 }
@@ -1636,7 +1624,14 @@
         }
 
         function removeRow(btn) {
-            $(btn).closest("tr").remove();
+            var $row = $(btn).closest("tr");
+            var bid = parseInt($row.find(".bilty-id").val(), 10);
+            if (bid && bid > 0) {
+                // Free the bilty in DB strictly by biltyId
+                $.post('/Challan/UpdateBiltyDescYn', { biltyId: bid, descYn: 'N' });
+            }
+
+            $row.remove();
             reindexRows();
             calculateTotals();
 
@@ -1771,6 +1766,44 @@
 
             // Bind column searches in modal
             $(document).on("input change", ".col-search", handleColumnSearch);
+
+            // Handle manual check/uncheck for Bilties with DescYN = Y / N
+            $(document).on('change', '.bilty-check', function () {
+                var $chk = $(this);
+                var bid = parseInt($chk.data('id') || $chk.attr('data-id'), 10);
+                var isChecked = $chk.is(':checked');
+                var currentDescYn = ($chk.data('descyn') || "").toString().trim().toUpperCase();
+                var vNo = ($('#Head_VehicleNo').val() || $('#VehicleNo').val() || '').trim();
+                var cId = parseInt($('#Head_Id').val() || 0, 10);
+
+                if (!isChecked && currentDescYn === 'Y' && bid > 0) {
+                    $.post('/Challan/UpdateBiltyDescYn', { biltyId: bid, descYn: 'N' }, function (res) {
+                        if (res && res.success) {
+                            $chk.data('descyn', 'N');
+                            $chk.data('inchallan', false);
+                            var $tr = $chk.closest('tr');
+                            $tr.attr('data-descyn', 'N');
+                            $tr.data('descyn', 'N');
+                            $tr.data('inchallan', false);
+                            $tr.find('.inchallan-badge').remove();
+                            $tr.find('td:eq(1)').append('<span class="badge bg-info ms-1 inchallan-badge" title="Freed (DescYN: N)"><i class="fa fa-unlock me-1"></i>Freed (DescYN: N)</span>');
+                        }
+                    });
+                } else if (isChecked && currentDescYn === 'N' && bid > 0) {
+                    $.post('/Challan/UpdateBiltyDescYn', { biltyId: bid, descYn: 'Y', vehicleNo: vNo, challanId: cId }, function (res) {
+                        if (res && res.success) {
+                            $chk.data('descyn', 'Y');
+                            $chk.data('inchallan', true);
+                            var $tr = $chk.closest('tr');
+                            $tr.attr('data-descyn', 'Y');
+                            $tr.data('descyn', 'Y');
+                            $tr.data('inchallan', true);
+                            $tr.find('.inchallan-badge').remove();
+                            $tr.find('td:eq(1)').append('<span class="badge bg-warning text-dark ms-1 inchallan-badge" title="DescYN: Y"><i class="fa fa-tag me-1"></i>DescYN: Y</span>');
+                        }
+                    });
+                }
+            });
 
             // Ensure at least one row exists if empty
             if ($("#tbodyItems tr").not("#noDataRow").length === 0) {

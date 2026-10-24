@@ -365,6 +365,11 @@ namespace Nskg.Controllers
                 model.Head.TransCode = transporter?.ACC;
                 model.Head.DescYn = "N";
 
+                model.Head.PartyStationCode = ResolveAccCode(model.Head.PartyStationCode);
+                model.Head.PExpCode = ResolveAccCode(model.Head.PExpCode);
+                model.Head.PExpCode2 = ResolveAccCode(model.Head.PExpCode2);
+                model.Head.PExpCode3 = ResolveAccCode(model.Head.PExpCode3);
+
                 // =========================
                 // SAVE HEAD
                 // =========================
@@ -688,6 +693,75 @@ namespace Nskg.Controllers
                 ViewBag.Transporters = transList.OrderBy(t => string.IsNullOrEmpty(t.Value) ? "" : t.Text).ToList();
             }
 
+            // FIX: Ensure PartyExp accounts and PartyStation account are properly matched and in dropdowns
+            var partyExpsList = ViewBag.PartyExps as List<SelectListItem> ?? new List<SelectListItem>();
+
+            string? EnsurePartyExp(string? rawCode)
+            {
+                if (string.IsNullOrWhiteSpace(rawCode)) return null;
+                var trimmed = rawCode.Trim();
+
+                // If stored as GLChart3 Id (numeric and matches Id)
+                if (int.TryParse(trimmed, out var idVal) && idVal > 999)
+                {
+                    var gl = _context.GLChart3.FirstOrDefault(g => g.Id == idVal);
+                    if (gl != null)
+                    {
+                        trimmed = !string.IsNullOrEmpty(gl.ACC) ? gl.ACC.Trim() : (gl.AC1.Trim() + gl.AC3.Trim());
+                    }
+                }
+
+                if (!partyExpsList.Any(p => p.Value == trimmed))
+                {
+                    var gl = _context.GLChart3.FirstOrDefault(g => (g.AC1 + g.AC3) == trimmed || g.ACC == trimmed);
+                    if (gl != null)
+                    {
+                        var codeVal = !string.IsNullOrEmpty(gl.ACC) ? gl.ACC.Trim() : (gl.AC1.Trim() + gl.AC3.Trim());
+                        partyExpsList.Add(new SelectListItem
+                        {
+                            Value = codeVal,
+                            Text = gl.Name + " (" + (gl.AC1 + gl.AC3) + ")"
+                        });
+                    }
+                }
+                return trimmed;
+            }
+
+            head.PExpCode = EnsurePartyExp(head.PExpCode);
+            head.PExpCode2 = EnsurePartyExp(head.PExpCode2);
+            head.PExpCode3 = EnsurePartyExp(head.PExpCode3);
+            ViewBag.PartyExps = partyExpsList.OrderBy(s => string.IsNullOrEmpty(s.Value) ? "" : s.Text).ToList();
+
+            var partyStationList = ViewBag.PartyStations as List<SelectListItem> ?? new List<SelectListItem>();
+            if (!string.IsNullOrWhiteSpace(head.PartyStationCode))
+            {
+                var trimmedSt = head.PartyStationCode.Trim();
+                if (int.TryParse(trimmedSt, out var stIdVal) && stIdVal > 999)
+                {
+                    var gl = _context.GLChart3.FirstOrDefault(g => g.Id == stIdVal);
+                    if (gl != null)
+                    {
+                        trimmedSt = !string.IsNullOrEmpty(gl.ACC) ? gl.ACC.Trim() : (gl.AC1.Trim() + gl.AC3.Trim());
+                        head.PartyStationCode = trimmedSt;
+                    }
+                }
+
+                if (!partyStationList.Any(p => p.Value == trimmedSt))
+                {
+                    var gl = _context.GLChart3.FirstOrDefault(g => (g.AC1 + g.AC3) == trimmedSt || g.ACC == trimmedSt);
+                    if (gl != null)
+                    {
+                        var codeVal = !string.IsNullOrEmpty(gl.ACC) ? gl.ACC.Trim() : (gl.AC1.Trim() + gl.AC3.Trim());
+                        partyStationList.Add(new SelectListItem
+                        {
+                            Value = codeVal,
+                            Text = gl.Name + " (" + (gl.AC1 + gl.AC3) + ")"
+                        });
+                    }
+                }
+                ViewBag.PartyStations = partyStationList.OrderBy(s => string.IsNullOrEmpty(s.Value) ? "" : s.Text).ToList();
+            }
+
             var details = _context.ChallanDet
                  .Where(x => x.ChallanHeadId == id)
                  .Select(x => new ChallanDetailVM
@@ -851,10 +925,10 @@ namespace Nskg.Controllers
                 head.VehicleNo = model.Head.VehicleNo;
                 head.Driver = model.Head.Driver;
                 head.Narration = model.Head.Narration;
-                head.PartyStationCode = model.Head.PartyStationCode;
-                head.PExpCode = model.Head.PExpCode;
-                head.PExpCode2 = model.Head.PExpCode2;
-                head.PExpCode3 = model.Head.PExpCode3;
+                head.PartyStationCode = ResolveAccCode(model.Head.PartyStationCode);
+                head.PExpCode = ResolveAccCode(model.Head.PExpCode);
+                head.PExpCode2 = ResolveAccCode(model.Head.PExpCode2);
+                head.PExpCode3 = ResolveAccCode(model.Head.PExpCode3);
                 head.PExpAmt = model.Head.PExpAmt;
                 head.PExpAmt2 = model.Head.PExpAmt2;
                 head.PExpAmt3 = model.Head.PExpAmt3;
@@ -919,8 +993,13 @@ namespace Nskg.Controllers
                 // =========================
                 // UNLINK REMOVED BILTIES
                 // =========================
+                var prevDetailBiltyIds = head.Details
+                    .Where(d => d.BiltyId.HasValue && d.BiltyId.Value > 0)
+                    .Select(d => d.BiltyId!.Value)
+                    .ToList();
+
                 var linkedBilties = _context.IssHead
-                    .Where(i => i.ChallanId == head.Id)
+                    .Where(i => i.ChallanId == head.Id || prevDetailBiltyIds.Contains(i.Id))
                     .ToList();
 
                 foreach (var bilty in linkedBilties)
@@ -1070,11 +1149,12 @@ namespace Nskg.Controllers
                 //    det.DescYn = "Y"; // mark detail as deleted
                 //}
 
-                // Also, for any IssHead rows that were linked, clear ChallanId? This keeps history but marks bilty command as used.
-                var iss = _context.IssHead.Where(i => i.ChallanId == v.Id).ToList();
+                // Also, for any IssHead rows that were linked, clear ChallanId and reset DescYN = "N"
+                var detBiltyIds = v.Details.Where(d => d.BiltyId.HasValue && d.BiltyId.Value > 0).Select(d => d.BiltyId!.Value).ToList();
+                var iss = _context.IssHead.Where(i => i.ChallanId == v.Id || detBiltyIds.Contains(i.Id)).ToList();
                 foreach (var item in iss)
                 {
-                    // When challan deleted we may want to unmark original bilty as unused
+                    // When challan deleted unmark original bilty as unused
                     item.DescYN = "N";
                     item.ChallanId = null;
                     item.VehicleNo = null;
@@ -1177,7 +1257,7 @@ namespace Nskg.Controllers
                     )
                     .Select(g => new SelectListItem
                     {
-                        Value = g.Id.ToString(),
+                        Value = !string.IsNullOrEmpty(g.ACC) ? g.ACC.Trim() : (g.AC1.Trim() + g.AC3.Trim()),
                         Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
                     })
                     .OrderBy(x => x.Text)
@@ -1207,7 +1287,7 @@ namespace Nskg.Controllers
                     )
                     .Select(g => new SelectListItem
                     {
-                        Value = g.Id.ToString(),
+                        Value = !string.IsNullOrEmpty(g.ACC) ? g.ACC.Trim() : (g.AC1.Trim() + g.AC3.Trim()),
                         Text = g.Name + " (" + (g.AC1 + g.AC3) + ")"
                     })
                     .OrderBy(x => x.Text)
@@ -1225,10 +1305,22 @@ namespace Nskg.Controllers
                 // Load bilty - filter by user CompanyId, 3+ days old bilties first at top, then order by DocDate descending
                 var userCompanyId = compId;
                 var threeDaysAgo = DateTime.Today.AddDays(-3);
+
+                var curBiltyIds = new List<int>();
+                if (currentChallanId.HasValue && currentChallanId.Value > 0)
+                {
+                    curBiltyIds = _context.ChallanDet
+                        .Where(cd => cd.ChallanHeadId == currentChallanId.Value && cd.BiltyId.HasValue)
+                        .Select(cd => cd.BiltyId!.Value)
+                        .ToList();
+                }
+
                 ViewBag.BiltyList = _context.IssHead
-                    .Where(x => (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN) || (currentChallanId != null && x.ChallanId == currentChallanId)) 
-                                && (x.ChallanId == null || x.ChallanId == 0 || (currentChallanId != null && x.ChallanId == currentChallanId)) 
-                                && !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId || x.CompanyId == 0))
+                    .Where(x => !x.IsDeleted && (userCompanyId == 0 || x.CompanyId == userCompanyId || x.CompanyId == 0)
+                                && (
+                                    (x.DescYN == "N" || string.IsNullOrEmpty(x.DescYN)) && (x.ChallanId == null || x.ChallanId == 0)
+                                    || (currentChallanId != null && (x.ChallanId == currentChallanId || curBiltyIds.Contains(x.Id)))
+                                ))
                     .Select(x => new
                     {
                         x.Id,
@@ -1448,6 +1540,64 @@ namespace Nskg.Controllers
                 return Json(new { success = false, message = ex.Message });
             }
         }
+        [HttpPost]
+        public IActionResult UpdateBiltyDescYn(int biltyId, string descYn, string? vehicleNo = null, int? challanId = null)
+        {
+            try
+            {
+                if (biltyId <= 0)
+                {
+                    return Json(new { success = false, message = "Invalid BiltyId" });
+                }
+
+                // Strictly update via BiltyId
+                var bilty = _context.IssHead.FirstOrDefault(x => x.Id == biltyId);
+                if (bilty != null)
+                {
+                    var isY = descYn?.Trim().ToUpper() == "Y";
+                    bilty.DescYN = isY ? "Y" : "N";
+                    if (isY)
+                    {
+                        if (!string.IsNullOrWhiteSpace(vehicleNo))
+                        {
+                            bilty.VehicleNo = vehicleNo.Trim();
+                        }
+                        if (challanId.HasValue && challanId.Value > 0)
+                        {
+                            bilty.ChallanId = challanId.Value;
+                        }
+                    }
+                    else
+                    {
+                        bilty.ChallanId = null;
+                        bilty.VehicleNo = null;
+                    }
+
+                    bilty.ModifiedOn = DateTime.Now;
+                    bilty.ModifiedBy = User?.Identity?.Name;
+                    _context.SaveChanges();
+                    return Json(new { success = true, biltyId = bilty.Id, descYn = bilty.DescYN, vehicleNo = bilty.VehicleNo, challanId = bilty.ChallanId });
+                }
+                return Json(new { success = false, message = "Bilty not found" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        private string? ResolveAccCode(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return null;
+            var trimmed = input.Trim();
+            if (int.TryParse(trimmed, out var idVal) && idVal > 999)
+            {
+                var gl = _context.GLChart3.FirstOrDefault(g => g.Id == idVal);
+                if (gl != null) return !string.IsNullOrEmpty(gl.ACC) ? gl.ACC.Trim() : (gl.AC1.Trim() + gl.AC3.Trim());
+            }
+            return trimmed;
+        }
+
         private string GenerateDocNo()
         {
             var fy = _context.FinancialYears

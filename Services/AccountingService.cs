@@ -391,8 +391,25 @@ namespace Nskg.Services
 
             int lineNo = 1;
 
+            string ResolveCode(string? code)
+            {
+                if (string.IsNullOrWhiteSpace(code)) return "";
+                var tr = code.Trim();
+                if (int.TryParse(tr, out var pk) && pk > 999)
+                {
+                    var gl = _context.GLChart3.FirstOrDefault(g => g.Id == pk);
+                    if (gl != null) return !string.IsNullOrEmpty(gl.ACC) ? gl.ACC.Trim() : (gl.AC1.Trim() + gl.AC3.Trim());
+                }
+                return tr;
+            }
+
+            var partyStCode = ResolveCode(head.PartyStationCode);
+            var pExp1 = ResolveCode(head.PExpCode);
+            var pExp2 = ResolveCode(head.PExpCode2);
+            var pExp3 = ResolveCode(head.PExpCode3);
+
             // 1. Party Station Expenses (Debit PartyStationCode / Credit Expense Code)
-            if (!string.IsNullOrEmpty(head.PartyStationCode))
+            if (!string.IsNullOrEmpty(partyStCode))
             {
                 if ((head.PExpAmt ?? 0) > 0)
                 {
@@ -401,8 +418,8 @@ namespace Nskg.Services
                         DocNo = head.DocNo,
                         Docdate = head.DocDate ?? DateTime.Now,
                         LineNo = lineNo++,
-                        Accode = head.PartyStationCode,
-                        ContraAcc = head.PExpCode,
+                        Accode = partyStCode,
+                        ContraAcc = pExp1,
                         Debit = head.PExpAmt.Value,
                         Credit = 0,
                         CompanyId = head.CompanyId,
@@ -420,8 +437,8 @@ namespace Nskg.Services
                         DocNo = head.DocNo,
                         Docdate = head.DocDate ?? DateTime.Now,
                         LineNo = lineNo++,
-                        Accode = head.PartyStationCode,
-                        ContraAcc = head.PExpCode2,
+                        Accode = partyStCode,
+                        ContraAcc = pExp2,
                         Debit = head.PExpAmt2.Value,
                         Credit = 0,
                         CompanyId = head.CompanyId,
@@ -439,8 +456,8 @@ namespace Nskg.Services
                         DocNo = head.DocNo,
                         Docdate = head.DocDate ?? DateTime.Now,
                         LineNo = lineNo++,
-                        Accode = head.PartyStationCode,
-                        ContraAcc = head.PExpCode3,
+                        Accode = partyStCode,
+                        ContraAcc = pExp3,
                         Debit = head.PExpAmt3.Value,
                         Credit = 0,
                         CompanyId = head.CompanyId,
@@ -454,15 +471,15 @@ namespace Nskg.Services
             }
 
             // 2. Corresponding Credit Entries for Expense Codes (PExpCode 1, 2, 3)
-            if ((head.PExpAmt ?? 0) > 0 && !string.IsNullOrEmpty(head.PExpCode))
+            if ((head.PExpAmt ?? 0) > 0 && !string.IsNullOrEmpty(pExp1))
             {
                 _context.GLTrans.Add(new GLTrans
                 {
                     DocNo = head.DocNo,
                     Docdate = head.DocDate ?? DateTime.Now,
                     LineNo = lineNo++,
-                    Accode = head.PExpCode,
-                    ContraAcc = head.PartyStationCode,
+                    Accode = pExp1,
+                    ContraAcc = partyStCode,
                     Debit = 0,
                     Credit = head.PExpAmt.Value,
                     CompanyId = head.CompanyId,
@@ -473,15 +490,15 @@ namespace Nskg.Services
                     Narration = $"{head.Station} Challan No.{head.ChalNo}"
                 });
             }
-            if ((head.PExpAmt2 ?? 0) > 0 && !string.IsNullOrEmpty(head.PExpCode2))
+            if ((head.PExpAmt2 ?? 0) > 0 && !string.IsNullOrEmpty(pExp2))
             {
                 _context.GLTrans.Add(new GLTrans
                 {
                     DocNo = head.DocNo,
                     Docdate = head.DocDate ?? DateTime.Now,
                     LineNo = lineNo++,
-                    Accode = head.PExpCode2,
-                    ContraAcc = head.PartyStationCode,
+                    Accode = pExp2,
+                    ContraAcc = partyStCode,
                     Debit = 0,
                     Credit = head.PExpAmt2.Value,
                     CompanyId = head.CompanyId,
@@ -492,15 +509,15 @@ namespace Nskg.Services
                     Narration = $"{head.Station} Challan No.{head.ChalNo}"
                 });
             }
-            if ((head.PExpAmt3 ?? 0) > 0 && !string.IsNullOrEmpty(head.PExpCode3))
+            if ((head.PExpAmt3 ?? 0) > 0 && !string.IsNullOrEmpty(pExp3))
             {
                 _context.GLTrans.Add(new GLTrans
                 {
                     DocNo = head.DocNo,
                     Docdate = head.DocDate ?? DateTime.Now,
                     LineNo = lineNo++,
-                    Accode = head.PExpCode3,
-                    ContraAcc = head.PartyStationCode,
+                    Accode = pExp3,
+                    ContraAcc = partyStCode,
                     Debit = 0,
                     Credit = head.PExpAmt3.Value,
                     CompanyId = head.CompanyId,

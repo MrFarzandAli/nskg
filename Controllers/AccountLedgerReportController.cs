@@ -307,9 +307,9 @@ namespace Nskg.Controllers
                                 ELSE NULL
                             END AS BilNo,
                             COALESCE(
-                                NULLIF(RTRIM(LTRIM(a.VEHICLENO)), ''),
+                                CASE WHEN a.VOTYPE = 'BL' THEN COALESCE(NULLIF(RTRIM(LTRIM(ish.VehicleNo)), ''), NULLIF(RTRIM(LTRIM(a.VEHICLENO)), '')) ELSE NULL END,
+                                CASE WHEN a.VOTYPE <> 'BL' THEN NULLIF(RTRIM(LTRIM(a.VEHICLENO)), '') ELSE NULL END,
                                 CASE WHEN a.VOTYPE = 'CL' AND NULLIF(RTRIM(LTRIM(a.NARRATION)), '') IS NOT NULL AND a.NARRATION NOT LIKE '%-%-%' THEN RTRIM(LTRIM(a.NARRATION)) ELSE NULL END,
-                                CASE WHEN a.VOTYPE = 'BL' THEN NULLIF(RTRIM(LTRIM(ish.VehicleNo)), '') ELSE NULL END,
                                 ''
                             ) AS VehicleNo,
                             COALESCE(
@@ -342,7 +342,7 @@ namespace Nskg.Controllers
                             ISNULL(a.CRAMT, 0) AS Credit
                         FROM FilteredAcc a
                         OUTER APPLY (
-                            SELECT TOP 1 ish.BillTiNo, ish.BilNo, ish.VehicleNo, ish.Qty, ish.CompanyId, ish.Cocode, ish.Fooder
+                            SELECT TOP 1 ish.Id, ish.DocNo, ish.BillTiNo, ish.BilNo, ish.VehicleNo, ish.Qty, ish.CompanyId, ish.Cocode, ish.Fooder, ish.ChallanId
                             FROM IssHead ish 
                             WHERE a.VOTYPE = 'BL'
                               AND (ish.DocNo = a.VONO OR (a.BILLTINO IS NOT NULL AND a.BILLTINO <> 0 AND ish.BillTiNo = a.BILLTINO))
